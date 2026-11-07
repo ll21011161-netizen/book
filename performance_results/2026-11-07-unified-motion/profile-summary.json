@@ -1,0 +1,50 @@
+{
+  "profile-device": {
+    "complete": true,
+    "errors": [],
+    "phases": {
+      "enter": {
+        "runs": 11,
+        "frames": 253,
+        "avg_ui_ms": 4.934,
+        "avg_raster_ms": 7.776,
+        "max_ui_ms": 80.943,
+        "max_raster_ms": 39.102,
+        "over_16ms": 45
+      },
+      "return": {
+        "runs": 11,
+        "frames": 225,
+        "avg_ui_ms": 3.302,
+        "avg_raster_ms": 6.546,
+        "max_ui_ms": 48.17,
+        "max_raster_ms": 39.231,
+        "over_16ms": 35
+      }
+    }
+  },
+  "profile-gated-device": {
+    "complete": true,
+    "errors": [],
+    "phases": {
+      "enter": {
+        "runs": 11,
+        "frames": 298,
+        "avg_ui_ms": 4.567,
+        "avg_raster_ms": 6.672,
+        "max_ui_ms": 76.335,
+        "max_raster_ms": 27.655,
+        "over_16ms": 40
+      },
+      "return": {
+        "runs": 11,
+        "frames": 248,
+        "avg_ui_ms": 3.022,
+        "avg_raster_ms": 5.116,
+        "max_ui_ms": 70.155,
+        "max_raster_ms": 23.645,
+        "over_16ms": 26
+      }
+    }
+  }
+}

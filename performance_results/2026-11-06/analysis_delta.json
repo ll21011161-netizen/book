@@ -1,0 +1,24 @@
+{
+  "before": 57,
+  "after": 55,
+  "new": [],
+  "removed": [
+    [
+      "info",
+      "Statements in an if should be enclosed in a block",
+      "lib\\data\\database_helper.dart",
+      "curly_braces_in_flow_control_structures"
+    ],
+    [
+      "info",
+      "Statements in an if should be enclosed in a block",
+      "lib\\data\\database_helper.dart",
+      "curly_braces_in_flow_control_structures"
+    ]
+  ],
+  "remaining_by_severity": {
+    "error": 0,
+    "warning": 4,
+    "info": 51
+  }
+}

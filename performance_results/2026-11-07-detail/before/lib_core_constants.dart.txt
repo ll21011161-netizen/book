@@ -1,0 +1,55 @@
+import 'package:flutter/material.dart';
+
+class AppConstants {
+  static const Duration pressDuration = Duration(milliseconds: 90);
+  static const Duration releaseDuration = Duration(milliseconds: 210);
+  static const Duration dialogDuration = Duration(milliseconds: 250);
+  static const Duration dialogDismissDuration = Duration(milliseconds: 150);
+  static const Duration dragLiftDuration = Duration(milliseconds: 170);
+  static const Duration dragTargetDuration = Duration(milliseconds: 190);
+  static const Duration dragResetDuration = Duration(milliseconds: 210);
+  static const Duration dragTiltDuration = Duration(milliseconds: 100);
+  static const double pressScale = 0.95;
+  static const double dialogScale = 0.95;
+  static const double dragScale = 1.045;
+  static const double dragMaxTilt = 0.05;
+  static const Curve pressCurve = Curves.easeOutCubic;
+  // Limited overshoot: a 0.95 -> 1 release peaks at about 1.002.
+  static const Curve springCurve = Cubic(0.2, 0.85, 0.35, 1.15);
+  static const Duration navigationDuration = Duration(milliseconds: 260);
+  static const Duration controlsDuration = Duration(milliseconds: 200);
+  static const Duration zoomDuration = Duration(milliseconds: 200);
+
+  static Duration motionDuration(BuildContext context, Duration duration) =>
+      MediaQuery.disableAnimationsOf(context) ? Duration.zero : duration;
+  // ==========================================
+  // ⏱️ 動畫時間分級 (Animation Durations)
+  // ==========================================
+
+  /// 極快 (Fast)：150 毫秒
+  /// 適用場景：微小互動回饋、按鈕點擊縮放、開關切換 (Switch) 等。
+  static const Duration animDurationFast = Duration(milliseconds: 150);
+
+  /// 一般 (Normal)：250 毫秒
+  /// 適用場景：基礎動畫、選單展開/收合、小視窗彈出、列表項目淡入淡出等。
+  static const Duration animDurationNormal = Duration(milliseconds: 250);
+
+  /// 較慢 (Slow)：400 毫秒
+  /// 保留給需要較長追蹤的動作；導航與控制列使用各自的時長，
+  /// 閱讀器手勢翻頁沿用 PageView 的滑動慣性。
+  static const Duration animDurationSlow = Duration(milliseconds: 400);
+
+  // ==========================================
+  // 🎢 動畫曲線分級 (Animation Curves)
+  // ==========================================
+
+  /// 標準曲線 (Standard)：Curves.easeOutCubic
+  /// 特性：啟動快速俐落，結尾平滑緩慢停下。
+  /// 適用場景：絕大多數的 UI 元件彈出、位移，能給人輕快且不拖泥帶水的感覺。
+  static const Curve animCurveStandard = Curves.easeOutCubic;
+
+  /// 平滑曲線 (Smooth)：Curves.easeInOut
+  /// 特性：起步平緩、中間加速、結尾再平緩。
+  /// 適用場景：顏色漸變、透明度淡入淡出 (Fade) 或是不需要特別強調物理慣性的柔和轉場。
+  static const Curve animCurveSmooth = Curves.easeInOut;
+}

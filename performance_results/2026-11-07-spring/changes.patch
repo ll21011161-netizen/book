@@ -1,0 +1,1985 @@
+--- before/lib/core/constants.dart
++++ after/lib/core/constants.dart
+@@ -1,7 +1,21 @@
+ import 'package:flutter/material.dart';
+ 
+ class AppConstants {
+-  static const Duration pressDuration = Duration(milliseconds: 100);
++  static const Duration pressDuration = Duration(milliseconds: 90);
++  static const Duration releaseDuration = Duration(milliseconds: 210);
++  static const Duration dialogDuration = Duration(milliseconds: 250);
++  static const Duration dialogDismissDuration = Duration(milliseconds: 150);
++  static const Duration dragLiftDuration = Duration(milliseconds: 170);
++  static const Duration dragTargetDuration = Duration(milliseconds: 190);
++  static const Duration dragResetDuration = Duration(milliseconds: 210);
++  static const Duration dragTiltDuration = Duration(milliseconds: 100);
++  static const double pressScale = 0.95;
++  static const double dialogScale = 0.95;
++  static const double dragScale = 1.045;
++  static const double dragMaxTilt = 0.05;
++  static const Curve pressCurve = Curves.easeOutCubic;
++  // Limited overshoot: a 0.95 -> 1 release peaks at about 1.002.
++  static const Curve springCurve = Cubic(0.2, 0.85, 0.35, 1.15);
+   static const Duration navigationDuration = Duration(milliseconds: 260);
+   static const Duration controlsDuration = Duration(milliseconds: 200);
+   static const Duration zoomDuration = Duration(milliseconds: 200);
+--- before/lib/widgets/book_card.dart
++++ after/lib/widgets/book_card.dart
+@@ -4,9 +4,9 @@
+ import 'page_thumbnail.dart';
+ import '../core/theme.dart';
+ import '../core/config.dart';
+-import '../core/constants.dart';
++import 'spring_press.dart';
+ 
+-class BookCard extends StatefulWidget {
++class BookCard extends StatelessWidget {
+   final MangaBook book;
+   final VoidCallback onTap;
+   final VoidCallback onLongPress;
+@@ -25,138 +25,116 @@
+   }) : super(key: key);
+ 
+   @override
+-  State<BookCard> createState() => _BookCardState();
+-}
+-
+-class _BookCardState extends State<BookCard> {
+-  bool _isPressed = false;
+-
+-  @override
+   Widget build(BuildContext context) {
+     // 保留進度計算，用來判斷是否顯示「已看完」的打勾圖示
+-    final double progress = widget.book.totalPageCount > 0
+-        ? (widget.book.lastReadPage + 1) / widget.book.totalPageCount
++    final double progress = book.totalPageCount > 0
++        ? (book.lastReadPage + 1) / book.totalPageCount
+         : 0.0;
+     final bool isCompleted = progress >= 1.0;
+ 
+     return HeroMode(
+         enabled: !MediaQuery.disableAnimationsOf(context),
+-        child: RepaintBoundary(
+-          child: AnimatedScale(
+-            scale: _isPressed ? 0.95 : 1.0,
+-            duration: AppConstants.motionDuration(
+-                context,
+-                _isPressed
+-                    ? AppConstants.pressDuration
+-                    : AppConstants.animDurationFast),
+-            curve: AppConstants.animCurveStandard,
+-            child: GestureDetector(
+-              onTapDown: (_) => setState(() => _isPressed = true),
+-              onTapUp: (_) => setState(() => _isPressed = false),
+-              onTapCancel: () => setState(() => _isPressed = false),
+-              onTap: widget.onTap,
+-              onLongPress: widget.onLongPress,
+-              child: Column(
+-                crossAxisAlignment: CrossAxisAlignment.start,
+-                children: [
+-                  Expanded(
+-                    child: Stack(
+-                      fit: StackFit.expand,
+-                      children: [
+-                        Hero(
+-                          tag: 'book_cover_${widget.book.id}',
+-                          transitionOnUserGestures: true,
+-                          child: ClipRRect(
+-                            borderRadius:
+-                                BorderRadius.circular(AppTheme.cornerRadius),
+-                            child: Material(
+-                              color: Theme.of(context)
+-                                  .colorScheme
+-                                  .surfaceContainerHigh,
+-                              child: PageThumbnail(
+-                                path: widget.book.coverPath ?? '',
+-                                fit: widget.cropCover
+-                                    ? BoxFit.cover
+-                                    : BoxFit.contain,
+-                                cacheWidth: AppConfig.thumbnailCacheWidth,
+-                                borderRadius: BorderRadius.zero,
+-                                preserveAnimation: true,
+-                                deferGenerationUntilReady: true,
+-                              ),
++        child: SpringPress(
++          onTap: onTap,
++          onLongPress: onLongPress,
++          child: RepaintBoundary(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Expanded(
++                  child: Stack(
++                    fit: StackFit.expand,
++                    children: [
++                      Hero(
++                        tag: 'book_cover_${book.id}',
++                        transitionOnUserGestures: true,
++                        child: ClipRRect(
++                          borderRadius:
++                              BorderRadius.circular(AppTheme.cornerRadius),
++                          child: Material(
++                            color: Theme.of(context)
++                                .colorScheme
++                                .surfaceContainerHigh,
++                            child: PageThumbnail(
++                              path: book.coverPath ?? '',
++                              fit: cropCover ? BoxFit.cover : BoxFit.contain,
++                              cacheWidth: AppConfig.thumbnailCacheWidth,
++                              borderRadius: BorderRadius.zero,
++                              preserveAnimation: true,
++                              deferGenerationUntilReady: true,
+                             ),
+                           ),
+                         ),
++                      ),
+ 
+-                        // 🌟 已經把這裡原本的進度條 (Progress Bar) 溫柔地移除了喔！
++                      // 🌟 已經把這裡原本的進度條 (Progress Bar) 溫柔地移除了喔！
+ 
+-                        if (widget.isHovered)
+-                          Container(
+-                            decoration: BoxDecoration(
+-                              borderRadius:
+-                                  BorderRadius.circular(AppTheme.cornerRadius),
+-                              border: Border.all(
++                      if (isHovered)
++                        Container(
++                          decoration: BoxDecoration(
++                            borderRadius:
++                                BorderRadius.circular(AppTheme.cornerRadius),
++                            border: Border.all(
++                                color: Theme.of(context).colorScheme.primary,
++                                width: 3),
++                            color: Theme.of(context)
++                                .colorScheme
++                                .primary
++                                .withOpacity(0.2),
++                          ),
++                        ),
++                      if (isSelected)
++                        Container(
++                          decoration: BoxDecoration(
++                            color: Colors.black.withOpacity(0.4),
++                            borderRadius:
++                                BorderRadius.circular(AppTheme.cornerRadius),
++                            border: Border.all(
++                                color: Theme.of(context).colorScheme.primary,
++                                width: 2),
++                          ),
++                          child: Center(
++                              child: Icon(Icons.check_circle,
+                                   color: Theme.of(context).colorScheme.primary,
+-                                  width: 3),
++                                  size: 32)),
++                        ),
++                    ],
++                  ),
++                ),
++                const SizedBox(height: 6),
++                SizedBox(
++                  height: 36,
++                  child: Text(
++                    book.title,
++                    maxLines: 2,
++                    overflow: TextOverflow.ellipsis,
++                    style: TextStyle(
++                        fontSize: 13,
++                        fontWeight: FontWeight.w500,
++                        height: 1.25,
++                        color: Theme.of(context).textTheme.bodyLarge?.color),
++                  ),
++                ),
++                SizedBox(
++                  height: 16,
++                  child: Row(
++                    children: [
++                      Text("${book.totalPageCount} 頁",
++                          style: TextStyle(
++                              fontSize: 11,
+                               color: Theme.of(context)
+-                                  .colorScheme
+-                                  .primary
+-                                  .withOpacity(0.2),
+-                            ),
+-                          ),
+-                        if (widget.isSelected)
+-                          Container(
+-                            decoration: BoxDecoration(
+-                              color: Colors.black.withOpacity(0.4),
+-                              borderRadius:
+-                                  BorderRadius.circular(AppTheme.cornerRadius),
+-                              border: Border.all(
+-                                  color: Theme.of(context).colorScheme.primary,
+-                                  width: 2),
+-                            ),
+-                            child: Center(
+-                                child: Icon(Icons.check_circle,
+-                                    color:
+-                                        Theme.of(context).colorScheme.primary,
+-                                    size: 32)),
+-                          ),
+-                      ],
+-                    ),
++                                  .textTheme
++                                  .bodySmall
++                                  ?.color)),
++                      const Spacer(),
++                      // 🌟 已經把原本的百分比文字移除了，只保留看完時的溫馨小勾勾！
++                      if (isCompleted)
++                        const Icon(Icons.check_circle,
++                            size: 12, color: Colors.greenAccent),
++                    ],
+                   ),
+-                  const SizedBox(height: 6),
+-                  SizedBox(
+-                    height: 36,
+-                    child: Text(
+-                      widget.book.title,
+-                      maxLines: 2,
+-                      overflow: TextOverflow.ellipsis,
+-                      style: TextStyle(
+-                          fontSize: 13,
+-                          fontWeight: FontWeight.w500,
+-                          height: 1.25,
+-                          color: Theme.of(context).textTheme.bodyLarge?.color),
+-                    ),
+-                  ),
+-                  SizedBox(
+-                    height: 16,
+-                    child: Row(
+-                      children: [
+-                        Text("${widget.book.totalPageCount} 頁",
+-                            style: TextStyle(
+-                                fontSize: 11,
+-                                color: Theme.of(context)
+-                                    .textTheme
+-                                    .bodySmall
+-                                    ?.color)),
+-                        const Spacer(),
+-                        // 🌟 已經把原本的百分比文字移除了，只保留看完時的溫馨小勾勾！
+-                        if (isCompleted)
+-                          const Icon(Icons.check_circle,
+-                              size: 12, color: Colors.greenAccent),
+-                      ],
+-                    ),
+-                  ),
+-                ],
+-              ),
++                ),
++              ],
+             ),
+           ),
+         ));
+--- before/lib/widgets/folder_card.dart
++++ after/lib/widgets/folder_card.dart
+@@ -4,9 +4,9 @@
+ import 'page_thumbnail.dart';
+ import '../core/theme.dart';
+ import '../core/config.dart';
+-import '../core/constants.dart'; // 🌟 引入動畫常數
++import 'spring_press.dart'; // 🌟 引入動畫常數
+ 
+-class FolderCard extends StatefulWidget {
++class FolderCard extends StatelessWidget {
+   final MangaFolder folder;
+   final VoidCallback onTap;
+   final VoidCallback onLongPress;
+@@ -23,150 +23,129 @@
+   }) : super(key: key);
+ 
+   @override
+-  State<FolderCard> createState() => _FolderCardState();
+-}
+-
+-class _FolderCardState extends State<FolderCard> {
+-  bool _isPressed = false;
+-
+-  @override
+   Widget build(BuildContext context) {
+-    final thumbs = widget.folder.thumbnails;
++    final thumbs = folder.thumbnails;
+ 
+     return HeroMode(
+         enabled: !MediaQuery.disableAnimationsOf(context),
+-        child: RepaintBoundary(
+-          child: AnimatedScale(
+-            scale: _isPressed ? 0.95 : 1.0,
+-            // 🌟 統一使用極快的動畫節奏，俐落有彈性！
+-            duration: AppConstants.motionDuration(
+-                context,
+-                _isPressed
+-                    ? AppConstants.pressDuration
+-                    : AppConstants.animDurationFast),
+-            curve: AppConstants.animCurveStandard,
+-            child: GestureDetector(
+-              onTapDown: (_) => setState(() => _isPressed = true),
+-              onTapUp: (_) => setState(() => _isPressed = false),
+-              onTapCancel: () => setState(() => _isPressed = false),
+-              onTap: widget.onTap,
+-              onLongPress: widget.onLongPress,
+-              child: Column(
+-                crossAxisAlignment: CrossAxisAlignment.start,
+-                children: [
+-                  Expanded(
+-                    child: Hero(
+-                      tag: 'folder_cover_${widget.folder.id}',
+-                      transitionOnUserGestures: true,
+-                      child: Material(
+-                        color: Colors.transparent,
+-                        child: Container(
+-                          decoration: BoxDecoration(
+-                            borderRadius:
+-                                BorderRadius.circular(AppTheme.cornerRadius),
+-                            color: Theme.of(context).cardColor,
+-                            boxShadow: const [
+-                              BoxShadow(
+-                                  color: Colors.black12,
+-                                  blurRadius: 4,
+-                                  offset: Offset(0, 2))
++        child: SpringPress(
++          onTap: onTap,
++          onLongPress: onLongPress,
++          child: RepaintBoundary(
++            child: Column(
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
++                Expanded(
++                  child: Hero(
++                    tag: 'folder_cover_${folder.id}',
++                    transitionOnUserGestures: true,
++                    child: Material(
++                      color: Colors.transparent,
++                      child: Container(
++                        decoration: BoxDecoration(
++                          borderRadius:
++                              BorderRadius.circular(AppTheme.cornerRadius),
++                          color: Theme.of(context).cardColor,
++                          boxShadow: const [
++                            BoxShadow(
++                                color: Colors.black12,
++                                blurRadius: 4,
++                                offset: Offset(0, 2))
++                          ],
++                        ),
++                        child: ClipRRect(
++                          borderRadius:
++                              BorderRadius.circular(AppTheme.cornerRadius),
++                          child: Stack(
++                            fit: StackFit.expand,
++                            children: [
++                              if (thumbs.isEmpty)
++                                const Center(
++                                    child: Icon(Icons.folder_open,
++                                        color: Colors.grey))
++                              else
++                                Column(
++                                  children: [
++                                    Expanded(
++                                        child: Row(children: [
++                                      _buildTile(thumbs, 0),
++                                      const SizedBox(width: 1),
++                                      _buildTile(thumbs, 1)
++                                    ])),
++                                    const SizedBox(height: 1),
++                                    Expanded(
++                                        child: Row(children: [
++                                      _buildTile(thumbs, 2),
++                                      const SizedBox(width: 1),
++                                      _buildTile(thumbs, 3)
++                                    ])),
++                                  ],
++                                ),
++                              Positioned(
++                                top: 6,
++                                right: 6,
++                                child: Container(
++                                  padding: const EdgeInsets.all(4),
++                                  decoration: BoxDecoration(
++                                      color: Colors.black54,
++                                      borderRadius: BorderRadius.circular(4)),
++                                  child: const Icon(Icons.folder,
++                                      color: Colors.white, size: 14),
++                                ),
++                              ),
++                              if (isHovered)
++                                Container(
++                                    decoration: BoxDecoration(
++                                        borderRadius: BorderRadius.circular(
++                                            AppTheme.cornerRadius),
++                                        border: Border.all(
++                                            color: Theme.of(context)
++                                                .colorScheme
++                                                .primary,
++                                            width: 3),
++                                        color: Theme.of(context)
++                                            .colorScheme
++                                            .primary
++                                            .withOpacity(0.2))),
++                              if (isSelected)
++                                Container(
++                                    decoration: BoxDecoration(
++                                        color: Colors.black.withOpacity(0.4),
++                                        borderRadius: BorderRadius.circular(
++                                            AppTheme.cornerRadius),
++                                        border: Border.all(
++                                            color: Colors.blueAccent,
++                                            width: 2)),
++                                    child: const Center(
++                                        child: Icon(Icons.check_circle,
++                                            color: Colors.blueAccent,
++                                            size: 32))),
+                             ],
+-                          ),
+-                          child: ClipRRect(
+-                            borderRadius:
+-                                BorderRadius.circular(AppTheme.cornerRadius),
+-                            child: Stack(
+-                              fit: StackFit.expand,
+-                              children: [
+-                                if (thumbs.isEmpty)
+-                                  const Center(
+-                                      child: Icon(Icons.folder_open,
+-                                          color: Colors.grey))
+-                                else
+-                                  Column(
+-                                    children: [
+-                                      Expanded(
+-                                          child: Row(children: [
+-                                        _buildTile(thumbs, 0),
+-                                        const SizedBox(width: 1),
+-                                        _buildTile(thumbs, 1)
+-                                      ])),
+-                                      const SizedBox(height: 1),
+-                                      Expanded(
+-                                          child: Row(children: [
+-                                        _buildTile(thumbs, 2),
+-                                        const SizedBox(width: 1),
+-                                        _buildTile(thumbs, 3)
+-                                      ])),
+-                                    ],
+-                                  ),
+-                                Positioned(
+-                                  top: 6,
+-                                  right: 6,
+-                                  child: Container(
+-                                    padding: const EdgeInsets.all(4),
+-                                    decoration: BoxDecoration(
+-                                        color: Colors.black54,
+-                                        borderRadius: BorderRadius.circular(4)),
+-                                    child: const Icon(Icons.folder,
+-                                        color: Colors.white, size: 14),
+-                                  ),
+-                                ),
+-                                if (widget.isHovered)
+-                                  Container(
+-                                      decoration: BoxDecoration(
+-                                          borderRadius: BorderRadius.circular(
+-                                              AppTheme.cornerRadius),
+-                                          border: Border.all(
+-                                              color: Theme.of(context)
+-                                                  .colorScheme
+-                                                  .primary,
+-                                              width: 3),
+-                                          color: Theme.of(context)
+-                                              .colorScheme
+-                                              .primary
+-                                              .withOpacity(0.2))),
+-                                if (widget.isSelected)
+-                                  Container(
+-                                      decoration: BoxDecoration(
+-                                          color: Colors.black.withOpacity(0.4),
+-                                          borderRadius: BorderRadius.circular(
+-                                              AppTheme.cornerRadius),
+-                                          border: Border.all(
+-                                              color: Colors.blueAccent,
+-                                              width: 2)),
+-                                      child: const Center(
+-                                          child: Icon(Icons.check_circle,
+-                                              color: Colors.blueAccent,
+-                                              size: 32))),
+-                              ],
+-                            ),
+                           ),
+                         ),
+                       ),
+                     ),
+                   ),
+-                  const SizedBox(height: 6),
+-                  SizedBox(
+-                    height: 36,
+-                    child: Text(widget.folder.title,
+-                        style: const TextStyle(
+-                            fontSize: 13,
+-                            fontWeight: FontWeight.bold,
+-                            height: 1.25),
+-                        maxLines: 2,
+-                        overflow: TextOverflow.ellipsis),
+-                  ),
+-                  SizedBox(
+-                    height: 16,
+-                    child: Text("${widget.folder.itemCount} 本",
+-                        style: TextStyle(
+-                            color:
+-                                Theme.of(context).colorScheme.onSurfaceVariant,
+-                            fontSize: 11)),
+-                  ),
+-                ],
+-              ),
++                ),
++                const SizedBox(height: 6),
++                SizedBox(
++                  height: 36,
++                  child: Text(folder.title,
++                      style: const TextStyle(
++                          fontSize: 13,
++                          fontWeight: FontWeight.bold,
++                          height: 1.25),
++                      maxLines: 2,
++                      overflow: TextOverflow.ellipsis),
++                ),
++                SizedBox(
++                  height: 16,
++                  child: Text("${folder.itemCount} 本",
++                      style: TextStyle(
++                          color: Theme.of(context).colorScheme.onSurfaceVariant,
++                          fontSize: 11)),
++                ),
++              ],
+             ),
+           ),
+         ));
+--- before/lib/widgets/scale_button.dart
++++ after/lib/widgets/scale_button.dart
+@@ -1,34 +1,11 @@
+-// lib/widgets/scale_button.dart
+ import 'package:flutter/material.dart';
+-import '../core/constants.dart'; // 🌟 引入動畫常數
++import 'spring_press.dart';
+ 
+-class ScaleButton extends StatefulWidget {
++class ScaleButton extends StatelessWidget {
+   final Widget child;
+   final VoidCallback onTap;
+   const ScaleButton({super.key, required this.child, required this.onTap});
++
+   @override
+-  State<ScaleButton> createState() => _ScaleButtonState();
++  Widget build(BuildContext context) => SpringPress(onTap: onTap, child: child);
+ }
+-
+-class _ScaleButtonState extends State<ScaleButton> {
+-  bool _pressed = false;
+-  @override
+-  Widget build(BuildContext context) {
+-    return GestureDetector(
+-      onTapDown: (_) => setState(() => _pressed = true),
+-      onTapUp: (_) => setState(() => _pressed = false),
+-      onTapCancel: () => setState(() => _pressed = false),
+-      onTap: widget.onTap,
+-      // 🌟 統一使用標準的動畫時間與曲線！
+-      child: AnimatedScale(
+-          scale: _pressed ? 0.95 : 1.0,
+-          duration: AppConstants.motionDuration(
+-              context,
+-              _pressed
+-                  ? AppConstants.pressDuration
+-                  : AppConstants.animDurationFast),
+-          curve: AppConstants.animCurveStandard,
+-          child: widget.child),
+-    );
+-  }
+-}
+--- before/lib/widgets/smooth_input_dialog.dart
++++ after/lib/widgets/smooth_input_dialog.dart
+@@ -1,7 +1,6 @@
+ // lib/widgets/smooth_input_dialog.dart
+ import 'package:flutter/material.dart';
+ import '../core/strings.dart';
+-import '../core/theme.dart';
+ import '../core/constants.dart'; // 🌟 引入動畫常數
+ 
+ class SmoothInputDialog extends StatefulWidget {
+@@ -14,28 +13,44 @@
+     this.initialText = '',
+   });
+ 
+-  static Future<String?> show(BuildContext context, {required String title, String initialText = ''}) {
+-    return showGeneralDialog<String>(
+-      context: context,
+-      barrierDismissible: true,
+-      barrierLabel: '',
+-      barrierColor: Colors.black54, 
+-      // 🌟 統一使用 Normal 動畫節奏
+-      transitionDuration: AppConstants.animDurationNormal, 
+-      pageBuilder: (ctx, anim1, anim2) => SmoothInputDialog(title: title, initialText: initialText),
+-      transitionBuilder: (ctx, anim1, anim2, child) {
+-        // 🌟 統一使用標準彈出曲線
+-        final curve = CurvedAnimation(parent: anim1, curve: AppConstants.animCurveStandard);
+-        return SlideTransition(
+-          position: Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(curve),
+-          child: FadeTransition(
+-            opacity: curve,
+-            child: child,
+-          ),
+-        );
+-      },
++  static Future<String?> show(BuildContext context,
++      {required String title, String initialText = ''}) {
++    final duration =
++        AppConstants.motionDuration(context, AppConstants.dialogDuration);
++    return Navigator.of(context, rootNavigator: true).push<String>(
++      _InputDialogRoute(
++        settings: const RouteSettings(name: 'smooth_input'),
++        barrierDismissible: true,
++        barrierLabel:
++            MaterialLocalizations.of(context).modalBarrierDismissLabel,
++        barrierColor: Colors.black54,
++        transitionDuration: duration,
++        pageBuilder: (ctx, anim1, anim2) =>
++            SmoothInputDialog(title: title, initialText: initialText),
++        transitionBuilder: (ctx, animation, secondary, child) {
++          if (MediaQuery.disableAnimationsOf(ctx)) return child;
++          final reverse = animation.status == AnimationStatus.reverse;
++          return FadeTransition(
++            opacity: animation.drive(_fade),
++            child: ScaleTransition(
++              scale: animation.drive(reverse ? _closeScale : _openScale),
++              child: child,
++            ),
++          );
++        },
++        reverseDuration: AppConstants.motionDuration(
++            context, AppConstants.dialogDismissDuration),
++      ),
+     );
+   }
++
++  static final _fade = CurveTween(curve: Curves.easeInOut);
++  static final _openScale =
++      Tween<double>(begin: AppConstants.dialogScale, end: 1)
++          .chain(CurveTween(curve: AppConstants.springCurve));
++  static final _closeScale =
++      Tween<double>(begin: AppConstants.dialogScale, end: 1)
++          .chain(CurveTween(curve: AppConstants.pressCurve));
+ 
+   @override
+   State<SmoothInputDialog> createState() => _SmoothInputDialogState();
+@@ -44,21 +59,46 @@
+ class _SmoothInputDialogState extends State<SmoothInputDialog> {
+   late TextEditingController _controller;
+   final FocusNode _focusNode = FocusNode();
++  Animation<double>? _routeAnimation;
++  bool _focusRequested = false;
++
++  void _requestFocus(AnimationStatus status) {
++    if (status != AnimationStatus.completed ||
++        _focusRequested ||
++        !mounted ||
++        ModalRoute.of(context)?.isCurrent != true) {
++      return;
++    }
++    _focusRequested = true;
++    _focusNode.requestFocus();
++  }
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    final animation = ModalRoute.of(context)?.animation;
++    if (_routeAnimation != animation) {
++      _routeAnimation?.removeStatusListener(_requestFocus);
++      _routeAnimation = animation;
++      animation?.addStatusListener(_requestFocus);
++    }
++    // Also handles a zero-duration route, which may already be completed.
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (mounted) {
++        _requestFocus(animation?.status ?? AnimationStatus.completed);
++      }
++    });
++  }
+ 
+   @override
+   void initState() {
+     super.initState();
+     _controller = TextEditingController(text: widget.initialText);
+-
+-    Future.delayed(AppConstants.animDurationNormal, () {
+-      if (mounted) {
+-        _focusNode.requestFocus();
+-      }
+-    });
+   }
+ 
+   @override
+   void dispose() {
++    _routeAnimation?.removeStatusListener(_requestFocus);
+     _controller.dispose();
+     _focusNode.dispose();
+     super.dispose();
+@@ -68,7 +108,8 @@
+   Widget build(BuildContext context) {
+     return AlertDialog(
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+-      title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold)),
++      title: Text(widget.title,
++          style: const TextStyle(fontWeight: FontWeight.bold)),
+       content: TextField(
+         controller: _controller,
+         focusNode: _focusNode,
+@@ -81,17 +122,34 @@
+       actions: [
+         TextButton(
+           onPressed: () => Navigator.pop(context),
+-          child: Text(AppStrings.get('cancel') ?? '取消'),
++          child: Text(AppStrings.get('cancel')),
+         ),
+         ElevatedButton(
+           onPressed: () => Navigator.pop(context, _controller.text),
+           style: ElevatedButton.styleFrom(
+             backgroundColor: Theme.of(context).colorScheme.primary,
+-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
++            shape:
++                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+           ),
+           child: const Text('確定', style: TextStyle(color: Colors.white)),
+         ),
+       ],
+     );
+   }
+-}+}
++
++/// RawDialogRoute allows separate entrance/exit durations via this getter.
++class _InputDialogRoute extends RawDialogRoute<String> {
++  _InputDialogRoute(
++      {required super.pageBuilder,
++      required super.transitionBuilder,
++      required super.transitionDuration,
++      required this.reverseDuration,
++      required super.barrierDismissible,
++      required super.barrierLabel,
++      required super.barrierColor,
++      required super.settings});
++  final Duration reverseDuration;
++  @override
++  Duration get reverseTransitionDuration => reverseDuration;
++}
+--- before/lib/screens/bookshelf/bookshelf_screen.dart
++++ after/lib/screens/bookshelf/bookshelf_screen.dart
+@@ -1,5 +1,6 @@
+ // lib/screens/bookshelf/bookshelf_screen.dart
+ import 'dart:async';
++import 'dart:math' as math;
+ import 'package:flutter/material.dart';
+ import 'package:provider/provider.dart';
+ import 'package:shared_preferences/shared_preferences.dart';
+@@ -124,8 +125,56 @@
+   final ValueNotifier<bool> _selModeNotifier = ValueNotifier(false);
+   final ValueNotifier<Set<String>> _selIdsNotifier = ValueNotifier({});
+   final ScrollController _scrollController = ScrollController();
+-  final ValueNotifier<Offset> _dragVelocityNotifier =
+-      ValueNotifier(Offset.zero);
++  final ValueNotifier<double> _dragTiltNotifier = ValueNotifier(0);
++  final Stopwatch _dragClock = Stopwatch();
++  int _lastDragMicros = 0;
++  double _filteredDragVelocity = 0;
++  double _dragTravel = 0;
++  bool _dragCancelled = false;
++
++  void _resetDrag() {
++    if (!mounted) return;
++    _hoverTimer?.cancel();
++    _hoverTimer = null;
++    _hoverIndexNotifier.value = null;
++    _isMergeModeNotifier.value = false;
++    _dragTiltNotifier.value = 0;
++    _dragClock.stop();
++    _lastDragMicros = 0;
++    _filteredDragVelocity = 0;
++  }
++
++  void _updateDrag(DragUpdateDetails details) {
++    if (!mounted || !_dragClock.isRunning) return;
++    _dragTravel += details.delta.distance;
++    if (MediaQuery.disableAnimationsOf(context)) return;
++    final now = _dragClock.elapsedMicroseconds;
++    final elapsed = now - _lastDragMicros;
++    _lastDragMicros = now;
++    if (elapsed <= 0) return;
++    final seconds = elapsed / 1000000;
++    final velocity = (details.delta.dx / seconds).clamp(-2000.0, 2000.0);
++    // Time-based smoothing is independent of the display/pointer frequency.
++    final weight = 1 - math.exp(-seconds / 0.055);
++    _filteredDragVelocity += (velocity - _filteredDragVelocity) * weight;
++    final angle = (_filteredDragVelocity * 0.00004)
++        .clamp(-AppConstants.dragMaxTilt, AppConstants.dragMaxTilt);
++    // Ignore sub-pixel angular noise; only the feedback listens to this value.
++    final quantized = (angle * 1000).round() / 1000;
++    if (_dragTiltNotifier.value != quantized)
++      _dragTiltNotifier.value = quantized;
++  }
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    if (!TickerMode.of(context)) {
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (mounted) _resetDrag();
++      });
++    }
++  }
++
+   bool _isLoading = false;
+   bool _hasMore = true;
+   int _offset = 0;
+@@ -164,7 +213,8 @@
+     _scrollController.dispose();
+     _selModeNotifier.dispose();
+     _selIdsNotifier.dispose();
+-    _dragVelocityNotifier.dispose();
++    _dragClock.stop();
++    _dragTiltNotifier.dispose();
+     _hoverIndexNotifier.dispose();
+     _isMergeModeNotifier.dispose();
+     super.dispose();
+@@ -388,6 +438,7 @@
+   }
+ 
+   void _tap(LibraryItem item, bool sel) {
++    _resetDrag();
+     if (_selModeNotifier.value) {
+       final current = Set<String>.from(_selIdsNotifier.value);
+       if (sel)
+@@ -588,137 +639,161 @@
+                                   if (selMode || _filter != 0)
+                                     return buildItem();
+ 
+-                                  return LongPressDraggable<String>(
+-                                      data: item.id,
+-                                      delay: const Duration(milliseconds: 300),
+-                                      onDragUpdate: (details) =>
+-                                          _dragVelocityNotifier.value =
+-                                              details.delta,
+-                                      onDragEnd: (_) => _dragVelocityNotifier
+-                                          .value = Offset.zero,
+-                                      onDraggableCanceled: (_, __) =>
+-                                          _dragVelocityNotifier.value =
+-                                              Offset.zero,
+-                                      feedback: Material(
+-                                          color: Colors.transparent,
+-                                          elevation: 0,
+-                                          child: HeroMode(
+-                                              enabled: false,
+-                                              child: PhysicsDragFeedback(
+-                                                velocityNotifier:
+-                                                    _dragVelocityNotifier,
+-                                                child: SizedBox(
+-                                                    width: 110,
+-                                                    height: 160,
+-                                                    child:
+-                                                        buildItem(hover: true)),
+-                                              ))),
+-                                      childWhenDragging: Opacity(
+-                                          opacity: 0.3, child: buildItem()),
+-                                      child: DragTarget<String>(onWillAccept:
+-                                          (d) {
+-                                        if (d != null && d != item.id) {
+-                                          _hoverTimer?.cancel();
+-                                          _hoverIndexNotifier.value = i;
+-                                          _isMergeModeNotifier.value = false;
+-
+-                                          if (_items.any((candidate) =>
+-                                              candidate.id == d &&
+-                                              candidate is MangaBook)) {
+-                                            _hoverTimer = Timer(
+-                                                const Duration(
+-                                                    milliseconds: 500), () {
+-                                              if (mounted &&
+-                                                  _hoverIndexNotifier.value ==
+-                                                      i) {
++                                  return Listener(
++                                      onPointerCancel: (_) =>
++                                          _dragCancelled = true,
++                                      child: LayoutBuilder(
++                                          builder: (context, constraints) {
++                                        return LongPressDraggable<String>(
++                                            data: item.id,
++                                            delay: const Duration(
++                                                milliseconds: 300),
++                                            onDragStarted: () {
++                                              _resetDrag();
++                                              _dragTravel = 0;
++                                              _dragCancelled = false;
++                                              _dragClock
++                                                ..reset()
++                                                ..start();
++                                            },
++                                            onDragUpdate: _updateDrag,
++                                            onDragEnd: (details) {
++                                              final select =
++                                                  !details.wasAccepted &&
++                                                      !_dragCancelled &&
++                                                      _dragTravel < 12 &&
++                                                      _dragClock.isRunning &&
++                                                      ModalRoute.of(context)
++                                                              ?.isCurrent ==
++                                                          true;
++                                              _resetDrag();
++                                              // The 300ms draggable wins the child's long-press
++                                              // arena. A stationary release still enters multi-select.
++                                              if (select)
++                                                _handleLongPress(item);
++                                            },
++                                            onDraggableCanceled: (_, __) =>
++                                                _resetDrag(),
++                                            feedback: Material(
++                                                color: Colors.transparent,
++                                                elevation: 0,
++                                                child: HeroMode(
++                                                    enabled: false,
++                                                    child: PhysicsDragFeedback(
++                                                      tiltNotifier:
++                                                          _dragTiltNotifier,
++                                                      child: SizedBox(
++                                                          width: constraints
++                                                              .maxWidth,
++                                                          height: constraints
++                                                              .maxHeight,
++                                                          child: buildItem(
++                                                              hover: true)),
++                                                    ))),
++                                            childWhenDragging: Opacity(
++                                                opacity: 0.3,
++                                                child: buildItem()),
++                                            child: DragTarget<String>(
++                                                onWillAccept: (d) {
++                                              if (d != null && d != item.id) {
++                                                _hoverTimer?.cancel();
++                                                _hoverIndexNotifier.value = i;
+                                                 _isMergeModeNotifier.value =
+-                                                    true;
++                                                    false;
++
++                                                if (_items.any((candidate) =>
++                                                    candidate.id == d &&
++                                                    candidate is MangaBook)) {
++                                                  _hoverTimer = Timer(
++                                                      const Duration(
++                                                          milliseconds: 500),
++                                                      () {
++                                                    if (mounted &&
++                                                        _hoverIndexNotifier
++                                                                .value ==
++                                                            i) {
++                                                      _isMergeModeNotifier
++                                                          .value = true;
++                                                    }
++                                                  });
++                                                }
++                                                return true;
+                                               }
+-                                            });
+-                                          }
+-                                          return true;
+-                                        }
+-                                        return false;
+-                                      }, onLeave: (d) {
+-                                        if (_hoverIndexNotifier.value == i) {
+-                                          _hoverTimer?.cancel();
+-                                          _hoverIndexNotifier.value = null;
+-                                          _isMergeModeNotifier.value = false;
+-                                        }
+-                                      }, onAccept: (dragIndex) {
+-                                        _hoverTimer?.cancel();
+-                                        final isMerge =
+-                                            _isMergeModeNotifier.value;
+-                                        _hoverIndexNotifier.value = null;
+-                                        _isMergeModeNotifier.value = false;
+-
+-                                        if (isMerge) {
+-                                          _mergeItems(dragIndex, item.id);
+-                                        } else {
+-                                          _onReorder(dragIndex, item.id);
+-                                        }
+-                                      }, builder:
+-                                          (ctx, candidateData, rejectedData) {
+-                                        final isHovering =
+-                                            candidateData.isNotEmpty;
+-                                        return ValueListenableBuilder<int?>(
+-                                            valueListenable:
+-                                                _hoverIndexNotifier,
+-                                            builder: (context, hoverIdx, _) {
++                                              return false;
++                                            }, onLeave: (d) {
++                                              if (_hoverIndexNotifier.value ==
++                                                  i) {
++                                                _hoverTimer?.cancel();
++                                                _hoverIndexNotifier.value =
++                                                    null;
++                                                _isMergeModeNotifier.value =
++                                                    false;
++                                              }
++                                            }, onAccept: (dragIndex) {
++                                              _hoverTimer?.cancel();
++                                              final isMerge =
++                                                  _isMergeModeNotifier.value;
++                                              _hoverIndexNotifier.value = null;
++                                              _isMergeModeNotifier.value =
++                                                  false;
++
++                                              if (isMerge) {
++                                                _mergeItems(dragIndex, item.id);
++                                              } else {
++                                                _onReorder(dragIndex, item.id);
++                                              }
++                                            }, builder: (ctx, candidateData,
++                                                    rejectedData) {
++                                              final isHovering =
++                                                  candidateData.isNotEmpty;
+                                               return ValueListenableBuilder<
+-                                                      bool>(
+-                                                  valueListenable:
+-                                                      _isMergeModeNotifier,
+-                                                  builder:
+-                                                      (context, isMerge, _) {
+-                                                    final isMergeGlow =
+-                                                        isHovering &&
+-                                                            isMerge &&
+-                                                            hoverIdx == i;
+-                                                    return AnimatedContainer(
+-                                                      // 🌟 懸停動畫統一節奏
+-                                                      duration: AppConstants
+-                                                          .motionDuration(
+-                                                              context,
+-                                                              AppConstants
+-                                                                  .animDurationNormal),
+-                                                      decoration: isMergeGlow
+-                                                          ? BoxDecoration(
+-                                                              borderRadius:
+-                                                                  BorderRadius
+-                                                                      .circular(
+-                                                                          8),
+-                                                              boxShadow: [
+-                                                                  BoxShadow(
+-                                                                      color: AppTheme
+-                                                                          .accent
+-                                                                          .withOpacity(
+-                                                                              0.6),
+-                                                                      blurRadius:
+-                                                                          20,
+-                                                                      spreadRadius:
+-                                                                          4)
+-                                                                ])
+-                                                          : const BoxDecoration(),
+-                                                      child: AnimatedScale(
+-                                                        scale: isHovering
+-                                                            ? (isMergeGlow
+-                                                                ? 1.05
+-                                                                : 0.95)
+-                                                            : 1.0,
+-                                                        // 🌟 縮放動畫統一節奏
+-                                                        duration: AppConstants
+-                                                            .motionDuration(
+-                                                                context,
+-                                                                AppConstants
+-                                                                    .animDurationNormal),
+-                                                        child: buildItem(
+-                                                            hover: isHovering ||
+-                                                                isMergeGlow),
++                                                  bool>(
++                                                // Only the active target subscribes to merge changes.
++                                                valueListenable: isHovering
++                                                    ? _isMergeModeNotifier
++                                                    : const AlwaysStoppedAnimation(
++                                                        false),
++                                                child: buildItem(
++                                                    hover: isHovering),
++                                                builder:
++                                                    (context, isMerge, child) {
++                                                  final merge =
++                                                      isHovering && isMerge;
++                                                  return AnimatedScale(
++                                                    scale: isHovering
++                                                        ? (merge ? 1.025 : 0.97)
++                                                        : 1,
++                                                    duration: AppConstants
++                                                        .motionDuration(
++                                                            context,
++                                                            isHovering
++                                                                ? AppConstants
++                                                                    .dragTargetDuration
++                                                                : AppConstants
++                                                                    .dragResetDuration),
++                                                    curve: AppConstants
++                                                        .springCurve,
++                                                    child: DecoratedBox(
++                                                      decoration: BoxDecoration(
++                                                        borderRadius:
++                                                            BorderRadius
++                                                                .circular(8),
++                                                        border: Border.all(
++                                                            color: merge
++                                                                ? Theme.of(
++                                                                        context)
++                                                                    .colorScheme
++                                                                    .primary
++                                                                : Colors
++                                                                    .transparent,
++                                                            width: 2),
+                                                       ),
+-                                                    );
+-                                                  });
+-                                            });
++                                                      child: child,
++                                                    ),
++                                                  );
++                                                },
++                                              );
++                                            }));
+                                       }));
+                                 });
+                           });
+@@ -733,21 +808,37 @@
+ 
+ class PhysicsDragFeedback extends StatelessWidget {
+   final Widget child;
+-  final ValueNotifier<Offset> velocityNotifier;
++  final ValueNotifier<double> tiltNotifier;
+ 
+   const PhysicsDragFeedback(
+-      {super.key, required this.child, required this.velocityNotifier});
++      {super.key, required this.child, required this.tiltNotifier});
+ 
+   @override
+   Widget build(BuildContext context) {
+     final reduced = MediaQuery.disableAnimationsOf(context);
+-    return ValueListenableBuilder<Offset>(
+-      valueListenable: velocityNotifier,
+-      child: Transform.scale(scale: reduced ? 1 : 1.05, child: child),
+-      builder: (context, delta, child) => Transform.rotate(
+-        angle: reduced ? 0 : (delta.dx * 0.002).clamp(-0.06, 0.06),
++    return TweenAnimationBuilder<double>(
++      tween: Tween(begin: 1, end: reduced ? 1 : AppConstants.dragScale),
++      duration: reduced ? Duration.zero : AppConstants.dragLiftDuration,
++      curve: AppConstants.pressCurve,
++      child: ValueListenableBuilder<double>(
++        valueListenable: tiltNotifier,
+         child: child,
++        builder: (context, angle, child) => TweenAnimationBuilder<double>(
++          tween: Tween(
++              begin: 0,
++              end: reduced
++                  ? 0
++                  : angle.clamp(
++                      -AppConstants.dragMaxTilt, AppConstants.dragMaxTilt)),
++          duration: reduced ? Duration.zero : AppConstants.dragTiltDuration,
++          curve: AppConstants.pressCurve,
++          child: child,
++          builder: (context, value, child) =>
++              Transform.rotate(angle: value, child: child),
++        ),
+       ),
++      builder: (context, scale, child) =>
++          Transform.scale(scale: scale, child: child),
+     );
+   }
+ }
+--- before/lib/screens/details/folder_detail_screen.dart
++++ after/lib/screens/details/folder_detail_screen.dart
+@@ -32,6 +32,8 @@
+   int _offset = 0;
+   int _loadGeneration = 0;
+   bool _mutationBusy = false;
++  double _dragTravel = 0;
++  bool _dragCancelled = false;
+   Object? _loadError;
+   final int _limit = 50;
+ 
+@@ -459,27 +461,58 @@
+ 
+                                       if (selMode || pickMode) return w();
+ 
+-                                      return LongPressDraggable<int>(
+-                                          data: i,
+-                                          delay:
+-                                              const Duration(milliseconds: 300),
+-                                          feedback: SizedBox(
+-                                              width: 110,
+-                                              height: 160,
+-                                              child: Opacity(
+-                                                  opacity: 0.9,
+-                                                  child: Material(
+-                                                      color: Colors.transparent,
+-                                                      child: w()))),
+-                                          childWhenDragging:
+-                                              Opacity(opacity: 0.3, child: w()),
+-                                          child: DragTarget<int>(
+-                                              onWillAccept: (d) =>
+-                                                  d != null && d != i,
+-                                              onAccept: (o) => _reorder(o, i),
+-                                              builder: (ctx, candidateData,
+-                                                      rejectedData) =>
+-                                                  w()));
++                                      return Listener(
++                                          onPointerCancel: (_) =>
++                                              _dragCancelled = true,
++                                          child: LayoutBuilder(
++                                              builder: (context, constraints) {
++                                            return LongPressDraggable<int>(
++                                                data: i,
++                                                delay: const Duration(
++                                                    milliseconds: 300),
++                                                onDragStarted: () {
++                                                  _dragTravel = 0;
++                                                  _dragCancelled = false;
++                                                },
++                                                onDragUpdate: (details) =>
++                                                    _dragTravel +=
++                                                        details.delta.distance,
++                                                onDragEnd: (details) {
++                                                  if (!_dragCancelled &&
++                                                      !details.wasAccepted &&
++                                                      _dragTravel < 12 &&
++                                                      mounted &&
++                                                      ModalRoute.of(context)
++                                                              ?.isCurrent ==
++                                                          true) {
++                                                    _handleLongPress(b.id);
++                                                  }
++                                                },
++                                                feedback: HeroMode(
++                                                    enabled: false,
++                                                    child: SizedBox(
++                                                        width: constraints
++                                                            .maxWidth,
++                                                        height: constraints
++                                                            .maxHeight,
++                                                        child: Opacity(
++                                                            opacity: 0.9,
++                                                            child: Material(
++                                                                color: Colors
++                                                                    .transparent,
++                                                                child: w())))),
++                                                childWhenDragging: Opacity(
++                                                    opacity: 0.3, child: w()),
++                                                child: DragTarget<int>(
++                                                    onWillAccept: (d) =>
++                                                        d != null && d != i,
++                                                    onAccept: (o) =>
++                                                        _reorder(o, i),
++                                                    builder: (ctx,
++                                                            candidateData,
++                                                            rejectedData) =>
++                                                        w()));
++                                          }));
+                                     });
+                               });
+                         });
+--- /dev/null
++++ after/lib/widgets/spring_press.dart
+@@ -0,0 +1,93 @@
++import 'package:flutter/material.dart';
++import '../core/constants.dart';
++
++/// Owns only press state. The supplied child (including image/Hero) is retained
++/// across gesture updates; the hit region remains at its unscaled size.
++class SpringPress extends StatefulWidget {
++  const SpringPress(
++      {super.key, required this.child, required this.onTap, this.onLongPress});
++  final Widget child;
++  final VoidCallback onTap;
++  final VoidCallback? onLongPress;
++
++  @override
++  State<SpringPress> createState() => _SpringPressState();
++}
++
++class _SpringPressState extends State<SpringPress> {
++  bool _pressed = false;
++  bool _snap = false;
++  int? _pointer;
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    if (!TickerMode.of(context)) {
++      _pressed = false;
++      _pointer = null;
++      _snap = true;
++    }
++  }
++
++  void _release(PointerEvent event) {
++    if (event.pointer != _pointer) return;
++    _pointer = null;
++    _press(false);
++  }
++
++  void _press(bool value) {
++    if (_pressed == value && !_snap) return;
++    setState(() {
++      _pressed = value;
++      _snap = false;
++    });
++  }
++
++  void _tap() {
++    _press(false);
++    widget.onTap();
++    // A synchronous route push must measure the resting Hero rect, rather
++    // than the in-flight press transform. No delay is added to navigation.
++    if (mounted && ModalRoute.of(context)?.isCurrent == false) {
++      setState(() => _snap = true);
++    }
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final reduced = MediaQuery.disableAnimationsOf(context);
++    return Listener(
++        onPointerDown: (event) {
++          if (_pointer != null) return;
++          _pointer = event.pointer;
++          _press(true);
++        },
++        onPointerUp: _release,
++        onPointerCancel: _release,
++        child: GestureDetector(
++          behavior: HitTestBehavior.opaque,
++          onTapCancel: () => _press(false),
++          onTap: _tap,
++          onLongPress: widget.onLongPress == null
++              ? null
++              : () {
++                  _press(false);
++                  widget.onLongPress!();
++                },
++          onLongPressEnd:
++              widget.onLongPress == null ? null : (_) => _press(false),
++          child: AnimatedScale(
++            scale: !reduced && _pressed ? AppConstants.pressScale : 1,
++            duration: reduced || _snap
++                ? Duration.zero
++                : _pressed
++                    ? AppConstants.pressDuration
++                    : AppConstants.releaseDuration,
++            curve:
++                _pressed ? AppConstants.pressCurve : AppConstants.springCurve,
++            // GestureDetector, outside the transform, owns the stable hit region.
++            child: widget.child,
++          ),
++        ));
++  }
++}
+--- /dev/null
++++ after/test/spring_motion_test.dart
+@@ -0,0 +1,130 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:gun_book/core/constants.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'package:gun_book/widgets/folder_card.dart';
++import 'package:gun_book/widgets/page_thumbnail.dart';
++import 'package:gun_book/widgets/spring_press.dart';
++import 'package:gun_book/widgets/smooth_input_dialog.dart';
++
++void main() {
++  for (final folder in [false, true]) {
++    for (final reduced in [false, true]) {
++      testWidgets(
++          '20 presses, cancel and long press folder=$folder reduced=$reduced',
++          (tester) async {
++        var taps = 0;
++        var holds = 0;
++        final card = folder
++            ? FolderCard(
++                folder: MangaFolder(id: 'folder', title: 'folder'),
++                onTap: () => taps++,
++                onLongPress: () => holds++)
++            : BookCard(
++                book: MangaBook(id: 'book', title: 'book', filePaths: []),
++                onTap: () => taps++,
++                onLongPress: () => holds++);
++        await tester.pumpWidget(MaterialApp(
++            home: MediaQuery(
++                data: MediaQueryData(disableAnimations: reduced),
++                child: Center(
++                    child: SizedBox(width: 110, height: 210, child: card)))));
++        await tester.pumpAndSettle();
++        final press = find.byType(SpringPress);
++        final thumbnails =
++            tester.elementList(find.byType(PageThumbnail)).toList();
++        final size = tester.getSize(press);
++        for (var i = 0; i < 20; i++) {
++          final gesture = await tester.startGesture(tester.getCenter(press));
++          await tester.pump();
++          // Pointer feedback starts before GestureDetector's 100ms tap timeout.
++          expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
++              reduced ? 1 : AppConstants.pressScale);
++          await tester.pump(AppConstants.pressDuration);
++          final scale =
++              tester.widget<AnimatedScale>(find.byType(AnimatedScale));
++          expect(scale.scale, reduced ? 1 : AppConstants.pressScale);
++          await gesture.up();
++          await tester.pump(const Duration(milliseconds: 15));
++        }
++        await tester.pumpAndSettle();
++        expect(taps, 20);
++        expect(tester.getSize(press), size);
++        expect(tester.elementList(find.byType(PageThumbnail)).toList(),
++            thumbnails);
++        final cancel = await tester.startGesture(tester.getCenter(press));
++        await tester.pump(const Duration(milliseconds: 120));
++        await cancel.cancel();
++        await tester.pumpAndSettle();
++        expect(
++            tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
++        await tester.longPress(press);
++        await tester.pumpAndSettle();
++        expect(holds, 1);
++        expect(
++            tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
++        expect(tester.takeException(), isNull);
++      });
++    }
++  }
++
++  for (final reduced in [false, true]) {
++    testWidgets(
++        'dialog focus waits for entrance; 10 dismissal cycles reduced=$reduced',
++        (tester) async {
++      final nav = GlobalKey<NavigatorState>();
++      String? result;
++      await tester.pumpWidget(MaterialApp(
++          navigatorKey: nav,
++          builder: (context, child) => MediaQuery(
++              data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
++              child: child!),
++          home: Builder(
++              builder: (context) => Scaffold(
++                  body: TextButton(
++                      onPressed: () async {
++                        result = await SmoothInputDialog.show(context,
++                            title: 'Name', initialText: 'original');
++                      },
++                      child: const Text('Open'))))));
++      for (var i = 0; i < 10; i++) {
++        await tester.tap(find.text('Open'));
++        await tester.pump();
++        final field = tester.widget<TextField>(find.byType(TextField));
++        if (!reduced) expect(field.focusNode!.hasFocus, isFalse);
++        if (i == 0) {
++          // Dismiss during entrance: no delayed keyboard/focus callback remains.
++          nav.currentState!.pop();
++        } else {
++          await tester.pumpAndSettle();
++          expect(field.focusNode!.hasFocus, isTrue);
++          await tester.enterText(find.byType(TextField), 'updated');
++          switch (i % 4) {
++            case 0:
++              await tester.tap(find.byType(ElevatedButton));
++              break;
++            case 1:
++              await tester.tap(find.byType(TextButton).last);
++              break;
++            case 2:
++              await tester.tapAt(const Offset(5, 5));
++              break;
++            case 3:
++              await tester.binding.handlePopRoute();
++              break;
++          }
++        }
++        await tester.pumpAndSettle();
++        expect(find.byType(SmoothInputDialog), findsNothing);
++        expect(result, i > 0 && i % 4 == 0 ? 'updated' : null);
++        expect(tester.takeException(), isNull);
++      }
++      await tester.tap(find.text('Open'));
++      await tester.pump(const Duration(milliseconds: 30));
++      await tester.pumpWidget(const SizedBox());
++      await tester.pumpAndSettle();
++      expect(tester.takeException(), isNull);
++    });
++  }
++}
+--- /dev/null
++++ after/test/spring_drag_test.dart
+@@ -0,0 +1,191 @@
++import 'dart:async';
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/screens/bookshelf/bookshelf_screen.dart';
++import 'package:gun_book/screens/details/folder_detail_screen.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'package:gun_book/widgets/folder_card.dart';
++import 'support/sqlite_database.dart';
++
++class MotionLibrary extends DatabaseHelper {
++  MotionLibrary() : super.forTesting(SqliteDatabase(), 'unused');
++  final items = <LibraryItem>[
++    MangaBook(id: 'a', title: 'a', filePaths: []),
++    MangaBook(id: 'b', title: 'b', filePaths: []),
++    MangaFolder(id: 'f', title: 'folder'),
++  ];
++  final changes = StreamController<void>.broadcast();
++  int reorders = 0;
++  String? moved;
++  @override
++  Stream<void> get onDatabaseChanged => changes.stream;
++  @override
++  Future<List<LibraryItem>> fetchItems(
++          {String? parentId, int limit = 50, int offset = 0}) async =>
++      [...items];
++  @override
++  Future<List<MangaBook>> fetchFolderBooks(
++          {required String folderId, int limit = 50, int offset = 0}) async =>
++      items.whereType<MangaBook>().toList();
++  @override
++  Future<void> updateSortOrder(List<String> ids, {bool notify = true}) async {
++    reorders++;
++  }
++
++  @override
++  Future<void> moveItems(List<String> ids, String? folderId,
++      {bool notify = true}) async {
++    moved = folderId;
++  }
++}
++
++void main() {
++  for (final reduced in [false, true]) {
++    testWidgets(
++        'real gestures reorder 10 times, merge, cancel and select reduced=$reduced',
++        (tester) async {
++      SharedPreferences.setMockInitialValues({});
++      final db = MotionLibrary();
++      final nav = GlobalKey<NavigatorState>();
++      await tester.pumpWidget(ChangeNotifierProvider(
++          create: (_) => SettingsProvider(),
++          child: MaterialApp(
++              navigatorKey: nav,
++              builder: (context, child) => MediaQuery(
++                  data: MediaQuery.of(context)
++                      .copyWith(disableAnimations: reduced),
++                  child: child!),
++              home: BookshelfScreen(database: db))));
++      await tester.pumpAndSettle();
++      Finder book(String id) =>
++          find.byWidgetPredicate((w) => w is BookCard && w.book.id == id).first;
++      for (var i = 0; i < 10; i++) {
++        final gesture = await tester.startGesture(tester.getCenter(book('a')));
++        await tester.pump(const Duration(milliseconds: 310));
++        expect(find.byType(PhysicsDragFeedback), findsOneWidget);
++        await gesture.moveTo(tester.getCenter(book('b')));
++        await tester.pump(const Duration(milliseconds: 100));
++        await gesture.up();
++        await tester.pumpAndSettle();
++        expect(db.reorders, i + 1);
++        expect(find.byType(PhysicsDragFeedback), findsNothing);
++      }
++      final merge = await tester.startGesture(tester.getCenter(book('a')));
++      await tester.pump(const Duration(milliseconds: 310));
++      await merge.moveTo(tester.getCenter(find.byType(FolderCard).first));
++      await tester.pump(const Duration(milliseconds: 501));
++      await merge.up();
++      await tester.pumpAndSettle();
++      expect(db.moved, 'f');
++      final cancel = await tester.startGesture(tester.getCenter(book('a')));
++      await tester.pump(const Duration(milliseconds: 310));
++      await cancel.cancel();
++      await tester.pumpAndSettle();
++      expect(find.byType(PhysicsDragFeedback), findsNothing);
++      expect(tester.widget<BookCard>(book('a')).isSelected, isFalse);
++      final hold = await tester.startGesture(tester.getCenter(book('a')));
++      await tester.pump(const Duration(milliseconds: 600));
++      await hold.up();
++      await tester.pumpAndSettle();
++      expect(tester.widget<BookCard>(book('a')).isSelected, isTrue);
++      expect(tester.takeException(), isNull);
++      await tester.pumpWidget(const SizedBox());
++      await tester.pumpAndSettle();
++      await db.changes.close();
++      await (await db.database).close();
++    });
++  }
++
++  testWidgets(
++      'folder drag preserves grid dimensions, Hero safety and stationary multi-select',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({});
++    final db = MotionLibrary();
++    await tester.pumpWidget(ChangeNotifierProvider(
++        create: (_) => SettingsProvider(),
++        child: MaterialApp(
++            home: FolderDetailScreen(
++                folder: MangaFolder(id: 'f', title: 'folder'),
++                database: db,
++                onUpdate: () {}))));
++    await tester.pumpAndSettle();
++    final originalSize = tester.getSize(find.byType(BookCard).first);
++    final hold = await tester
++        .startGesture(tester.getCenter(find.byType(BookCard).first));
++    await tester.pump(const Duration(milliseconds: 310));
++    final draggable = tester.widget<LongPressDraggable<int>>(
++        find.byType(LongPressDraggable<int>).first);
++    final feedback = draggable.feedback as HeroMode;
++    expect(feedback.enabled, isFalse);
++    expect(tester.getSize(find.byWidget(feedback)), originalSize);
++    await hold.up();
++    await tester.pumpAndSettle();
++    expect(tester.widget<BookCard>(find.byType(BookCard).first).isSelected,
++        isTrue);
++    expect(tester.takeException(), isNull);
++    await tester.pumpWidget(const SizedBox());
++    await tester.pumpAndSettle();
++    await db.changes.close();
++    await (await db.database).close();
++  });
++
++  testWidgets('leaving bookshelf during a live drag cleans feedback and timers',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({});
++    final db = MotionLibrary();
++    await tester.pumpWidget(ChangeNotifierProvider(
++        create: (_) => SettingsProvider(),
++        child: MaterialApp(home: BookshelfScreen(database: db))));
++    await tester.pumpAndSettle();
++    final gesture = await tester
++        .startGesture(tester.getCenter(find.byType(BookCard).first));
++    await tester.pump(const Duration(milliseconds: 310));
++    await gesture.moveBy(const Offset(15, 10));
++    await tester.pump();
++    await tester.pumpWidget(const SizedBox());
++    await gesture.cancel();
++    await tester.pumpAndSettle();
++    expect(tester.takeException(), isNull);
++    await db.changes.close();
++    await (await db.database).close();
++  });
++
++  testWidgets(
++      'feedback transforms only, clamps rotation and honors reduced motion',
++      (tester) async {
++    final tilt = ValueNotifier<double>(0);
++    var builds = 0;
++    final child = Builder(builder: (_) {
++      builds++;
++      return const SizedBox(width: 100, height: 150);
++    });
++    Widget app(bool reduced) => MaterialApp(
++        home: MediaQuery(
++            data: MediaQueryData(disableAnimations: reduced),
++            child: PhysicsDragFeedback(tiltNotifier: tilt, child: child)));
++    await tester.pumpWidget(app(false));
++    final initial = builds;
++    for (var i = 0; i < 20; i++) {
++      tilt.value = i.isEven ? 0.5 : -0.5;
++      await tester.pump(const Duration(milliseconds: 8));
++    }
++    await tester.pumpAndSettle();
++    expect(builds, initial);
++    await tester.pumpWidget(app(true));
++    await tester.pumpAndSettle();
++    final transforms = tester.widgetList<Transform>(find.descendant(
++        of: find.byType(PhysicsDragFeedback),
++        matching: find.byType(Transform)));
++    for (final transform in transforms) {
++      expect(transform.transform.isIdentity(), isTrue);
++    }
++    await tester.pumpWidget(const SizedBox());
++    tilt.dispose();
++    expect(tester.takeException(), isNull);
++  });
++}
+--- /dev/null
++++ after/tool/spring_device_perf.dart
+@@ -0,0 +1,281 @@
++// Run only with applicationId .spring20261107; uses synthetic images/in-memory DB.
++// ignore_for_file: invalid_use_of_visible_for_testing_member
++import 'dart:async';
++import 'dart:io';
++import 'dart:ui' as ui;
++import 'package:flutter/gestures.dart';
++import 'package:flutter/material.dart';
++import 'package:path_provider/path_provider.dart';
++import 'package:provider/provider.dart';
++import 'package:sqflite/sqflite.dart';
++import 'package:gun_book/core/perf_log.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'package:gun_book/widgets/folder_card.dart';
++import 'package:gun_book/widgets/smooth_input_dialog.dart';
++import 'package:gun_book/screens/bookshelf/bookshelf_screen.dart';
++
++const revision =
++    String.fromEnvironment('SPRING_REVISION', defaultValue: 'after');
++void main() {
++  WidgetsFlutterBinding.ensureInitialized();
++  FlutterError.onError = (details) {
++    FlutterError.presentError(details);
++    PerfLog.event('spring_error', {'error': details.exceptionAsString()});
++  };
++  runApp(ChangeNotifierProvider(
++      create: (_) => SettingsProvider(),
++      child: const MaterialApp(home: MotionBench())));
++}
++
++class FixtureLibrary extends DatabaseHelper {
++  FixtureLibrary(Database db, this.items) : super.forTesting(db, 'unused');
++  List<LibraryItem> items;
++  int sorts = 0, merges = 0;
++  @override
++  Future<List<LibraryItem>> fetchItems(
++          {String? parentId, int limit = 50, int offset = 0}) async =>
++      items.skip(offset).take(limit).toList();
++  @override
++  Future<void> updateSortOrder(List<String> ids, {bool notify = true}) async {
++    sorts++;
++  }
++
++  @override
++  Future<void> moveItems(List<String> ids, String? folderId,
++      {bool notify = true}) async {
++    merges++;
++  }
++}
++
++class MotionBench extends StatefulWidget {
++  const MotionBench({super.key});
++  @override
++  State<MotionBench> createState() => _MotionBenchState();
++}
++
++class _MotionBenchState extends State<MotionBench> {
++  Widget view = const SizedBox();
++  final shelfKey = GlobalKey();
++  int pointer = 1, epoch = 0;
++  bool reduced = false;
++  final clock = Stopwatch()..start();
++  List<Element> elements(bool Function(Widget) matches) {
++    final result = <Element>[];
++    void visit(Element element) {
++      if (matches(element.widget)) result.add(element);
++      element.visitChildren(visit);
++    }
++
++    context.visitChildElements(visit);
++    return result;
++  }
++
++  Offset center(Element e) {
++    final box = e.findRenderObject()! as RenderBox;
++    return box.localToGlobal(box.size.center(Offset.zero));
++  }
++
++  Duration get stamp => Duration(microseconds: clock.elapsedMicroseconds);
++  void down(Offset at) => GestureBinding.instance.handlePointerEvent(
++      PointerDownEvent(pointer: pointer, position: at, timeStamp: stamp));
++  void move(Offset at, Offset delta) =>
++      GestureBinding.instance.handlePointerEvent(PointerMoveEvent(
++          pointer: pointer, position: at, delta: delta, timeStamp: stamp));
++  void up(Offset at) {
++    GestureBinding.instance.handlePointerEvent(
++        PointerUpEvent(pointer: pointer, position: at, timeStamp: stamp));
++    pointer++;
++  }
++
++  Future<void> pause(int ms) =>
++      Future<void>.delayed(Duration(milliseconds: ms));
++  Future<void> show(Widget child) async {
++    setState(() => view = KeyedSubtree(key: ValueKey(epoch++), child: child));
++    await pause(700);
++  }
++
++  Future<void> measure(String scenario, Future<void> Function() action) async {
++    await pause(300);
++    final frames = PerfFrames(
++        'spring_${revision}_${reduced ? 'reduced' : 'normal'}_$scenario');
++    final start = PerfLog.memory();
++    final elapsed = Stopwatch()..start();
++    await action();
++    await pause(
++        350); // include completion and delivery of the final timing batch
++    frames.dispose();
++    PerfLog.event('spring_window', {
++      'revision': revision,
++      'reduced': reduced,
++      'scenario': scenario,
++      'elapsed_ms': elapsed.elapsedMilliseconds,
++      'start_memory': start,
++      'end_memory': PerfLog.memory()
++    });
++  }
++
++  @override
++  void initState() {
++    super.initState();
++    unawaited(run());
++  }
++
++  Future<void> run() async {
++    try {
++      await pause(1000);
++      if (!mounted) return;
++      PerfLog.event('spring_environment', {
++        'system_reduced': MediaQuery.disableAnimationsOf(context),
++        'refresh_hz': View.of(context).display.refreshRate,
++      });
++      final root = await getTemporaryDirectory();
++      final imageFile = File('${root.path}/spring-fixture.png');
++      final recorder = ui.PictureRecorder();
++      final canvas = Canvas(recorder);
++      canvas.drawColor(Colors.teal, BlendMode.src);
++      for (var i = 0; i < 100; i++) {
++        canvas.drawCircle(
++            Offset((i * 37 % 256).toDouble(), (i * 53 % 384).toDouble()),
++            12,
++            Paint()..color = Color(0xff000000 | (i * 73219 & 0xffffff)));
++      }
++      final picture = recorder.endRecording();
++      final image = await picture.toImage(256, 384);
++      final data = await image.toByteData(format: ui.ImageByteFormat.png);
++      await imageFile.writeAsBytes(data!.buffer.asUint8List());
++      image.dispose();
++      picture.dispose();
++      final book = MangaBook(
++          id: 'press',
++          title: 'Synthetic cover',
++          coverPath: imageFile.path,
++          filePaths: []);
++      final folder = MangaFolder(
++          id: 'folder',
++          title: 'Synthetic folder',
++          thumbnails: List.filled(4, imageFile.path));
++      final db = FixtureLibrary(await openDatabase(inMemoryDatabasePath), [
++        for (var i = 0; i < 120; i++)
++          MangaBook(
++              id: 'book$i',
++              title: 'Synthetic $i',
++              coverPath: imageFile.path,
++              filePaths: []),
++        folder
++      ]);
++      for (final mode in [false, true]) {
++        setState(() => reduced = mode);
++        await show(Center(
++            child: SizedBox(
++                width: 110,
++                height: 210,
++                child:
++                    BookCard(book: book, onTap: () {}, onLongPress: () {}))));
++        await measure('book_20', () async {
++          final at = center(elements((w) => w is BookCard).first);
++          for (var i = 0; i < 20; i++) {
++            down(at);
++            await pause(140);
++            up(at);
++            await pause(70);
++          }
++        });
++        await show(Center(
++            child: SizedBox(
++                width: 110,
++                height: 210,
++                child: FolderCard(
++                    folder: folder, onTap: () {}, onLongPress: () {}))));
++        await measure('folder_20', () async {
++          final at = center(elements((w) => w is FolderCard).first);
++          for (var i = 0; i < 20; i++) {
++            down(at);
++            await pause(140);
++            up(at);
++            await pause(70);
++          }
++        });
++        await show(const SizedBox());
++        await measure('dialog_10', () async {
++          for (var i = 0; i < 10; i++) {
++            final future = SmoothInputDialog.show(shelfKey.currentContext!,
++                title: 'Synthetic input');
++            await pause(600);
++            Navigator.of(shelfKey.currentContext!, rootNavigator: true).pop();
++            await future;
++            await pause(300);
++          }
++        });
++        // Place a folder in the first row for deterministic merge targeting.
++        db.items = [
++          db.items.first,
++          folder,
++          ...db.items.whereType<MangaBook>().skip(1)
++        ];
++        await show(BookshelfScreen(database: db));
++        await measure('reorder_10', () async {
++          for (var i = 0; i < 10; i++) {
++            final cards = elements((w) => w is BookCard);
++            final from = center(cards[0]), to = center(cards[1]);
++            down(from);
++            await pause(350);
++            for (var j = 1; j <= 8; j++) {
++              final at = Offset.lerp(from, to, j / 8)!;
++              move(at, (to - from) / 8);
++              await pause(16);
++            }
++            up(to);
++            await pause(260);
++          }
++        });
++        await measure('merge_folder', () async {
++          final from = center(elements((w) => w is BookCard).first);
++          final to = center(elements((w) => w is FolderCard).first);
++          down(from);
++          await pause(350);
++          for (var j = 1; j <= 8; j++) {
++            move(Offset.lerp(from, to, j / 8)!, (to - from) / 8);
++            await pause(16);
++          }
++          await pause(550);
++          up(to);
++          await pause(260);
++        });
++        await measure('scroll', () async {
++          final scroll = elements((w) => w is CustomScrollView).first.widget
++              as CustomScrollView;
++          final controller = scroll.controller!;
++          for (var i = 0; i < 10; i++) {
++            await controller.animateTo(
++                i.isEven ? controller.position.maxScrollExtent : 0,
++                duration: const Duration(milliseconds: 220),
++                curve: Curves.linear);
++            await pause(60);
++          }
++        });
++        PerfLog.event('spring_actions', {
++          'revision': revision,
++          'reduced': mode,
++          'sorts': db.sorts,
++          'merges': db.merges
++        });
++      }
++      await show(const Text('Spring benchmark complete'));
++      await (await db.database).close();
++      PerfLog.event('spring_complete', {'revision': revision});
++    } catch (e, stack) {
++      PerfLog.event('spring_failure', {'error': '$e', 'stack': '$stack'});
++    }
++  }
++
++  @override
++  Widget build(BuildContext context) => MediaQuery(
++      data: MediaQuery.of(context).copyWith(
++          disableAnimations:
++              reduced || MediaQuery.disableAnimationsOf(context)),
++      child:
++          Builder(key: shelfKey, builder: (context) => Scaffold(body: view)));
++}

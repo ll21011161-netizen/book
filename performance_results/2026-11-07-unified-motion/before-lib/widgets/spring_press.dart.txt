@@ -1,0 +1,162 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../core/constants.dart';
+import '../core/motion.dart';
+
+/// Owns only press state. The supplied child (including image/Hero) is retained
+/// across gesture updates; the hit region remains at its unscaled size.
+class SpringPress extends StatefulWidget {
+  const SpringPress(
+      {super.key,
+      required this.child,
+      required this.onTap,
+      this.onLongPress,
+      this.suppressMotion = false});
+  final bool suppressMotion;
+  final Widget child;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  State<SpringPress> createState() => _SpringPressState();
+}
+
+class _SpringPressState extends State<SpringPress> {
+  bool _pressed = false;
+  bool _snap = false;
+  int? _pointer;
+  Timer? _releaseTimer;
+  bool _minimumElapsed = false;
+  bool _releasePending = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.suppressMotion ||
+        !TickerMode.of(context) ||
+        (!MotionScope.of(context).enabled ||
+            MotionScope.of(context).press == PressMotion.none)) {
+      // Hidden/disabled animations must not resume a held or half-scaled card.
+      // This is a lifecycle reset, never a consequence of Navigator.push.
+      _reset();
+    }
+  }
+
+  void _reset() {
+    _releaseTimer?.cancel();
+    _releaseTimer = null;
+    _minimumElapsed = false;
+    _releasePending = false;
+    _pressed = false;
+    _pointer = null;
+    _snap = true;
+  }
+
+  @override
+  void dispose() {
+    _releaseTimer?.cancel();
+    super.dispose();
+  }
+
+  void _release(PointerEvent event) {
+    if (event.pointer != _pointer) return;
+    _pointer = null;
+    _press(false);
+  }
+
+  void _press(bool value) {
+    if (value) {
+      _releaseTimer?.cancel();
+      _minimumElapsed = false;
+      _releasePending = false;
+      _releaseTimer = Timer(AppConstants.pressMinDuration, () {
+        _releaseTimer = null;
+        _minimumElapsed = true;
+        if (_releasePending) _finishRelease();
+      });
+      setState(() {
+        _pressed = true;
+        _snap = false;
+      });
+    } else if (_pressed) {
+      if (!_minimumElapsed) {
+        // Delay only the visual release for very short taps. onTap is immediate.
+        _releasePending = true;
+      } else {
+        _finishRelease();
+      }
+    }
+  }
+
+  void _finishRelease() {
+    _releaseTimer?.cancel();
+    _releaseTimer = null;
+    _releasePending = false;
+    if (!mounted) return;
+    setState(() {
+      _pressed = false;
+      _snap = false;
+    });
+  }
+
+  void _cancelPress() {
+    // Losing the tap arena to scrolling/dragging should not bounce under it.
+    setState(_reset);
+  }
+
+  void _tap() {
+    _press(false);
+    // A second pending pointer must not push another route behind the first.
+    if (!TickerMode.of(context) || ModalRoute.of(context)?.isCurrent == false) {
+      return;
+    }
+    widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = MotionScope.of(context);
+    final reduced = widget.suppressMotion ||
+        (!MotionScope.of(context).enabled ||
+            MotionScope.of(context).press == PressMotion.none);
+    return Listener(
+        onPointerDown: (event) {
+          if (_pointer != null || !TickerMode.of(context) || reduced) return;
+          _pointer = event.pointer;
+          _press(true);
+        },
+        onPointerUp: _release,
+        onPointerCancel: (event) {
+          if (event.pointer == _pointer) _cancelPress();
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapCancel: _cancelPress,
+          onTap: _tap,
+          onLongPress: widget.onLongPress == null
+              ? null
+              : () {
+                  _press(false);
+                  widget.onLongPress!();
+                },
+          onLongPressEnd:
+              widget.onLongPress == null ? null : (_) => _press(false),
+          child: AnimatedScale(
+            scale: !reduced && _pressed
+                ? (motion.press == PressMotion.spring ? .95 : .97)
+                : 1,
+            duration: reduced || _snap
+                ? Duration.zero
+                : _pressed
+                    ? motion.duration(.32)
+                    : motion.duration(
+                        motion.press == PressMotion.spring ? .8 : .48),
+            curve: !_pressed && motion.press == PressMotion.spring
+                ? const GentleSpring()
+                : motion.timingCurve,
+            // GestureDetector, outside the transform, owns the stable hit region.
+            child: widget.child,
+          ),
+        ));
+  }
+}

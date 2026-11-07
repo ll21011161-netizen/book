@@ -1,0 +1,70 @@
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import '../core/constants.dart';
+import '../core/motion.dart';
+import '../core/theme.dart';
+
+enum DragVisualMode { none, reorder, merge }
+
+/// Paint-only feedback: the card's layout and hit area remain unchanged.
+class DragCover extends StatelessWidget {
+  const DragCover({super.key, required this.mode, required this.child});
+  final DragVisualMode mode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final merge = mode == DragVisualMode.merge;
+    final active = mode != DragVisualMode.none;
+    final color = merge ? Theme.of(context).colorScheme.primary : Colors.blue;
+    final duration = AppConstants.motionDuration(
+        context, Duration(milliseconds: merge ? 240 : 200));
+    return LayoutBuilder(builder: (context, constraints) {
+      final longest = math.max(constraints.maxWidth, constraints.maxHeight);
+      final growth = longest.isFinite && longest > 0
+          ? math.min(0.025, 4 / longest)
+          : 0.025;
+      return AnimatedScale(
+        scale: active && MotionScope.of(context).enabled
+            ? (merge ? 1 + growth : 0.97)
+            : 1,
+        duration: duration,
+        curve: MotionScope.of(context).timingCurve,
+        child: Stack(fit: StackFit.expand, children: [
+          child,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedContainer(
+                duration: duration,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTheme.cornerRadius),
+                  color: color.withValues(alpha: active ? 0.12 : 0),
+                  border: Border.all(
+                      color: active ? color : Colors.transparent,
+                      width: merge ? 3 : 2),
+                ),
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  child: active
+                      ? Center(
+                          key: ValueKey(mode),
+                          child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                  color: color, shape: BoxShape.circle),
+                              child: Icon(
+                                  merge
+                                      ? Icons.create_new_folder
+                                      : Icons.swap_vert,
+                                  size: 22,
+                                  color: Colors.white)))
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
+}

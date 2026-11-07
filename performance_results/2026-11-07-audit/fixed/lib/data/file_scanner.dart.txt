@@ -1,0 +1,69 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+
+class FileScanner {
+  static final _imgExts = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'};
+  static final _naturalReg = RegExp(r'(\d+)|(\D+)');
+
+  static int compareNatural(String a, String b) {
+    final mA = _naturalReg.allMatches(a.toLowerCase()).iterator;
+    final mB = _naturalReg.allMatches(b.toLowerCase()).iterator;
+    while (true) {
+      final hasA = mA.moveNext(), hasB = mB.moveNext();
+      if (!hasA || !hasB) {
+        if (hasA) return 1;
+        if (hasB) return -1;
+        return a.toLowerCase().compareTo(b.toLowerCase());
+      }
+      final pA = mA.current.group(0)!, pB = mB.current.group(0)!;
+      final digitsA = mA.current.group(1) != null;
+      final digitsB = mB.current.group(1) != null;
+      int cmp;
+      if (digitsA && digitsB) {
+        // Compare magnitude without integer overflow on long filenames.
+        final nA = pA.replaceFirst(RegExp(r'^0+'), '');
+        final nB = pB.replaceFirst(RegExp(r'^0+'), '');
+        cmp = nA.length.compareTo(nB.length);
+        if (cmp == 0) cmp = nA.compareTo(nB);
+      } else {
+        cmp = pA.compareTo(pB);
+      }
+      if (cmp != 0) return cmp;
+    }
+  }
+
+  // [極致防護] 放棄 await for，改用 .listen 並設定 cancelOnError: false
+  static Future<List<String>> scanImages(Directory dir) async {
+    final List<String> paths = [];
+    try {
+      final completer = Completer<void>();
+      
+      dir.list(recursive: false, followLinks: true).listen(
+        (entity) {
+          if (entity is File) {
+            final path = entity.path;
+            if (!p.basename(path).startsWith('.')) {
+              final pLower = path.toLowerCase();
+              if (_imgExts.any((ext) => pLower.endsWith(ext))) {
+                paths.add(path);
+              }
+            }
+          }
+        },
+        onError: (e) {
+          // 默默略過沒有權限的系統檔案，絕不中斷
+        },
+        onDone: () => completer.complete(),
+        cancelOnError: false, // [核心關鍵] 遇到錯誤繼續執行！
+      );
+      
+      await completer.future;
+      paths.sort(compareNatural);
+    } catch (e) { 
+      debugPrint("ScanImages 錯誤: $e");
+    }
+    return paths;
+  }
+}

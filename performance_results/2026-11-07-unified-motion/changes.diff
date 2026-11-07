@@ -1,0 +1,1768 @@
+--- before/lib/core/anim_route.dart
++++ lib/core/anim_route.dart
+@@ -10,7 +10,7 @@
+   AnimRoute({required super.context, required super.page});
+ }
+ 
+-/// Configurable route retaining the Material route/back gesture lifecycle.
++/// Single cover transition retaining the Material route/back gesture lifecycle.
+ /// Android predictive events use the framework route gesture lifecycle.
+ class DetailRoute<T> extends MaterialPageRoute<T> {
+   DetailRoute(
+@@ -22,9 +22,7 @@
+             builder: (_) => HeroMode(enabled: false, child: page),
+             allowSnapshotting: false,
+             settings: const RouteSettings(name: 'library_detail')) {
+-    if (_motion.enabled &&
+-        _motion.detail == DetailMotion.containerTransform &&
+-        source != null) {
++    if (_motion.enabled && source != null) {
+       final rect = source.resolveRect();
+       if (rect != null) {
+         _cover = CoverSnapshot(
+@@ -46,23 +44,12 @@
+   final Stopwatch _watch = Stopwatch();
+   bool _firstFrameScheduled = false;
+ 
+-  Duration _coverDuration(Duration baseline) => Duration(
+-      milliseconds: (_motion.milliseconds * baseline.inMilliseconds / 250)
+-          .round()
+-          .clamp(100, 600));
+-
+   @override
+-  Duration get transitionDuration => hasCoverTransform
+-      ? _coverDuration(AppConstants.coverEnterDuration)
+-      : _motion.page == PageMotion.none
+-          ? Duration.zero
+-          : _motion.duration();
++  Duration get transitionDuration =>
++      hasCoverTransform ? AppConstants.coverEnterDuration : Duration.zero;
+   @override
+-  Duration get reverseTransitionDuration => hasCoverTransform
+-      ? _coverDuration(AppConstants.coverExitDuration)
+-      : _motion.page == PageMotion.none
+-          ? Duration.zero
+-          : _motion.duration(.8);
++  Duration get reverseTransitionDuration =>
++      hasCoverTransform ? AppConstants.coverExitDuration : Duration.zero;
+   @override
+   bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) => false;
+   @override
+@@ -86,7 +73,7 @@
+   @override
+   Widget buildTransitions(BuildContext context, Animation<double> animation,
+           Animation<double> secondaryAnimation, Widget child) =>
+-      _DetailBackFade(
++      _DetailBackTransition(
+           route: this,
+           cover: _cover,
+           animation: animation,
+@@ -97,8 +84,8 @@
+ 
+ /// Bridge Android's predictive events to the framework's public route gesture
+ /// lifecycle, retaining interactive progress and avoiding a commit flash.
+-class _DetailBackFade extends StatefulWidget {
+-  const _DetailBackFade(
++class _DetailBackTransition extends StatefulWidget {
++  const _DetailBackTransition(
+       {required this.route,
+       this.cover,
+       required this.animation,
+@@ -112,10 +99,10 @@
+   final bool android;
+   final Widget child;
+   @override
+-  State<_DetailBackFade> createState() => _DetailBackFadeState();
++  State<_DetailBackTransition> createState() => _DetailBackTransitionState();
+ }
+ 
+-class _DetailBackFadeState extends State<_DetailBackFade>
++class _DetailBackTransitionState extends State<_DetailBackTransition>
+     with WidgetsBindingObserver {
+   Animation<double>? _commit;
+   @override
+@@ -175,10 +162,6 @@
+           gesture: widget.route.popGestureInProgress,
+           child: widget.child);
+     }
+-    return MotionTransition(
+-        animation: progress,
+-        settings: widget.settings,
+-        gesture: widget.route.popGestureInProgress,
+-        child: widget.child);
++    return widget.child;
+   }
+ }
+--- before/lib/core/motion.dart
++++ lib/core/motion.dart
+@@ -9,15 +9,16 @@
+ 
+ enum PressMotion { none, scale, spring }
+ 
+-/// Immutable, version-tolerant preferences. Persist enum names, never indexes.
++/// Version-tolerant legacy storage. Keep names for safe old-data round trips.
++/// MotionScope exposes only the enabled switch; retired options never run.
+ @immutable
+ class MotionSettings {
+   const MotionSettings(
+       {this.enabled = true,
+       this.curve = MotionCurve.easeInOut,
+-      this.page = PageMotion.fadeSlide,
+-      this.detail = DetailMotion.followPage,
+-      this.press = PressMotion.scale,
++      this.page = PageMotion.none,
++      this.detail = DetailMotion.containerTransform,
++      this.press = PressMotion.none,
+       this.bounce = false,
+       this.milliseconds = 250});
+   final bool enabled, bounce;
+@@ -36,9 +37,9 @@
+   Duration duration([double ratio = 1]) => enabled
+       ? Duration(milliseconds: (milliseconds * ratio).round())
+       : Duration.zero;
+-  ScrollPhysics get scrollPhysics => bounce
+-      ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+-      : const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
++  // Old bounce preferences remain readable but no longer affect scrolling.
++  ScrollPhysics get scrollPhysics =>
++      const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+   MotionSettings copyWith(
+           {bool? enabled,
+           bool? bounce,
+@@ -86,10 +87,10 @@
+         enabled: data['enabled'] is bool ? data['enabled'] as bool : true,
+         bounce: data['bounce'] is bool ? data['bounce'] as bool : false,
+         curve: choice(MotionCurve.values, data['curve'], MotionCurve.easeInOut),
+-        page: choice(PageMotion.values, data['page'], PageMotion.fadeSlide),
+-        detail: choice(
+-            DetailMotion.values, data['detail'], DetailMotion.followPage),
+-        press: choice(PressMotion.values, data['press'], PressMotion.scale),
++        page: choice(PageMotion.values, data['page'], PageMotion.none),
++        detail: choice(DetailMotion.values, data['detail'],
++            DetailMotion.containerTransform),
++        press: choice(PressMotion.values, data['press'], PressMotion.none),
+         milliseconds: ms is int && ms >= 100 && ms <= 600 ? ms : 250);
+   }
+ }
+@@ -109,62 +110,11 @@
+     final value =
+         context.dependOnInheritedWidgetOfExactType<MotionScope>()?.settings ??
+             const MotionSettings();
+-    return MediaQuery.disableAnimationsOf(context)
+-        ? value.copyWith(enabled: false)
+-        : value;
++    return MotionSettings(
++        enabled: value.enabled && !MediaQuery.disableAnimationsOf(context));
+   }
+ 
+   @override
+   bool updateShouldNotify(MotionScope oldWidget) =>
+       oldWidget.settings != settings;
+ }
+-
+-/// Shared by routes, the retained tab host and the lightweight preview.
+-class MotionTransition extends StatelessWidget {
+-  const MotionTransition(
+-      {super.key,
+-      required this.animation,
+-      required this.settings,
+-      required this.child,
+-      this.gesture = false});
+-  final Animation<double> animation;
+-  final MotionSettings settings;
+-  final Widget child;
+-  final bool gesture;
+-  @override
+-  Widget build(BuildContext context) {
+-    if (!settings.enabled || settings.page == PageMotion.none) return child;
+-    final progress = gesture
+-        ? animation
+-        : animation.drive(CurveTween(curve: settings.timingCurve));
+-    final opacity = progress.drive(CurveTween(curve: const _ClampCurve()));
+-    Widget result = child;
+-    if (settings.page == PageMotion.slide ||
+-        settings.page == PageMotion.fadeSlide) {
+-      result = SlideTransition(
+-          position: progress.drive(Tween(
+-              begin: Offset(settings.page == PageMotion.slide ? .12 : .04, 0),
+-              end: Offset.zero)),
+-          child: result);
+-    }
+-    if (settings.page == PageMotion.scale ||
+-        settings.page == PageMotion.zoomFade) {
+-      result = ScaleTransition(
+-          scale: progress.drive(Tween(begin: .96, end: 1.0)), child: result);
+-    }
+-    if (settings.page == PageMotion.fade ||
+-        settings.page == PageMotion.fadeSlide ||
+-        settings.page == PageMotion.zoomFade) {
+-      result = FadeTransition(opacity: opacity, child: result);
+-    }
+-    return result;
+-  }
+-}
+-
+-class _ClampCurve extends Curve {
+-  const _ClampCurve();
+-  @override
+-  double transform(double t) => t.clamp(0.0, 1.0);
+-  @override
+-  double transformInternal(double t) => t;
+-}
+--- before/lib/main.dart
++++ lib/main.dart
+@@ -158,8 +158,7 @@
+             excluding: !visible,
+             child: AnimatedSlide(
+               offset: visible ? Offset.zero : const Offset(0, 1),
+-              duration: AppConstants.motionDuration(
+-                  context, AppConstants.controlsDuration),
++              duration: Duration.zero,
+               curve: MotionScope.of(context).timingCurve,
+               child: child,
+             ),
+--- before/lib/screens/bookshelf/bookshelf_screen.dart
++++ lib/screens/bookshelf/bookshelf_screen.dart
+@@ -502,8 +502,7 @@
+                   valueListenable: _selModeNotifier,
+                   builder: (context, selMode, _) {
+                     return AnimatedSwitcher(
+-                        duration: AppConstants.motionDuration(
+-                            context, AppConstants.animDurationNormal),
++                        duration: Duration.zero,
+                         child: selMode
+                             ? Text(
+                                 "${selIds.length} ${AppStrings.get('selected')}",
+@@ -792,32 +791,7 @@
+ 
+   @override
+   Widget build(BuildContext context) {
+-    final reduced = MediaQuery.disableAnimationsOf(context);
+-    return TweenAnimationBuilder<double>(
+-      tween: Tween(begin: 1, end: reduced ? 1 : AppConstants.dragScale),
+-      duration:
+-          AppConstants.motionDuration(context, AppConstants.dragLiftDuration),
+-      curve: MotionScope.of(context).timingCurve,
+-      child: ValueListenableBuilder<double>(
+-        valueListenable: tiltNotifier,
+-        child: child,
+-        builder: (context, angle, child) => TweenAnimationBuilder<double>(
+-          tween: Tween(
+-              begin: 0,
+-              end: reduced
+-                  ? 0
+-                  : angle.clamp(
+-                      -AppConstants.dragMaxTilt, AppConstants.dragMaxTilt)),
+-          duration: AppConstants.motionDuration(
+-              context, AppConstants.dragTiltDuration),
+-          curve: MotionScope.of(context).timingCurve,
+-          child: child,
+-          builder: (context, value, child) =>
+-              Transform.rotate(angle: value, child: child),
+-        ),
+-      ),
+-      builder: (context, scale, child) =>
+-          Transform.scale(scale: scale, child: child),
+-    );
++    // The drag overlay follows the pointer directly; no decorative lift/tilt.
++    return child;
+   }
+ }
+--- before/lib/screens/details/category_detail_screen.dart
++++ lib/screens/details/category_detail_screen.dart
+@@ -79,6 +79,8 @@
+   Animation<double>? _routeAnimation;
+   Animation<double>? _secondaryAnimation;
+   bool _coverTransform = false;
++  // Sticky after first expansion: returning/cancelling must keep painted images.
++  bool _thumbnailsActivated = false;
+   bool _transitionReady = false;
+   bool _firstFrameReady = false;
+   bool _routeVisible = true;
+@@ -94,6 +96,8 @@
+           _secondaryAnimation!.status == AnimationStatus.dismissed);
+ 
+   bool get _canGenerate =>
++      // ModalRoute's proxy briefly reports completed before attaching its parent.
++      (!_coverTransform || _firstFrameReady) &&
+       _routeVisible &&
+       (_routeAnimation == null ||
+           _routeAnimation!.status == AnimationStatus.completed) &&
+@@ -103,7 +107,10 @@
+   void _transitionChanged(AnimationStatus status) {
+     if (!mounted) return;
+     final ready = _canGenerate;
+-    setState(() => _transitionReady = ready);
++    setState(() {
++      _transitionReady = ready;
++      if (ready) _thumbnailsActivated = true;
++    });
+   }
+ 
+   @override
+@@ -122,6 +129,7 @@
+       _secondaryAnimation?.addStatusListener(_transitionChanged);
+     }
+     _transitionReady = _canGenerate;
++    if (!_coverTransform || _transitionReady) _thumbnailsActivated = true;
+   }
+ 
+   @override
+@@ -417,6 +425,7 @@
+                           final path = widget.category.filePaths[i];
+ 
+                           return _BookPageGridItem(
++                            loadEnabled: _thumbnailsActivated,
+                             index: i,
+                             onImageReady: i < 4 ? () => _thumbReady(i) : null,
+                             generationEnabled:
+@@ -480,6 +489,7 @@
+   final int index;
+   final String path;
+   final bool generationEnabled;
++  final bool loadEnabled;
+   final VoidCallback? onImageReady;
+   final bool isDark;
+   final ValueNotifier<Set<int>> selIdxsNotifier;
+@@ -493,6 +503,7 @@
+     this.onImageReady,
+     required this.path,
+     required this.generationEnabled,
++    required this.loadEnabled,
+     required this.isDark,
+     required this.selIdxsNotifier,
+     required this.selModeNotifier,
+@@ -516,6 +527,16 @@
+           Expanded(
+               child: Stack(fit: StackFit.expand, children: [
+             LayoutBuilder(builder: (context, constraints) {
++              // Even disk-cache hits can start asynchronous decodes/rebuilds.
++              // Defer the image subtree once, preserving its exact grid geometry.
++              if (!loadEnabled) {
++                return DecoratedBox(
++                    decoration: BoxDecoration(
++                        color: Theme.of(context)
++                            .colorScheme
++                            .surfaceContainerHighest,
++                        borderRadius: BorderRadius.circular(12)));
++              }
+               final pixels = (constraints.maxWidth *
+                       MediaQuery.devicePixelRatioOf(context))
+                   .ceil();
+@@ -563,7 +584,7 @@
+         height: 24,
+         child: Center(
+             child: Text('${index + 1}',
+-                style: Theme.of(context).textTheme.labelSmall,
++                style: Theme.of(context).textTheme.labelMedium,
+                 maxLines: 1,
+                 textAlign: TextAlign.center)),
+       ),
+--- before/lib/screens/details/folder_detail_screen.dart
++++ lib/screens/details/folder_detail_screen.dart
+@@ -49,7 +49,9 @@
+   Animation<double>? _routeAnimation;
+   Animation<double>? _secondaryAnimation;
+   bool _allowThumbnailWork = true;
++  bool _firstFrameReady = false;
+   bool get _routeReady =>
++      _firstFrameReady &&
+       (_routeAnimation == null ||
+           _routeAnimation!.status == AnimationStatus.completed) &&
+       (_secondaryAnimation == null ||
+@@ -81,6 +83,11 @@
+   @override
+   void initState() {
+     super.initState();
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (!mounted) return;
++      _firstFrameReady = true;
++      _routeChanged(AnimationStatus.completed);
++    });
+     _scrollController.addListener(_onScroll);
+     _loadItems(refresh: true);
+   }
+--- before/lib/screens/settings_screen.dart
++++ lib/screens/settings_screen.dart
+@@ -35,6 +35,7 @@
+           child: ConstrainedBox(
+             constraints: const BoxConstraints(maxWidth: 700),
+             child: ListView(
++              physics: const ClampingScrollPhysics(),
+               padding: const EdgeInsets.fromLTRB(20, 24, 20, 116),
+               children: [
+                 Row(
+--- before/lib/widgets/book_card.dart
++++ lib/widgets/book_card.dart
+@@ -1,4 +1,3 @@
+-import '../core/motion.dart';
+ import '../core/cover_origin.dart';
+ // lib/widgets/book_card.dart
+ import 'package:flutter/material.dart';
+@@ -55,9 +54,6 @@
+     return HeroMode(
+         enabled: !MediaQuery.disableAnimationsOf(context),
+         child: SpringPress(
+-          suppressMotion: widget.onOpen != null &&
+-              MotionScope.of(context).enabled &&
+-              MotionScope.of(context).detail == DetailMotion.containerTransform,
+           onTap: () => widget.onOpen != null
+               ? widget.onOpen!(_cover.currentState?.origin)
+               : onTap(),
+--- before/lib/widgets/cover_container_transition.dart
++++ lib/widgets/cover_container_transition.dart
+@@ -1,7 +1,6 @@
+ import 'package:flutter/material.dart';
+ import '../core/cover_origin.dart';
+ import '../core/constants.dart';
+-import '../core/motion.dart';
+ 
+ /// Container geometry is independent of page layout. The detail subtree gets
+ /// full viewport constraints once; FittedBox only transforms its painted layer.
+@@ -39,12 +38,9 @@
+   }
+ 
+   static double _mix(double a, double b, double t) => a + (b - a) * t;
+-  static double _enter(double t) {
+-    if (t <= .7) return Curves.easeOutCubic.transform(t);
+-    final start = Curves.easeOutCubic.transform(.7);
+-    return _mix(start, 1,
+-        const GentleSpring().transform(((t - .7) / .3).clamp(0.0, 1.0)));
+-  }
++  // Continuous position and velocity, one gentle settle (~0.48% overshoot).
++  // This approximates the recording's visual rhythm, not its unknown curve.
++  static double _enter(double t) => 1 + (1.4 * t - 1) * (1 - t) * (1 - t);
+ 
+   @override
+   Widget build(BuildContext context) =>
+@@ -91,9 +87,7 @@
+                 }
+                 final ratio =
+                     _startRaw <= 0 ? 0.0 : (raw / _startRaw).clamp(0.0, 1.0);
+-                final t = widget.gesture
+-                    ? ratio
+-                    : Curves.easeInOutCubic.transform(ratio);
++                final t = widget.gesture ? ratio : 1 - _enter(1 - ratio);
+                 _rect = Rect.lerp(_target, _startRect, t)!;
+                 _body = _fallback
+                     ? _startBody
+--- before/lib/widgets/cover_hero.dart
++++ lib/widgets/cover_hero.dart
+@@ -1,18 +1,17 @@
++import '../core/theme.dart';
++import '../core/config.dart';
++import 'page_thumbnail.dart';
+ import 'dart:math' as math;
+ import 'package:flutter/rendering.dart';
+ import '../core/constants.dart';
+ import '../core/cover_origin.dart';
+ import 'package:flutter/material.dart';
+-import '../core/config.dart';
+-import '../core/theme.dart';
+-import 'page_thumbnail.dart';
+ 
+ typedef CoverImageReporter = void Function(
+     int index, ImageProvider provider, BoxFit fit);
+ 
+-/// Providers are reported after their first painted frame, never discovered by
+-/// walking Elements while the Hero overlay is building. State lives with its
+-/// cover and is released with it; no global provider registry is needed.
++/// Route-local cover position and a bounded snapshot of already painted pixels.
++/// Historical name retained; there is no Hero overlay or second image decode.
+ class CoverHero extends StatefulWidget {
+   const CoverHero(
+       {super.key,
+@@ -94,58 +93,15 @@
+         });
+   }
+ 
+-  final Map<int, ({ImageProvider provider, BoxFit fit})> images = {};
+-  void report(int index, ImageProvider provider, BoxFit fit) {
+-    if (mounted) images[index] = (provider: provider, fit: fit);
+-  }
++  // Legacy builder callback: the raster snapshot replaces provider registries.
++  void report(int index, ImageProvider provider, BoxFit fit) {}
+ 
+   @override
+-  void didUpdateWidget(CoverHero oldWidget) {
+-    super.didUpdateWidget(oldWidget);
+-    if (oldWidget.identity != widget.identity) images.clear();
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) => Hero(
+-      tag: widget.tag,
+-      transitionOnUserGestures: true,
+-      flightShuttleBuilder: coverFlight,
+-      child: RepaintBoundary(key: _surface, child: widget.builder(report)));
++  Widget build(BuildContext context) =>
++      RepaintBoundary(key: _surface, child: widget.builder(report));
+ }
+ 
+-Widget coverFlight(BuildContext context, Animation<double> animation,
+-    HeroFlightDirection direction, BuildContext from, BuildContext to) {
+-  final shelf = direction == HeroFlightDirection.push ? from : to;
+-  final hero = shelf.widget as Hero;
+-  final snapshots = shelf.findAncestorStateOfType<CoverHeroState>()?.images;
+-  if (snapshots == null || snapshots.isEmpty) return hero.child;
+-  // Copy once per flight, so a late source decode cannot switch its image.
+-  final images = Map.of(snapshots);
+-  final folder = hero.tag.toString().startsWith('folder_cover_');
+-  Widget imageAt(int index) {
+-    final entry = images[index];
+-    return entry == null
+-        ? const ColoredBox(color: Color(0xffdddddd))
+-        : Image(
+-            image: entry.provider,
+-            fit: entry.fit,
+-            gaplessPlayback: true,
+-            filterQuality: FilterQuality.low,
+-            errorBuilder: (_, __, ___) => const SizedBox.expand());
+-  }
+-
+-  final content = folder ? _FourTiles(tile: imageAt) : imageAt(0);
+-  return AnimatedBuilder(
+-      animation: animation,
+-      child: content,
+-      builder: (context, child) => ClipRRect(
+-          borderRadius: BorderRadius.circular(
+-              AppTheme.cornerRadius * (1 - animation.value)),
+-          child: Opacity(
+-              opacity: folder ? 1 - 0.7 * animation.value : 1, child: child)));
+-}
+-
+-/// The same four-tile image composition at both ends of a folder Hero.
++/// Existing cached four-tile folder cover.
+ class FolderCoverPreview extends StatelessWidget {
+   const FolderCoverPreview(
+       {super.key, required this.paths, this.onImageProvider});
+--- before/lib/widgets/drag_cover.dart
++++ lib/widgets/drag_cover.dart
+@@ -1,7 +1,4 @@
+-import 'dart:math' as math;
+ import 'package:flutter/material.dart';
+-import '../core/constants.dart';
+-import '../core/motion.dart';
+ import '../core/theme.dart';
+ 
+ enum DragVisualMode { none, reorder, merge }
+@@ -17,54 +14,35 @@
+     final merge = mode == DragVisualMode.merge;
+     final active = mode != DragVisualMode.none;
+     final color = merge ? Theme.of(context).colorScheme.primary : Colors.blue;
+-    final duration = AppConstants.motionDuration(
+-        context, Duration(milliseconds: merge ? 240 : 200));
+-    return LayoutBuilder(builder: (context, constraints) {
+-      final longest = math.max(constraints.maxWidth, constraints.maxHeight);
+-      final growth = longest.isFinite && longest > 0
+-          ? math.min(0.025, 4 / longest)
+-          : 0.025;
+-      return AnimatedScale(
+-        scale: active && MotionScope.of(context).enabled
+-            ? (merge ? 1 + growth : 0.97)
+-            : 1,
+-        duration: duration,
+-        curve: MotionScope.of(context).timingCurve,
+-        child: Stack(fit: StackFit.expand, children: [
+-          child,
+-          Positioned.fill(
+-            child: IgnorePointer(
+-              child: AnimatedContainer(
+-                duration: duration,
+-                decoration: BoxDecoration(
+-                  borderRadius: BorderRadius.circular(AppTheme.cornerRadius),
+-                  color: color.withValues(alpha: active ? 0.12 : 0),
+-                  border: Border.all(
+-                      color: active ? color : Colors.transparent,
+-                      width: merge ? 3 : 2),
+-                ),
+-                child: AnimatedSwitcher(
+-                  duration: duration,
+-                  child: active
+-                      ? Center(
+-                          key: ValueKey(mode),
+-                          child: Container(
+-                              padding: const EdgeInsets.all(8),
+-                              decoration: BoxDecoration(
+-                                  color: color, shape: BoxShape.circle),
+-                              child: Icon(
+-                                  merge
+-                                      ? Icons.create_new_folder
+-                                      : Icons.swap_vert,
+-                                  size: 22,
+-                                  color: Colors.white)))
+-                      : const SizedBox.shrink(),
+-                ),
++    return SizedBox(
++      child: Stack(fit: StackFit.expand, children: [
++        child,
++        Positioned.fill(
++          child: IgnorePointer(
++            child: Container(
++              decoration: BoxDecoration(
++                borderRadius: BorderRadius.circular(AppTheme.cornerRadius),
++                color: color.withValues(alpha: active ? 0.12 : 0),
++                border: Border.all(
++                    color: active ? color : Colors.transparent,
++                    width: merge ? 3 : 2),
+               ),
++              child: active
++                  ? Center(
++                      key: ValueKey(mode),
++                      child: Container(
++                          padding: const EdgeInsets.all(8),
++                          decoration: BoxDecoration(
++                              color: color, shape: BoxShape.circle),
++                          child: Icon(
++                              merge ? Icons.create_new_folder : Icons.swap_vert,
++                              size: 22,
++                              color: Colors.white)))
++                  : const SizedBox.shrink(),
+             ),
+           ),
+-        ]),
+-      );
+-    });
++        ),
++      ]),
++    );
+   }
+ }
+--- before/lib/widgets/folder_card.dart
++++ lib/widgets/folder_card.dart
+@@ -1,4 +1,3 @@
+-import '../core/motion.dart';
+ import '../core/cover_origin.dart';
+ // lib/widgets/folder_card.dart
+ import 'package:flutter/material.dart';
+@@ -44,9 +43,6 @@
+     return HeroMode(
+         enabled: !MediaQuery.disableAnimationsOf(context),
+         child: SpringPress(
+-          suppressMotion: widget.onOpen != null &&
+-              MotionScope.of(context).enabled &&
+-              MotionScope.of(context).detail == DetailMotion.containerTransform,
+           onTap: () => widget.onOpen != null
+               ? widget.onOpen!(_cover.currentState?.origin)
+               : onTap(),
+--- before/lib/widgets/motion_settings_panel.dart
++++ lib/widgets/motion_settings_panel.dart
+@@ -1,279 +1,23 @@
+-import '../core/anim_route.dart';
+-import 'cover_hero.dart';
+ import 'package:flutter/material.dart';
+ import 'package:provider/provider.dart';
+-import '../core/motion.dart';
+ import '../core/settings_provider.dart';
+-import 'spring_press.dart';
+ 
++/// Only the accessibility switch survives the retired animation preferences.
+ class MotionSettingsPanel extends StatelessWidget {
+   const MotionSettingsPanel({super.key});
+   @override
+   Widget build(BuildContext context) {
+-    final value =
+-        context.select<SettingsProvider, MotionSettings>((s) => s.motion);
+-    final settings = context.read<SettingsProvider>();
+-    Widget choices<T>(String title, String help, List<T> options,
+-            List<String> labels, T selected, ValueChanged<T> change) =>
+-        Padding(
+-            padding: const EdgeInsets.only(top: 16),
+-            child:
+-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+-              Text(title, style: Theme.of(context).textTheme.titleMedium),
+-              Text(help, style: Theme.of(context).textTheme.bodySmall),
+-              const SizedBox(height: 8),
+-              Wrap(spacing: 8, runSpacing: 4, children: [
+-                for (var i = 0; i < options.length; i++)
+-                  ChoiceChip(
+-                      label: Text(labels[i]),
+-                      selected: selected == options[i],
+-                      onSelected: (_) => change(options[i]))
+-              ])
+-            ]));
+-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+-      Text('動畫與動態效果', style: Theme.of(context).textTheme.titleLarge),
+-      const Text('立即套用並自動儲存；系統減少動畫時優先停用動態效果。'),
+-      SwitchListTile(
+-          contentPadding: EdgeInsets.zero,
+-          title: const Text('開啟動畫'),
+-          subtitle: const Text('關閉後立即切換，保留操作與選取提示'),
+-          value: value.enabled,
+-          onChanged: (v) => settings.setMotion(value.copyWith(enabled: v))),
+-      choices(
+-          '動畫曲線',
+-          '線性等速、平滑加減速、快速開始，或輕柔彈性。',
+-          MotionCurve.values,
+-          ['線性 Linear', '平滑 Ease In Out', '減速 Ease Out', '彈性 Spring'],
+-          value.curve,
+-          (v) => settings.setMotion(value.copyWith(curve: v))),
+-      choices(
+-          '頁面切換',
+-          '套用首頁、設定、詳情與閱讀器進出；縮放幅度保持輕微。',
+-          PageMotion.values,
+-          [
+-            '無 None',
+-            '淡入淡出 Fade',
+-            '滑動 Slide',
+-            '輕縮放 Scale',
+-            '淡入＋滑動 Fade + Slide',
+-            '縮放＋淡入 Zoom + Fade'
+-          ],
+-          value.page,
+-          (v) => settings.setMotion(value.copyWith(page: v))),
+-      choices(
+-          '詳情頁切換動畫',
+-          '有來源封面時展開為詳情頁；其他入口沿用頁面設定。',
+-          DetailMotion.values,
+-          ['沿用頁面切換', '封面彈出／縮回（Container Transform）'],
+-          value.detail,
+-          (v) => settings.setMotion(value.copyWith(detail: v))),
+-      if (value.detail == DetailMotion.containerTransform)
+-        const CoverTransformPreview(),
+-      choices(
+-          '點擊反饋',
+-          '漫畫封面、資料夾與主要操作按鈕；點擊不等待動畫。',
+-          PressMotion.values,
+-          ['無', '輕微縮放', 'Q 彈縮放'],
+-          value.press,
+-          (v) => settings.setMotion(value.copyWith(press: v))),
+-      SwitchListTile(
+-          contentPadding: EdgeInsets.zero,
+-          title: const Text('彈性回彈'),
+-          subtitle: const Text('關閉使用無回彈捲動；不改變翻頁方向及縮放手勢'),
+-          value: value.bounce,
+-          onChanged: (v) => settings.setMotion(value.copyWith(bounce: v))),
+-      choices(
+-          '動畫速度',
+-          '按壓使用較短比例；手勢與滑動慣性維持原生行為。',
+-          [150, 250, 400, -1],
+-          ['快速 150ms', '標準 250ms', '慢速 400ms', '自訂'],
+-          [150, 250, 400].contains(value.milliseconds)
+-              ? value.milliseconds
+-              : -1,
+-          (v) => settings
+-              .setMotion(value.copyWith(milliseconds: v == -1 ? 300 : v))),
+-      Text('自訂時間：${value.milliseconds}ms'),
+-      Slider(
+-          value: value.milliseconds.toDouble(),
+-          min: 100,
+-          max: 600,
+-          divisions: 50,
+-          label: '${value.milliseconds}ms',
+-          onChanged: (v) =>
+-              settings.setMotion(value.copyWith(milliseconds: v.round()))),
+-      const MotionPreview(),
+-      TextButton.icon(
+-          onPressed: settings.resetMotion,
+-          icon: const Icon(Icons.restart_alt),
+-          label: const Text('恢復預設動畫設定')),
+-    ]);
++    final enabled =
++        context.select<SettingsProvider, bool>((s) => s.motion.enabled);
++    return SwitchListTile(
++      contentPadding: EdgeInsets.zero,
++      title: const Text('封面展開／縮回動畫'),
++      subtitle: const Text('從點選的封面展開；遵循系統減少動態效果設定。'),
++      value: enabled,
++      onChanged: (value) {
++        final settings = context.read<SettingsProvider>();
++        settings.setMotion(settings.motion.copyWith(enabled: value));
++      },
++    );
+   }
+ }
+-
+-/// Lightweight preview uses the exact same transition and press widgets as app.
+-class MotionPreview extends StatefulWidget {
+-  const MotionPreview({super.key});
+-  @override
+-  State<MotionPreview> createState() => _MotionPreviewState();
+-}
+-
+-class _MotionPreviewState extends State<MotionPreview>
+-    with SingleTickerProviderStateMixin {
+-  late final AnimationController _controller =
+-      AnimationController(vsync: this, value: 1);
+-  MotionSettings? _last;
+-  bool _repeat = false;
+-  @override
+-  void didChangeDependencies() {
+-    super.didChangeDependencies();
+-    final motion = MotionScope.of(context);
+-    if (_last != motion || !TickerMode.of(context)) {
+-      _controller.stop();
+-      _controller.value = 1;
+-      _last = motion;
+-      _repeat = false;
+-    }
+-  }
+-
+-  void _play() {
+-    final motion = MotionScope.of(context);
+-    _controller.stop();
+-    _controller.duration = motion.duration();
+-    if (!motion.enabled) {
+-      _controller.value = 1;
+-      return;
+-    }
+-    if (_repeat) {
+-      _controller.repeat(reverse: true);
+-    } else {
+-      _controller.forward(from: 0);
+-    }
+-  }
+-
+-  @override
+-  void dispose() {
+-    _controller.dispose();
+-    super.dispose();
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final motion = MotionScope.of(context);
+-    return Column(children: [
+-      const Divider(height: 28),
+-      SizedBox(
+-          height: 130,
+-          width: double.infinity,
+-          child: ClipRect(
+-              child: ColoredBox(
+-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+-                  child: Center(
+-                      child: MotionTransition(
+-                          animation: _controller,
+-                          settings: motion,
+-                          child: Card(
+-                              child: Padding(
+-                                  padding: const EdgeInsets.all(16),
+-                                  child: Column(
+-                                      mainAxisSize: MainAxisSize.min,
+-                                      children: [
+-                                        const Text('頁面轉場預覽'),
+-                                        const SizedBox(height: 8),
+-                                        ScaleTransition(
+-                                            scale: motion.enabled &&
+-                                                    motion.press !=
+-                                                        PressMotion.none
+-                                                ? _controller
+-                                                    .drive(CurveTween(
+-                                                        curve: motion.press == PressMotion.spring
+-                                                            ? const GentleSpring()
+-                                                            : motion
+-                                                                .timingCurve))
+-                                                    .drive(Tween(
+-                                                        begin:
+-                                                            motion.press == PressMotion.spring
+-                                                                ? .95
+-                                                                : .97,
+-                                                        end: 1.0))
+-                                                : const AlwaysStoppedAnimation(
+-                                                    1.0),
+-                                            child: SpringPress(
+-                                                onTap: () {},
+-                                                child: const Padding(
+-                                                    padding: EdgeInsets.all(8),
+-                                                    child: Text('點我體驗按壓反饋'))))
+-                                      ])))))))),
+-      Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+-        FilledButton.tonalIcon(
+-            onPressed: _play,
+-            icon: const Icon(Icons.play_arrow),
+-            label: const Text('預覽動畫')),
+-        Row(mainAxisSize: MainAxisSize.min, children: [
+-          Checkbox(
+-              value: _repeat,
+-              onChanged: (v) {
+-                setState(() => _repeat = v ?? false);
+-                if (_repeat) {
+-                  _play();
+-                } else {
+-                  _controller.stop();
+-                  _controller.value = 1;
+-                }
+-              }),
+-          const Text('反覆播放')
+-        ])
+-      ]),
+-    ]);
+-  }
+-}
+-
+-/// A real route preview with a painted, image-free source. No additional ticker.
+-class CoverTransformPreview extends StatefulWidget {
+-  const CoverTransformPreview({super.key});
+-  @override
+-  State<CoverTransformPreview> createState() => _CoverTransformPreviewState();
+-}
+-
+-class _CoverTransformPreviewState extends State<CoverTransformPreview> {
+-  final _cover = GlobalKey<CoverHeroState>();
+-  void _open() {
+-    if (ModalRoute.of(context)?.isCurrent == false) return;
+-    Navigator.of(context).push(DetailRoute<void>(
+-        context: context,
+-        source: _cover.currentState?.origin,
+-        page: Scaffold(
+-            appBar: AppBar(title: const Text('詳情頁動畫預覽')),
+-            body: GridView.count(
+-                crossAxisCount: 3,
+-                padding: const EdgeInsets.all(20),
+-                mainAxisSpacing: 12,
+-                crossAxisSpacing: 12,
+-                children: [
+-                  for (var i = 0; i < 9; i++)
+-                    const Card(
+-                        child: Center(child: Icon(Icons.auto_stories_outlined)))
+-                ]))));
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) => Padding(
+-      padding: const EdgeInsets.symmetric(vertical: 12),
+-      child: Row(children: [
+-        SizedBox(
+-            width: 68,
+-            height: 92,
+-            child: GestureDetector(
+-                onTap: _open,
+-                child: CoverHero(
+-                    key: _cover,
+-                    tag: 'container_preview',
+-                    identity: 'preview',
+-                    builder: (_) => Material(
+-                        color: Theme.of(context).colorScheme.primaryContainer,
+-                        borderRadius: BorderRadius.circular(16),
+-                        child: const Center(
+-                            child: Icon(Icons.menu_book_rounded, size: 32)))))),
+-        const SizedBox(width: 12),
+-        const Expanded(child: Text('點擊示意封面預覽展開；返回時縮回。\n不載入漫畫圖片。')),
+-      ]));
+-}
+--- before/lib/widgets/reader_controls_transition.dart
++++ lib/widgets/reader_controls_transition.dart
+@@ -1,6 +1,4 @@
+ import 'package:flutter/material.dart';
+-import '../core/constants.dart';
+-import '../core/motion.dart';
+ 
+ /// Paint-only motion: the controls keep a stable layout while sliding entirely
+ /// outside the viewport, including large text and system safe areas.
+@@ -21,9 +19,8 @@
+           excluding: !visible,
+           child: AnimatedSlide(
+             offset: visible ? Offset.zero : Offset(0, fromTop ? -1 : 1),
+-            duration: AppConstants.motionDuration(
+-                context, AppConstants.controlsDuration),
+-            curve: MotionScope.of(context).timingCurve,
++            duration: Duration.zero,
++            curve: Curves.linear,
+             child: TickerMode(enabled: visible, child: child),
+           ),
+         ),
+--- before/lib/widgets/retained_motion_tabs.dart
++++ lib/widgets/retained_motion_tabs.dart
+@@ -1,66 +1,16 @@
+ import 'package:flutter/material.dart';
+-import '../core/motion.dart';
+ 
+-/// Both pages keep their Elements/scroll positions. Only the destination paints
+-/// and ticks. A single controller restarts on the latest selection; no outgoing
+-/// page queue, duplicate keys, or repeated image loading.
+-class RetainedMotionTabs extends StatefulWidget {
++/// Switch immediately while retaining both pages and their scroll positions.
++class RetainedMotionTabs extends StatelessWidget {
+   const RetainedMotionTabs(
+       {super.key, required this.index, required this.children});
+   final int index;
+   final List<Widget> children;
+   @override
+-  State<RetainedMotionTabs> createState() => _RetainedMotionTabsState();
++  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
++        for (var i = 0; i < children.length; i++)
++          Offstage(
++              offstage: i != index,
++              child: TickerMode(enabled: i == index, child: children[i]))
++      ]);
+ }
+-
+-class _RetainedMotionTabsState extends State<RetainedMotionTabs>
+-    with SingleTickerProviderStateMixin {
+-  late final AnimationController _controller =
+-      AnimationController(vsync: this, value: 1);
+-  @override
+-  void didUpdateWidget(RetainedMotionTabs oldWidget) {
+-    super.didUpdateWidget(oldWidget);
+-    if (oldWidget.index != widget.index) {
+-      final motion = MotionScope.of(context);
+-      _controller.stop();
+-      _controller.duration = motion.duration();
+-      if (!motion.enabled || motion.page == PageMotion.none) {
+-        _controller.value = 1;
+-      } else {
+-        _controller.forward(from: 0);
+-      }
+-    }
+-  }
+-
+-  @override
+-  void didChangeDependencies() {
+-    super.didChangeDependencies();
+-    final motion = MotionScope.of(context);
+-    if (!motion.enabled || motion.page == PageMotion.none) {
+-      _controller.stop();
+-      _controller.value = 1;
+-    }
+-  }
+-
+-  @override
+-  void dispose() {
+-    _controller.dispose();
+-    super.dispose();
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final motion = MotionScope.of(context);
+-    return Stack(fit: StackFit.expand, children: [
+-      for (var i = 0; i < widget.children.length; i++)
+-        Offstage(
+-            offstage: i != widget.index,
+-            child: TickerMode(
+-                enabled: i == widget.index,
+-                child: MotionTransition(
+-                    animation: _controller,
+-                    settings: motion,
+-                    child: widget.children[i])))
+-    ]);
+-  }
+-}
+--- before/lib/widgets/smooth_input_dialog.dart
++++ lib/widgets/smooth_input_dialog.dart
+@@ -1,8 +1,6 @@
+ // lib/widgets/smooth_input_dialog.dart
+ import 'package:flutter/material.dart';
+ import '../core/strings.dart';
+-import '../core/motion.dart';
+-import '../core/constants.dart'; // 🌟 引入動畫常數
+ 
+ class SmoothInputDialog extends StatefulWidget {
+   final String title;
+@@ -16,8 +14,6 @@
+ 
+   static Future<String?> show(BuildContext context,
+       {required String title, String initialText = ''}) {
+-    final duration =
+-        AppConstants.motionDuration(context, AppConstants.dialogDuration);
+     return Navigator.of(context, rootNavigator: true).push<String>(
+       _InputDialogRoute(
+         settings: const RouteSettings(name: 'smooth_input'),
+@@ -25,18 +21,11 @@
+         barrierLabel:
+             MaterialLocalizations.of(context).modalBarrierDismissLabel,
+         barrierColor: Colors.black54,
+-        transitionDuration: duration,
++        transitionDuration: Duration.zero,
+         pageBuilder: (ctx, anim1, anim2) =>
+             SmoothInputDialog(title: title, initialText: initialText),
+-        transitionBuilder: (ctx, animation, secondary, child) {
+-          if (MediaQuery.disableAnimationsOf(ctx)) return child;
+-          return MotionTransition(
+-              animation: animation,
+-              settings: MotionScope.of(ctx).copyWith(page: PageMotion.zoomFade),
+-              child: child);
+-        },
+-        reverseDuration: AppConstants.motionDuration(
+-            context, AppConstants.dialogDismissDuration),
++        transitionBuilder: (ctx, animation, secondary, child) => child,
++        reverseDuration: Duration.zero,
+       ),
+     );
+   }
+--- before/lib/widgets/spring_press.dart
++++ lib/widgets/spring_press.dart
+@@ -1,162 +1,27 @@
+-import 'dart:async';
+ import 'package:flutter/material.dart';
+-import '../core/constants.dart';
+-import '../core/motion.dart';
+ 
+-/// Owns only press state. The supplied child (including image/Hero) is retained
+-/// across gesture updates; the hit region remains at its unscaled size.
+-class SpringPress extends StatefulWidget {
++/// Immediate gestures with a stable hit region; no press controller or timer.
++/// The name and arguments remain compatible with existing cards and buttons.
++class SpringPress extends StatelessWidget {
+   const SpringPress(
+       {super.key,
+       required this.child,
+       required this.onTap,
+       this.onLongPress,
+       this.suppressMotion = false});
+-  final bool suppressMotion;
+   final Widget child;
+   final VoidCallback onTap;
+   final VoidCallback? onLongPress;
+-
++  final bool suppressMotion;
+   @override
+-  State<SpringPress> createState() => _SpringPressState();
++  Widget build(BuildContext context) => GestureDetector(
++        behavior: HitTestBehavior.opaque,
++        onTap: () {
++          if (!TickerMode.of(context) ||
++              ModalRoute.of(context)?.isCurrent == false) return;
++          onTap();
++        },
++        onLongPress: onLongPress,
++        child: child,
++      );
+ }
+-
+-class _SpringPressState extends State<SpringPress> {
+-  bool _pressed = false;
+-  bool _snap = false;
+-  int? _pointer;
+-  Timer? _releaseTimer;
+-  bool _minimumElapsed = false;
+-  bool _releasePending = false;
+-
+-  @override
+-  void didChangeDependencies() {
+-    super.didChangeDependencies();
+-    if (widget.suppressMotion ||
+-        !TickerMode.of(context) ||
+-        (!MotionScope.of(context).enabled ||
+-            MotionScope.of(context).press == PressMotion.none)) {
+-      // Hidden/disabled animations must not resume a held or half-scaled card.
+-      // This is a lifecycle reset, never a consequence of Navigator.push.
+-      _reset();
+-    }
+-  }
+-
+-  void _reset() {
+-    _releaseTimer?.cancel();
+-    _releaseTimer = null;
+-    _minimumElapsed = false;
+-    _releasePending = false;
+-    _pressed = false;
+-    _pointer = null;
+-    _snap = true;
+-  }
+-
+-  @override
+-  void dispose() {
+-    _releaseTimer?.cancel();
+-    super.dispose();
+-  }
+-
+-  void _release(PointerEvent event) {
+-    if (event.pointer != _pointer) return;
+-    _pointer = null;
+-    _press(false);
+-  }
+-
+-  void _press(bool value) {
+-    if (value) {
+-      _releaseTimer?.cancel();
+-      _minimumElapsed = false;
+-      _releasePending = false;
+-      _releaseTimer = Timer(AppConstants.pressMinDuration, () {
+-        _releaseTimer = null;
+-        _minimumElapsed = true;
+-        if (_releasePending) _finishRelease();
+-      });
+-      setState(() {
+-        _pressed = true;
+-        _snap = false;
+-      });
+-    } else if (_pressed) {
+-      if (!_minimumElapsed) {
+-        // Delay only the visual release for very short taps. onTap is immediate.
+-        _releasePending = true;
+-      } else {
+-        _finishRelease();
+-      }
+-    }
+-  }
+-
+-  void _finishRelease() {
+-    _releaseTimer?.cancel();
+-    _releaseTimer = null;
+-    _releasePending = false;
+-    if (!mounted) return;
+-    setState(() {
+-      _pressed = false;
+-      _snap = false;
+-    });
+-  }
+-
+-  void _cancelPress() {
+-    // Losing the tap arena to scrolling/dragging should not bounce under it.
+-    setState(_reset);
+-  }
+-
+-  void _tap() {
+-    _press(false);
+-    // A second pending pointer must not push another route behind the first.
+-    if (!TickerMode.of(context) || ModalRoute.of(context)?.isCurrent == false) {
+-      return;
+-    }
+-    widget.onTap();
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final motion = MotionScope.of(context);
+-    final reduced = widget.suppressMotion ||
+-        (!MotionScope.of(context).enabled ||
+-            MotionScope.of(context).press == PressMotion.none);
+-    return Listener(
+-        onPointerDown: (event) {
+-          if (_pointer != null || !TickerMode.of(context) || reduced) return;
+-          _pointer = event.pointer;
+-          _press(true);
+-        },
+-        onPointerUp: _release,
+-        onPointerCancel: (event) {
+-          if (event.pointer == _pointer) _cancelPress();
+-        },
+-        child: GestureDetector(
+-          behavior: HitTestBehavior.opaque,
+-          onTapCancel: _cancelPress,
+-          onTap: _tap,
+-          onLongPress: widget.onLongPress == null
+-              ? null
+-              : () {
+-                  _press(false);
+-                  widget.onLongPress!();
+-                },
+-          onLongPressEnd:
+-              widget.onLongPress == null ? null : (_) => _press(false),
+-          child: AnimatedScale(
+-            scale: !reduced && _pressed
+-                ? (motion.press == PressMotion.spring ? .95 : .97)
+-                : 1,
+-            duration: reduced || _snap
+-                ? Duration.zero
+-                : _pressed
+-                    ? motion.duration(.32)
+-                    : motion.duration(
+-                        motion.press == PressMotion.spring ? .8 : .48),
+-            curve: !_pressed && motion.press == PressMotion.spring
+-                ? const GentleSpring()
+-                : motion.timingCurve,
+-            // GestureDetector, outside the transform, owns the stable hit region.
+-            child: widget.child,
+-          ),
+-        ));
+-  }
+-}
+--- before/test/cover_container_test.dart
++++ test/cover_container_test.dart
+@@ -36,9 +36,9 @@
+ void main() {
+   test('detail preference persists, unknown and old values keep page behavior',
+       () async {
+-    expect(MotionSettings.fromJson({}).detail, DetailMotion.followPage);
++    expect(MotionSettings.fromJson({}).detail, DetailMotion.containerTransform);
+     expect(MotionSettings.fromJson({'detail': 'future'}).detail,
+-        DetailMotion.followPage);
++        DetailMotion.containerTransform);
+     SharedPreferences.setMockInitialValues({});
+     final settings = SettingsProvider();
+     settings.setMotion(
+@@ -242,13 +242,8 @@
+     expect(find.byType(Hero), findsNothing); // Detail disables hero flights.
+     nav.currentState!.pop();
+     await tester.pumpAndSettle();
+-    expect(
+-        tester
+-            .widgetList<Hero>(find.byType(Hero))
+-            .map((h) => h.tag)
+-            .toSet()
+-            .length,
+-        2);
++    expect(find.byType(Hero), findsNothing);
++    expect(find.byType(BookCard), findsNWidgets(2));
+     expect(tester.takeException(), isNull);
+   });
+ 
+@@ -569,7 +564,8 @@
+   });
+ 
+   for (final reduced in [false, true]) {
+-    testWidgets('opt in only and reduced motion=$reduced', (tester) async {
++    testWidgets('legacy selection still uses cover; reduced motion=$reduced',
++        (tester) async {
+       late BuildContext home;
+       var captures = 0;
+       final origin = CoverOrigin(
+@@ -594,8 +590,8 @@
+                   })))));
+       final route = DetailRoute<void>(
+           context: home, source: origin, page: const SizedBox());
+-      expect(route.hasCoverTransform, isFalse);
+-      expect(captures, 0);
++      expect(route.hasCoverTransform, !reduced);
++      expect(captures, reduced ? 0 : 1);
+       if (reduced) expect(route.transitionDuration, Duration.zero);
+     });
+   }
+--- before/test/detail_loading_test.dart
++++ test/detail_loading_test.dart
+@@ -1,3 +1,8 @@
++import 'package:gun_book/screens/details/folder_detail_screen.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/cover_origin.dart';
+ import 'dart:async';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_test/flutter_test.dart';
+@@ -21,8 +26,23 @@
+   }
+ }
+ 
++class RefreshDetailDatabase extends DetailDatabase {
++  final changes = StreamController<void>.broadcast();
++  @override
++  Stream<void> get onDatabaseChanged => changes.stream;
++}
++
++class FolderPreviewDatabase extends DetailDatabase {
++  @override
++  Future<List<MangaBook>> fetchFolderBooks(
++          {required String folderId, int limit = 50, int offset = 0}) async =>
++      [
++        MangaBook(id: 'child', title: 'Child', filePaths: ['missing.png'])
++      ];
++}
++
+ void main() {
+-  testWidgets('first row generates before fade completes; other misses wait',
++  testWidgets('cover transition defers thumbnail generation until completed',
+       (tester) async {
+     final db = DetailDatabase();
+     final nav = GlobalKey<NavigatorState>();
+@@ -36,6 +56,11 @@
+     final pages = List.generate(104, (i) => 'missing-$i.png');
+     final route = DetailRoute<void>(
+         context: home,
++        source: CoverOrigin(
++            resolveRect: () => const Rect.fromLTWH(20, 20, 100, 150),
++            captureImage: () => null,
++            radius: 12,
++            color: Colors.grey),
+         page: CategoryDetailScreen(
+             category: MangaBook(id: 'early', title: 'Book', filePaths: pages),
+             database: db,
+@@ -44,21 +69,25 @@
+     await tester.pump();
+     await tester.pump(const Duration(milliseconds: 40));
+     expect(route.animation!.isCompleted, isFalse);
+-    final thumbs = tester.widgetList<PageThumbnail>(find.byType(PageThumbnail));
++    expect(find.byType(PageThumbnail),
++        findsNothing); // Includes warm-cache decodes.
+     expect(
+-        thumbs.where((w) => w.priority == 0).every((w) => w.generationEnabled),
+-        isTrue);
+-    expect(thumbs.where((w) => w.priority == 1), isNotEmpty);
+-    expect(
+-        thumbs.where((w) => w.priority == 1).every((w) => !w.generationEnabled),
+-        isTrue);
+-    expect(thumbs.every((w) => !w.previewOnMiss), isTrue);
++        find.text('1'), findsOneWidget); // Stable grid/labels during expansion.
+     await tester.pumpAndSettle();
+     expect(
+         tester
+             .widgetList<PageThumbnail>(find.byType(PageThumbnail))
+             .every((w) => w.generationEnabled),
+         isTrue);
++    final activeThumbnails =
++        tester.elementList(find.byType(PageThumbnail)).toList();
++    expect(activeThumbnails, isNotEmpty);
++    nav.currentState!.pop();
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 40));
++    expect(tester.elementList(find.byType(PageThumbnail)).toList(),
++        activeThumbnails);
++    await tester.pumpAndSettle();
+     db.requests.single.complete(pages);
+     await tester.pumpWidget(const SizedBox());
+     await tester.pumpAndSettle();
+@@ -66,6 +95,48 @@
+     expect(tester.takeException(), isNull);
+   });
+ 
++  testWidgets('folder cover images wait for expansion and stay on return',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({});
++    final db = FolderPreviewDatabase();
++    final settings = SettingsProvider();
++    final nav = GlobalKey<NavigatorState>();
++    late BuildContext home;
++    await tester.pumpWidget(ChangeNotifierProvider.value(
++        value: settings,
++        child: MaterialApp(
++            navigatorKey: nav,
++            home: Builder(builder: (context) {
++              home = context;
++              return const Scaffold();
++            }))));
++    nav.currentState!.push(DetailRoute<void>(
++        context: home,
++        source: CoverOrigin(
++            resolveRect: () => const Rect.fromLTWH(10, 10, 100, 150),
++            captureImage: () => null,
++            radius: 12,
++            color: Colors.grey),
++        page: FolderDetailScreen(
++            folder: MangaFolder(id: 'folder', title: 'Folder'),
++            database: db,
++            onUpdate: () {})));
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 40));
++    expect(find.byType(PageThumbnail), findsNothing);
++    await tester.pumpAndSettle();
++    final active = tester.elementList(find.byType(PageThumbnail)).toList();
++    expect(active, isNotEmpty);
++    nav.currentState!.pop();
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 40));
++    expect(tester.elementList(find.byType(PageThumbnail)).toList(), active);
++    await tester.pumpAndSettle();
++    await tester.pumpWidget(const SizedBox());
++    settings.dispose();
++    await (await db.database).close();
++    expect(tester.takeException(), isNull);
++  });
+   testWidgets('covered detail stops queued generation and resumes on return',
+       (tester) async {
+     final db = DetailDatabase();
+@@ -97,9 +168,10 @@
+     expect(tester.takeException(), isNull);
+   });
+ 
+-  testWidgets('page labels follow current order without exposing file names',
+-      (tester) async {
+-    final db = DetailDatabase();
++  testWidgets(
++      'page labels update after reorder, deletion and insertion without file names',
++      (tester) async {
++    final db = RefreshDetailDatabase();
+     final book = MangaBook(
+         id: 'labels',
+         title: 'Book title',
+@@ -133,7 +205,34 @@
+     expect(thumbnail.path, 'long-file-c.png');
+     expect(book.filePaths, ['long-file-c.png', 'long-file-a.png']);
+     expect(book.title, 'Book title');
+-    await tester.pumpWidget(const SizedBox());
++    db.changes.add(null);
++    await tester.pump();
++    expect(db.requests.length, 2); // One existing data refresh, no label scans.
++    const inserted = [
++      'new-page.webp',
++      'long-file-a.png',
++      'long-file-c.png',
++      'last.webp'
++    ];
++    db.requests.last.complete(inserted);
++    await tester.pumpAndSettle();
++    for (var i = 0; i < inserted.length; i++) {
++      final label = find.text('${i + 1}');
++      final cell = find
++          .ancestor(of: label, matching: find.byType(GestureDetector))
++          .first;
++      final image =
++          find.descendant(of: cell, matching: find.byType(PageThumbnail));
++      expect(tester.widget<PageThumbnail>(image).path, inserted[i]);
++      expect(
++          tester.getCenter(label).dx, closeTo(tester.getCenter(image).dx, .01));
++      expect(find.text(inserted[i]), findsNothing);
++    }
++    expect(find.text('5'), findsNothing);
++    expect(book.filePaths, inserted);
++
++    await tester.pumpWidget(const SizedBox());
++    await db.changes.close();
+     await (await db.database).close();
+     expect(tester.takeException(), isNull);
+   });
+--- before/test/detail_transition_test.dart
++++ test/detail_transition_test.dart
+@@ -37,8 +37,8 @@
+         context: home, page: const Scaffold(body: Text('Detail')));
+     nav.currentState!.push(route);
+     await tester.pumpAndSettle();
+-    expect(route.transitionDuration, const Duration(milliseconds: 250));
+-    expect(route.reverseTransitionDuration, const Duration(milliseconds: 200));
++    expect(route.transitionDuration, Duration.zero);
++    expect(route.reverseTransitionDuration, Duration.zero);
+     Future<dynamic> event(String name, [double? progress]) async {
+       final result = Completer<dynamic>();
+       await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+@@ -63,12 +63,10 @@
+     await tester.pump();
+     expect(route.popGestureInProgress, isTrue);
+     expect(route.animation!.value, closeTo(.65, .001));
+-    final fade = find
+-        .ancestor(
+-            of: find.text('Detail'), matching: find.byType(FadeTransition))
+-        .first;
+     expect(
+-        tester.widget<FadeTransition>(fade).opacity.value, closeTo(.65, .001));
++        find.ancestor(
++            of: find.text('Detail'), matching: find.byType(FadeTransition)),
++        findsNothing);
+     await event('cancelBackGesture');
+     await tester.pumpAndSettle();
+     expect(route.isCurrent, isTrue);
+@@ -79,8 +77,6 @@
+     await tester.pump();
+     await event('commitBackGesture');
+     await tester.pump();
+-    expect(tester.widget<FadeTransition>(fade).opacity.value,
+-        lessThanOrEqualTo(.301));
+     await tester.pumpAndSettle();
+     expect(find.text('Detail'), findsNothing);
+     expect(find.text('Home'), findsOneWidget);
+--- before/test/hero_motion_test.dart
++++ test/hero_motion_test.dart
+@@ -92,14 +92,9 @@
+           await tester.pumpAndSettle();
+           expect(card, findsOneWidget);
+           expect(
+-              tester
+-                  .widget<ScaleTransition>(find
+-                      .descendant(
+-                          of: card, matching: find.byType(ScaleTransition))
+-                      .first)
+-                  .scale
+-                  .value,
+-              1);
++              find.descendant(of: card, matching: find.byType(ScaleTransition)),
++              findsNothing);
++          expect(find.byType(Hero), findsNothing);
+           expect(tester.takeException(), isNull);
+           await tester.pumpWidget(const SizedBox());
+           await tester.pumpAndSettle();
+--- before/test/motion_settings_test.dart
++++ test/motion_settings_test.dart
+@@ -85,6 +85,28 @@
+     settings.dispose();
+     SettingsProvider().dispose();
+     await Future<void>.delayed(Duration.zero);
++  });
++  testWidgets('legacy effects are inert and scrolling always clamps',
++      (tester) async {
++    const legacy = MotionSettings(
++        page: PageMotion.slide,
++        detail: DetailMotion.followPage,
++        press: PressMotion.spring,
++        curve: MotionCurve.spring,
++        bounce: true,
++        milliseconds: 600);
++    late MotionSettings active;
++    await tester.pumpWidget(MaterialApp(
++        home: MotionScope(
++            settings: legacy,
++            child: Builder(builder: (context) {
++              active = MotionScope.of(context);
++              return const SizedBox();
++            }))));
++    expect(active, const MotionSettings());
++    expect(active.scrollPhysics, isA<ClampingScrollPhysics>());
++    expect(legacy.scrollPhysics, isA<ClampingScrollPhysics>());
++    expect(MotionSettings.fromJson(legacy.toJson()), legacy);
+   });
+   test('spring is damped and has bounded single visible overshoot', () {
+     final samples = [
+@@ -119,11 +141,7 @@
+             in tester.widgetList<FadeTransition>(find.byType(FadeTransition))) {
+           expect(fade.opacity.value, inInclusiveRange(0, 1));
+         }
+-        expect(
+-            route.transitionDuration,
+-            page == PageMotion.none
+-                ? Duration.zero
+-                : const Duration(milliseconds: 150));
++        expect(route.transitionDuration, Duration.zero);
+         nav.currentState!.pop();
+         await tester.pumpAndSettle();
+         expect(find.text('home'), findsOneWidget);
+@@ -238,33 +256,23 @@
+     index.dispose();
+     expect(tester.takeException(), isNull);
+   });
+-  testWidgets('preview repeat, rapid settings and dispose cancel controller',
+-      (tester) async {
++  testWidgets('only cover switch remains and saves safely', (tester) async {
+     SharedPreferences.setMockInitialValues({});
+     final settings = await load();
+     await tester.pumpWidget(ChangeNotifierProvider.value(
+         value: settings,
+-        child: MaterialApp(
+-            home: Consumer<SettingsProvider>(
+-                builder: (_, s, child) => MotionScope(
+-                    settings: s.motion,
+-                    child: const Scaffold(body: MotionPreview()))))));
+-    await tester.tap(find.byType(Checkbox));
+-    await tester.pump();
+-    await tester.pump(const Duration(milliseconds: 80));
+-    for (final page in PageMotion.values) {
+-      settings.setMotion(
+-          settings.motion.copyWith(page: page, curve: MotionCurve.spring));
+-      await tester.pump();
+-      await tester.tap(find.text('預覽動畫'));
+-      await tester.pump(const Duration(milliseconds: 50));
+-    }
+-    settings.setMotion(settings.motion.copyWith(enabled: false));
++        child: const MaterialApp(home: Scaffold(body: MotionSettingsPanel()))));
++    expect(find.byType(ChoiceChip), findsNothing);
++    expect(find.byType(Slider), findsNothing);
++    expect(find.byType(SwitchListTile), findsOneWidget);
++    await tester.tap(find.byType(SwitchListTile));
+     await tester.pumpAndSettle();
++    await settings.flushMotionSettings();
++    final restored = await load();
++    expect(restored.motion.enabled, isFalse);
++    restored.dispose();
+     await tester.pumpWidget(const SizedBox());
+-    await settings.flushMotionSettings();
+     settings.dispose();
+-    expect(tester.takeException(), isNull);
+   });
+   for (final press in PressMotion.values) {
+     testWidgets('press $press obeys selection and releases at rest',
+@@ -281,17 +289,11 @@
+           await tester.startGesture(tester.getCenter(find.byType(SpringPress)));
+       await tester.pump();
+       await tester.pump(const Duration(milliseconds: 100));
+-      expect(
+-          tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+-          switch (press) {
+-            PressMotion.none => 1,
+-            PressMotion.scale => .97,
+-            PressMotion.spring => .95
+-          });
++      expect(find.byType(AnimatedScale), findsNothing);
+       await hold.up();
+       await tester.pumpAndSettle();
+       expect(taps, 1);
+-      expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
++      expect(find.byType(AnimatedScale), findsNothing);
+     });
+   }
+ }
+--- before/test/press_rebound_test.dart
++++ test/press_rebound_test.dart
+@@ -7,14 +7,14 @@
+ import 'package:gun_book/widgets/scale_button.dart';
+ import 'package:gun_book/widgets/spring_press.dart';
+ 
+-double scaleOf(WidgetTester tester, [Finder? press]) => tester
+-    .widget<ScaleTransition>(find
+-        .descendant(
+-            of: press ?? find.byType(SpringPress),
+-            matching: find.byType(ScaleTransition))
+-        .first)
+-    .scale
+-    .value;
++double scaleOf(WidgetTester tester, [Finder? press]) {
++  final target = press ?? find.byType(SpringPress, skipOffstage: false);
++  expect(find.descendant(of: target, matching: find.byType(ScaleTransition)),
++      findsNothing);
++  expect(find.descendant(of: target, matching: find.byType(AnimatedScale)),
++      findsNothing);
++  return 1;
++}
+ 
+ Widget control(String kind, VoidCallback onTap) => SizedBox(
+     width: 110,
+@@ -46,11 +46,11 @@
+             .startGesture(tester.getCenter(find.byType(SpringPress)));
+         await tester.pump();
+         await tester.pump(const Duration(milliseconds: 100));
+-        expect(scaleOf(tester), closeTo(.97, .0001));
++        expect(scaleOf(tester), closeTo(1, .0001));
+         await gesture.up();
+         await tester.pump();
+         expect(taps, 1);
+-        expect(scaleOf(tester), closeTo(.97, .0001)); // no snap to rest
++        expect(scaleOf(tester), closeTo(1, .0001)); // no snap to rest
+         final samples = <double>[];
+         for (var elapsed = 0; elapsed < 280; elapsed += frameMs) {
+           await tester.pump(Duration(milliseconds: frameMs));
+@@ -92,17 +92,9 @@
+     await tester.pump();
+     expect(find.text('Detail', skipOffstage: false), findsOneWidget);
+     await tester.pump(const Duration(milliseconds: 48));
+-    expect(scaleOf(tester), lessThan(1));
++    expect(scaleOf(tester), 1);
+     await tester.pump(const Duration(milliseconds: 120));
+     expect(scaleOf(tester), closeTo(1, .0001));
+-    final sourceContext = tester.element(find.byType(SpringPress));
+-    expect(TickerMode.of(sourceContext), isTrue);
+-    final fade = tester.widget<FadeTransition>(find
+-        .ancestor(
+-            of: find.text('Detail'), matching: find.byType(FadeTransition))
+-        .first);
+-    expect(fade.opacity.value,
+-        inInclusiveRange(0, 1)); // transition opacity remains valid
+     await tester.pumpAndSettle();
+     nav.currentState!.pop();
+     await tester.pumpAndSettle();
+--- before/test/spring_motion_test.dart
++++ test/spring_motion_test.dart
+@@ -38,16 +38,8 @@
+         for (var i = 0; i < 20; i++) {
+           final gesture = await tester.startGesture(tester.getCenter(press));
+           await tester.pump();
+-          // Pointer feedback starts before GestureDetector's 100ms tap timeout.
+-          expect(
+-              tester
+-                  .widget<AnimatedScale>(find.byType(AnimatedScale).first)
+-                  .scale,
+-              reduced ? 1 : AppConstants.pressScale);
++          expect(find.byType(AnimatedScale), findsNothing);
+           await tester.pump(AppConstants.pressDuration);
+-          final scale =
+-              tester.widget<AnimatedScale>(find.byType(AnimatedScale).first);
+-          expect(scale.scale, reduced ? 1 : AppConstants.pressScale);
+           await gesture.up();
+           await tester.pump(const Duration(milliseconds: 15));
+         }
+@@ -60,19 +52,11 @@
+         await tester.pump(const Duration(milliseconds: 120));
+         await cancel.cancel();
+         await tester.pumpAndSettle();
+-        expect(
+-            tester
+-                .widget<AnimatedScale>(find.byType(AnimatedScale).first)
+-                .scale,
+-            1);
++        expect(find.byType(AnimatedScale), findsNothing);
+         await tester.longPress(press);
+         await tester.pumpAndSettle();
+         expect(holds, 1);
+-        expect(
+-            tester
+-                .widget<AnimatedScale>(find.byType(AnimatedScale).first)
+-                .scale,
+-            1);
++        expect(find.byType(AnimatedScale), findsNothing);
+         expect(tester.takeException(), isNull);
+       });
+     }
+@@ -101,7 +85,7 @@
+         await tester.tap(find.text('Open'));
+         await tester.pump();
+         final field = tester.widget<TextField>(find.byType(TextField));
+-        if (!reduced) expect(field.focusNode!.hasFocus, isFalse);
++
+         if (i == 0) {
+           // Dismiss during entrance: no delayed keyboard/focus callback remains.
+           nav.currentState!.pop();

@@ -1,0 +1,428 @@
+[
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_book_20",
+    "frames": 335,
+    "over_8ms": 15,
+    "over_16ms": 0,
+    "max_build_us": 2663,
+    "max_raster_us": 12314,
+    "total_build_us": 374389,
+    "total_raster_us": 1251991,
+    "rss_bytes": 254214144,
+    "image_cache_bytes": 135000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "book_20",
+    "elapsed_ms": 4641,
+    "start_memory": {
+      "rss_bytes": 244596736,
+      "image_cache_bytes": 135000,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 254214144,
+      "image_cache_bytes": 135000,
+      "live_images": 1,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_folder_20",
+    "frames": 338,
+    "over_8ms": 15,
+    "over_16ms": 0,
+    "max_build_us": 3308,
+    "max_raster_us": 13858,
+    "total_build_us": 379548,
+    "total_raster_us": 1357134,
+    "rss_bytes": 255995904,
+    "image_cache_bytes": 173400,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "folder_20",
+    "elapsed_ms": 4637,
+    "start_memory": {
+      "rss_bytes": 254898176,
+      "image_cache_bytes": 173400,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 255995904,
+      "image_cache_bytes": 173400,
+      "live_images": 1,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_dialog_10",
+    "frames": 726,
+    "over_8ms": 14,
+    "over_16ms": 1,
+    "max_build_us": 63667,
+    "max_raster_us": 11317,
+    "total_build_us": 1170818,
+    "total_raster_us": 1978700,
+    "rss_bytes": 280174592,
+    "image_cache_bytes": 173400,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "dialog_10",
+    "elapsed_ms": 9427,
+    "start_memory": {
+      "rss_bytes": 255844352,
+      "image_cache_bytes": 173400,
+      "live_images": 0,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 280174592,
+      "image_cache_bytes": 173400,
+      "live_images": 0,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_reorder_10",
+    "frames": 431,
+    "over_8ms": 74,
+    "over_16ms": 10,
+    "max_build_us": 50751,
+    "max_raster_us": 12253,
+    "total_build_us": 951399,
+    "total_raster_us": 2914542,
+    "rss_bytes": 277544960,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "reorder_10",
+    "elapsed_ms": 7930,
+    "start_memory": {
+      "rss_bytes": 276570112,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 277544960,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_merge_folder",
+    "frames": 72,
+    "over_8ms": 22,
+    "over_16ms": 1,
+    "max_build_us": 17978,
+    "max_raster_us": 13664,
+    "total_build_us": 146883,
+    "total_raster_us": 516040,
+    "rss_bytes": 279240704,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "merge_folder",
+    "elapsed_ms": 1671,
+    "start_memory": {
+      "rss_bytes": 276942848,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 279240704,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_normal_scroll",
+    "frames": 210,
+    "over_8ms": 42,
+    "over_16ms": 6,
+    "max_build_us": 39939,
+    "max_raster_us": 9319,
+    "total_build_us": 1184419,
+    "total_raster_us": 1068060,
+    "rss_bytes": 284688384,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": false,
+    "scenario": "scroll",
+    "elapsed_ms": 3298,
+    "start_memory": {
+      "rss_bytes": 278155264,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 284688384,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "spring_actions",
+    "revision": "after",
+    "reduced": false,
+    "sorts": 10,
+    "merges": 1
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_book_20",
+    "frames": 40,
+    "over_8ms": 0,
+    "over_16ms": 0,
+    "max_build_us": 2799,
+    "max_raster_us": 7272,
+    "total_build_us": 50358,
+    "total_raster_us": 196345,
+    "rss_bytes": 281616384,
+    "image_cache_bytes": 308400,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "book_20",
+    "elapsed_ms": 4647,
+    "start_memory": {
+      "rss_bytes": 280588288,
+      "image_cache_bytes": 308400,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 281616384,
+      "image_cache_bytes": 308400,
+      "live_images": 1,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_folder_20",
+    "frames": 40,
+    "over_8ms": 0,
+    "over_16ms": 0,
+    "max_build_us": 2551,
+    "max_raster_us": 6063,
+    "total_build_us": 42180,
+    "total_raster_us": 197230,
+    "rss_bytes": 282738688,
+    "image_cache_bytes": 308400,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "folder_20",
+    "elapsed_ms": 4650,
+    "start_memory": {
+      "rss_bytes": 281960448,
+      "image_cache_bytes": 308400,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 282738688,
+      "image_cache_bytes": 308400,
+      "live_images": 1,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_dialog_10",
+    "frames": 597,
+    "over_8ms": 7,
+    "over_16ms": 1,
+    "max_build_us": 39346,
+    "max_raster_us": 7318,
+    "total_build_us": 986135,
+    "total_raster_us": 1281854,
+    "rss_bytes": 297828352,
+    "image_cache_bytes": 308400,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "dialog_10",
+    "elapsed_ms": 9406,
+    "start_memory": {
+      "rss_bytes": 282824704,
+      "image_cache_bytes": 308400,
+      "live_images": 0,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 297828352,
+      "image_cache_bytes": 308400,
+      "live_images": 0,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_reorder_10",
+    "frames": 185,
+    "over_8ms": 44,
+    "over_16ms": 10,
+    "max_build_us": 45737,
+    "max_raster_us": 12316,
+    "total_build_us": 652893,
+    "total_raster_us": 1304964,
+    "rss_bytes": 291942400,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "reorder_10",
+    "elapsed_ms": 7965,
+    "start_memory": {
+      "rss_bytes": 301735936,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 291942400,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_merge_folder",
+    "frames": 39,
+    "over_8ms": 6,
+    "over_16ms": 1,
+    "max_build_us": 32495,
+    "max_raster_us": 16343,
+    "total_build_us": 97815,
+    "total_raster_us": 268702,
+    "rss_bytes": 293744640,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "merge_folder",
+    "elapsed_ms": 1671,
+    "start_memory": {
+      "rss_bytes": 291766272,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 293744640,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "frames",
+    "screen": "spring_after_reduced_scroll",
+    "frames": 204,
+    "over_8ms": 47,
+    "over_16ms": 7,
+    "max_build_us": 28452,
+    "max_raster_us": 12776,
+    "total_build_us": 1145451,
+    "total_raster_us": 1080737,
+    "rss_bytes": 282804224,
+    "image_cache_bytes": 308400,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "spring_window",
+    "revision": "after",
+    "reduced": true,
+    "scenario": "scroll",
+    "elapsed_ms": 3287,
+    "start_memory": {
+      "rss_bytes": 292790272,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    },
+    "end_memory": {
+      "rss_bytes": 282804224,
+      "image_cache_bytes": 308400,
+      "live_images": 2,
+      "pending_images": 0
+    }
+  },
+  {
+    "event": "spring_actions",
+    "revision": "after",
+    "reduced": true,
+    "sorts": 20,
+    "merges": 2
+  },
+  {
+    "event": "spring_complete",
+    "revision": "after"
+  }
+]

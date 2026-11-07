@@ -1,0 +1,97 @@
+// lib/widgets/smooth_input_dialog.dart
+import 'package:flutter/material.dart';
+import '../core/strings.dart';
+import '../core/theme.dart';
+import '../core/constants.dart'; // 🌟 引入動畫常數
+
+class SmoothInputDialog extends StatefulWidget {
+  final String title;
+  final String initialText;
+
+  const SmoothInputDialog({
+    super.key,
+    required this.title,
+    this.initialText = '',
+  });
+
+  static Future<String?> show(BuildContext context, {required String title, String initialText = ''}) {
+    return showGeneralDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54, 
+      // 🌟 統一使用 Normal 動畫節奏
+      transitionDuration: AppConstants.animDurationNormal, 
+      pageBuilder: (ctx, anim1, anim2) => SmoothInputDialog(title: title, initialText: initialText),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        // 🌟 統一使用標準彈出曲線
+        final curve = CurvedAnimation(parent: anim1, curve: AppConstants.animCurveStandard);
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(curve),
+          child: FadeTransition(
+            opacity: curve,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  State<SmoothInputDialog> createState() => _SmoothInputDialogState();
+}
+
+class _SmoothInputDialogState extends State<SmoothInputDialog> {
+  late TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+
+    Future.delayed(AppConstants.animDurationNormal, () {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      content: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        decoration: const InputDecoration(
+          filled: true,
+          border: OutlineInputBorder(borderSide: BorderSide.none),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppStrings.get('cancel') ?? '取消'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('確定', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,610 @@
+import 'package:shared_preferences/shared_preferences.dart';
+// lib/screens/details/category_detail_screen.dart
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:shimmer/shimmer.dart';
+import '../../core/strings.dart';
+import '../../core/utils.dart';
+import '../../core/anim_route.dart';
+import '../../core/perf_log.dart';
+import '../../data/database_helper.dart';
+import '../../data/reading_progress.dart';
+import '../../models/library_item.dart';
+import '../../widgets/app_image.dart';
+import '../../widgets/page_thumbnail.dart';
+import '../reader/manga_reader_screen.dart';
+
+class CategoryDetailScreen extends StatefulWidget {
+  final MangaBook category;
+  final VoidCallback onUpdate;
+  final DatabaseHelper? database;
+
+  const CategoryDetailScreen(
+      {super.key,
+      required this.category,
+      required this.onUpdate,
+      this.database});
+
+  @override
+  State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+}
+
+class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
+  final ValueNotifier<bool> _selModeNotifier = ValueNotifier(false);
+  final ValueNotifier<Set<int>> _selIdxsNotifier = ValueNotifier({});
+
+  DatabaseHelper get _database => widget.database ?? DatabaseHelper.instance;
+  StreamSubscription<void>? _changes;
+  Object? _loadError;
+  int _loadGeneration = 0;
+  bool _mutationBusy = false;
+  bool _openingReader = false;
+  bool _loading = false;
+  late final PerfFrames _frames;
+  static final Set<String> _openedBooks = {};
+  final Stopwatch _openWatch = Stopwatch();
+  final Set<int> _readyThumbs = {};
+  bool _firstThumbLogged = false;
+  bool _firstRowLogged = false;
+  late bool _repeatOpen;
+
+  void _thumbReady(int index) {
+    if (!mounted || !PerfLog.enabled || index >= 4) return;
+    if (!_readyThumbs.add(index)) return;
+    if (!_firstThumbLogged) {
+      _firstThumbLogged = true;
+      PerfLog.event('detail_first_thumbnail', {
+        'elapsed_ms': _openWatch.elapsedMilliseconds,
+        'repeat': _repeatOpen
+      });
+    }
+    final expected = widget.category.filePaths.length.clamp(0, 4);
+    if (!_firstRowLogged && expected > 0 && _readyThumbs.length >= expected) {
+      _firstRowLogged = true;
+      PerfLog.event('detail_first_row', {
+        'elapsed_ms': _openWatch.elapsedMilliseconds,
+        'repeat': _repeatOpen,
+        'count': expected
+      });
+    }
+  }
+
+  List<String> _optimizedPaths = [];
+  String _optimizedCover = '';
+  List<String> _fileNames = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _frames = PerfFrames('detail');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        PerfLog.event('detail_first_frame',
+            {'elapsed_ms': _openWatch.elapsedMilliseconds});
+      }
+    });
+    _repeatOpen = PerfLog.enabled && !_openedBooks.add(widget.category.id);
+    if (PerfLog.enabled) {
+      _openWatch.start();
+      PerfLog.event('detail_open', {'repeat': _repeatOpen});
+    }
+
+    _optimizedCover = widget.category.coverPath ??
+        (widget.category.filePaths.isNotEmpty
+            ? widget.category.filePaths.first
+            : '');
+    _optimizedPaths = List.from(widget.category.filePaths);
+
+    _fileNames =
+        widget.category.filePaths.map((path) => p.basename(path)).toList();
+
+    _changes = _database.onDatabaseChanged.listen((_) => _checkPages());
+    if (widget.category.totalPageCount > 0) {
+      _checkPages();
+    } else {
+      _optimizePaths(widget.category.filePaths);
+    }
+  }
+
+  @override
+  void dispose() {
+    _loadGeneration++;
+    _changes?.cancel();
+    _frames.dispose();
+    _selModeNotifier.dispose();
+    _selIdxsNotifier.dispose();
+    super.dispose();
+  }
+
+  Future<void> _optimizePaths(List<String> pages) async {
+    if (pages.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _optimizedPaths = [];
+          _optimizedCover = '';
+          _fileNames = [];
+          widget.category.filePaths = [];
+          widget.category.totalPageCount = 0;
+          _loading = false;
+        });
+      }
+      return;
+    }
+
+    // Each page falls back to its original; legacy .thumbs can be incomplete.
+    final optimized = List<String>.from(pages);
+
+    String coverResult =
+        widget.category.coverPath ?? (pages.isNotEmpty ? pages.first : '');
+    if (coverResult.isNotEmpty) {
+      final cDir = p.join(p.dirname(coverResult), '.thumbs');
+      final cPath = p.join(cDir, p.basename(coverResult));
+      try {
+        if (await File(cPath).exists()) coverResult = cPath;
+      } catch (_) {}
+    }
+
+    if (mounted) {
+      setState(() {
+        _optimizedPaths = optimized;
+        _optimizedCover = coverResult;
+        widget.category.filePaths = pages;
+        widget.category.totalPageCount = pages.length;
+        _fileNames = pages.map((path) => p.basename(path)).toList();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _checkPages() async {
+    final generation = ++_loadGeneration;
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    final watch = Stopwatch()..start();
+    try {
+      final pages = await _database.getBookPages(widget.category.id);
+      if (!mounted || generation != _loadGeneration) return;
+      PerfLog.event('detail_paths', {
+        'elapsed_ms': watch.elapsedMilliseconds,
+        'count': pages.length,
+        'repeat': _repeatOpen
+      });
+      // Publish data before any legacy-cover filesystem lookup.
+      setState(() {
+        widget.category.filePaths = pages;
+        widget.category.totalPageCount = pages.length;
+        _optimizedPaths = pages;
+        _optimizedCover =
+            widget.category.coverPath ?? (pages.isEmpty ? '' : pages.first);
+        _fileNames = pages.map(p.basename).toList();
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
+      PerfLog.event(
+          'detail_paths_error', {'elapsed_ms': watch.elapsedMilliseconds});
+      setState(() {
+        _loading = false;
+        _loadError = error;
+      });
+    }
+  }
+
+  void _add() async {}
+
+  Future<void> _setCover() async {
+    if (_mutationBusy) return;
+    final idxs = _selIdxsNotifier.value;
+    if (idxs.length != 1) return;
+    final index = idxs.first;
+    if (index < 0 || index >= widget.category.filePaths.length) return;
+    _mutationBusy = true;
+    final newCoverPath = widget.category.filePaths[index];
+    try {
+      await _database.updateCover(widget.category.id, newCoverPath);
+      if (!mounted) return;
+      setState(() {
+        widget.category.coverPath = newCoverPath;
+        _optimizedCover = newCoverPath;
+      });
+      _selModeNotifier.value = false;
+      _selIdxsNotifier.value = {};
+      widget.onUpdate();
+    } catch (error) {
+      if (mounted) context.showSnackBar('設定封面失敗：$error');
+    } finally {
+      _mutationBusy = false;
+    }
+  }
+
+  void _deleteSelected() async {
+    if (_loading || _mutationBusy) return;
+    final paths = _selIdxsNotifier.value
+        .where((i) => i >= 0 && i < widget.category.filePaths.length)
+        .map((i) => widget.category.filePaths[i])
+        .toSet();
+    if (paths.isEmpty) return;
+    _mutationBusy = true;
+    var started = false;
+    try {
+      if (!await DialogUtils.showConfirm(context,
+              title: '確定要刪除這 ${paths.length} 張圖片嗎？') ||
+          !mounted) return;
+      started = true;
+      setState(() => _loading = true);
+      final updated = await _database.deletePages(widget.category.id, paths);
+      if (!mounted) return;
+      widget.category.filePaths = updated.filePaths;
+      widget.category.totalPageCount = updated.totalPageCount;
+      widget.category.lastReadPage = updated.lastReadPage;
+      widget.category.coverPath = updated.coverPath;
+      await _optimizePaths(updated.filePaths);
+      if (!mounted) return;
+      _selModeNotifier.value = false;
+      _selIdxsNotifier.value = {};
+      widget.onUpdate();
+      context.showSnackBar('已移除圖片；未完成的檔案清理會自動重試');
+    } catch (error) {
+      if (mounted) context.showSnackBar('刪除失敗，書籍未變更：$error');
+    } finally {
+      _mutationBusy = false;
+      if (mounted && started) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openReader(int pageIndex) async {
+    if (_openingReader || _loading || widget.category.filePaths.isEmpty) return;
+    _openingReader = true;
+    pageIndex = validPage(pageIndex, widget.category.filePaths.length);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ids = prefs.getStringList('recent_read_book_ids') ?? <String>[];
+      ids.remove(widget.category.id);
+      ids.insert(0, widget.category.id);
+      if (!await prefs.setStringList(
+          'recent_read_book_ids', ids.take(100).toList())) {
+        throw StateError('Recent reading list was not saved');
+      }
+      await _database.incrementReadCount(widget.category.id);
+      if (!mounted) return;
+      await Navigator.push(
+          context,
+          AnimRoute(
+              page: MangaReaderScreen(
+                  book: widget.category, initialPage: pageIndex),
+              type: TransitionType.zoomFade));
+      if (mounted) {
+        setState(() {});
+        widget.onUpdate();
+      }
+    } catch (error) {
+      if (mounted) context.showSnackBar('無法開啟閱讀器：$error');
+    } finally {
+      _openingReader = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final int currentPage = widget.category.lastReadPage + 1;
+    final int totalPages = widget.category.totalPageCount;
+    final displayCover = _optimizedCover;
+
+    return Scaffold(
+      body: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          // 🌟 極致優化：明確給予 400 的預載距離 (約 1~2 排)，讓圖片能提前一點點載入，又不會卡死 IO！
+          cacheExtent: 400,
+          slivers: [
+            ValueListenableBuilder<bool>(
+                valueListenable: _selModeNotifier,
+                builder: (context, selMode, _) {
+                  return ValueListenableBuilder<Set<int>>(
+                      valueListenable: _selIdxsNotifier,
+                      builder: (context, selIdxs, _) {
+                        final bool allSelected = widget
+                                .category.filePaths.isNotEmpty &&
+                            selIdxs.length == widget.category.filePaths.length;
+                        return SliverAppBar(
+                          expandedHeight: 320,
+                          pinned: true,
+                          stretch: true,
+                          actions: selMode
+                              ? [
+                                  if (selIdxs.length == 1)
+                                    IconButton(
+                                        icon: const Icon(Icons.image),
+                                        tooltip: AppStrings.get('set_cover'),
+                                        onPressed: _setCover),
+                                  IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.redAccent),
+                                      tooltip: AppStrings.get('delete'),
+                                      onPressed: _deleteSelected),
+                                  IconButton(
+                                      icon: Icon(allSelected
+                                          ? Icons.deselect
+                                          : Icons.select_all),
+                                      onPressed: () => _selIdxsNotifier.value =
+                                          allSelected
+                                              ? {}
+                                              : Set.from(List.generate(
+                                                  widget.category.filePaths
+                                                      .length,
+                                                  (i) => i))),
+                                  IconButton(
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () {
+                                        _selModeNotifier.value = false;
+                                        _selIdxsNotifier.value = {};
+                                      })
+                                ]
+                              : [
+                                  IconButton(
+                                      icon:
+                                          const Icon(Icons.add_photo_alternate),
+                                      onPressed: _add),
+                                  IconButton(
+                                      icon: const Icon(Icons.checklist),
+                                      onPressed: () =>
+                                          _selModeNotifier.value = true)
+                                ],
+                          flexibleSpace: FlexibleSpaceBar(
+                              collapseMode: CollapseMode.parallax,
+                              stretchModes: const [
+                                StretchMode.zoomBackground,
+                                StretchMode.blurBackground
+                              ],
+                              title: Text(widget.category.title,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                            color: Colors.black54,
+                                            blurRadius: 4)
+                                      ])),
+                              background:
+                                  Stack(fit: StackFit.expand, children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    if (!selMode)
+                                      _openReader(widget.category.lastReadPage);
+                                  },
+                                  child: Hero(
+                                    tag: 'book_cover_${widget.category.id}',
+                                    transitionOnUserGestures: true,
+                                    child: displayCover.isNotEmpty
+                                        ? AppImage(
+                                            path: displayCover,
+                                            fit: BoxFit.cover,
+                                            cacheWidth: 800)
+                                        : Container(color: Colors.grey),
+                                  ),
+                                ),
+                                Container(
+                                    decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                      Colors.transparent,
+                                      Colors.black.withOpacity(0.7)
+                                    ])))
+                              ])),
+                        );
+                      });
+                }),
+            if (_loadError != null)
+              SliverToBoxAdapter(
+                  child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(children: [
+                        const Text('無法載入漫畫頁面，請重試。'),
+                        TextButton.icon(
+                            onPressed: _checkPages,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('重試')),
+                      ]))),
+            if (_loading && widget.category.filePaths.isEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => Shimmer.fromColors(
+                        baseColor:
+                            isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        highlightColor:
+                            isDark ? Colors.grey[700]! : Colors.grey[100]!,
+                        child: Container(
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12)))),
+                    childCount: 16,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                      childAspectRatio: 1.0),
+                ),
+              )
+            else if (widget.category.filePaths.isEmpty && _loadError == null)
+              const SliverToBoxAdapter(
+                  child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text('這本漫畫尚無頁面'))))
+            else
+              SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+                  sliver: SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (_, i) {
+                          final path = _optimizedPaths.isNotEmpty &&
+                                  i < _optimizedPaths.length
+                              ? _optimizedPaths[i]
+                              : widget.category.filePaths[i];
+                          final fileName =
+                              i < _fileNames.length ? _fileNames[i] : "";
+
+                          return _BookPageGridItem(
+                            index: i,
+                            onImageReady:
+                                PerfLog.enabled ? () => _thumbReady(i) : null,
+                            path: path,
+                            fileName: fileName,
+                            isDark: isDark,
+                            selIdxsNotifier: _selIdxsNotifier,
+                            selModeNotifier: _selModeNotifier,
+                            onTap: () {
+                              if (_selModeNotifier.value) {
+                                final newSet =
+                                    Set<int>.from(_selIdxsNotifier.value);
+                                if (newSet.contains(i)) {
+                                  newSet.remove(i);
+                                } else {
+                                  newSet.add(i);
+                                }
+                                _selIdxsNotifier.value = newSet;
+                              } else {
+                                _openReader(i);
+                              }
+                            },
+                            onLongPress: () {
+                              _selModeNotifier.value = true;
+                              _selIdxsNotifier.value =
+                                  Set<int>.from(_selIdxsNotifier.value)..add(i);
+                            },
+                          );
+                        },
+                        childCount: widget.category.filePaths.length,
+                        addAutomaticKeepAlives: false,
+                        addSemanticIndexes: false,
+                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              crossAxisSpacing: 6,
+                              mainAxisSpacing: 6,
+                              childAspectRatio: 1.0)))
+          ]),
+      floatingActionButton: totalPages > 0 && !_loading
+          ? ValueListenableBuilder<bool>(
+              valueListenable: _selModeNotifier,
+              builder: (context, selMode, child) {
+                if (selMode) return const SizedBox.shrink();
+                return FloatingActionButton.extended(
+                  onPressed: () => _openReader(widget.category.lastReadPage),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  label: Text("繼續閱讀 ( $currentPage / $totalPages )",
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                  icon: const Icon(Icons.play_arrow, color: Colors.white),
+                );
+              })
+          : null,
+    );
+  }
+}
+
+class _BookPageGridItem extends StatelessWidget {
+  final int index;
+  final String path;
+  final String fileName;
+  final VoidCallback? onImageReady;
+  final bool isDark;
+  final ValueNotifier<Set<int>> selIdxsNotifier;
+  final ValueNotifier<bool> selModeNotifier;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _BookPageGridItem({
+    Key? key,
+    required this.index,
+    this.onImageReady,
+    required this.path,
+    required this.fileName,
+    required this.isDark,
+    required this.selIdxsNotifier,
+    required this.selModeNotifier,
+    required this.onTap,
+    required this.onLongPress,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // 🌟 極致優化：強制讓每個網格獨立重繪！
+    // 這樣 1MB 圖片在背景解碼完成「碰」出來的那瞬間，只會重繪這個小方塊，完全不影響旁邊正在滑動的元件！
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: isDark ? const Color(0xFF212121) : const Color(0xFFE0E0E0),
+          ),
+          child: Stack(fit: StackFit.expand, children: [
+            PageThumbnail(path: path, onImageReady: onImageReady),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _GridItemLabel(fileName: fileName),
+            ),
+            ValueListenableBuilder<Set<int>>(
+                valueListenable: selIdxsNotifier,
+                builder: (context, selIdxs, _) {
+                  if (selIdxs.contains(index)) {
+                    return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.check_circle,
+                            color: Colors.blueAccent, size: 32));
+                  }
+                  return const SizedBox.shrink();
+                })
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _GridItemLabel extends StatelessWidget {
+  final String fileName;
+  const _GridItemLabel({Key? key, required this.fileName}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(6.0),
+      child: Text(
+        fileName,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          // 🌟 極致優化：移除了極度耗費 GPU 運算的 blurRadius (高斯模糊陰影)！
+          // 改為使用四個方向的純粹「無模糊位移陰影」，能製造出超完美的文字描邊效果，
+          // 保護文字能看清楚，同時將 GPU 計算負載降到最低，保證絕對滑順！
+          shadows: [
+            Shadow(color: Colors.black87, offset: Offset(1, 1)),
+            Shadow(color: Colors.black87, offset: Offset(-1, -1)),
+            Shadow(color: Colors.black87, offset: Offset(1, -1)),
+            Shadow(color: Colors.black87, offset: Offset(-1, 1)),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center, // 置中對齊看起來會更有質感喔！
+      ),
+    );
+  }
+}

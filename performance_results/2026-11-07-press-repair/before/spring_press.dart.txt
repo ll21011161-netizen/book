@@ -1,0 +1,93 @@
+import 'package:flutter/material.dart';
+import '../core/constants.dart';
+
+/// Owns only press state. The supplied child (including image/Hero) is retained
+/// across gesture updates; the hit region remains at its unscaled size.
+class SpringPress extends StatefulWidget {
+  const SpringPress(
+      {super.key, required this.child, required this.onTap, this.onLongPress});
+  final Widget child;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  State<SpringPress> createState() => _SpringPressState();
+}
+
+class _SpringPressState extends State<SpringPress> {
+  bool _pressed = false;
+  bool _snap = false;
+  int? _pointer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!TickerMode.of(context)) {
+      _pressed = false;
+      _pointer = null;
+      _snap = true;
+    }
+  }
+
+  void _release(PointerEvent event) {
+    if (event.pointer != _pointer) return;
+    _pointer = null;
+    _press(false);
+  }
+
+  void _press(bool value) {
+    if (_pressed == value && !_snap) return;
+    setState(() {
+      _pressed = value;
+      _snap = false;
+    });
+  }
+
+  void _tap() {
+    _press(false);
+    widget.onTap();
+    // A synchronous route push must measure the resting Hero rect, rather
+    // than the in-flight press transform. No delay is added to navigation.
+    if (mounted && ModalRoute.of(context)?.isCurrent == false) {
+      setState(() => _snap = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    return Listener(
+        onPointerDown: (event) {
+          if (_pointer != null) return;
+          _pointer = event.pointer;
+          _press(true);
+        },
+        onPointerUp: _release,
+        onPointerCancel: _release,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapCancel: () => _press(false),
+          onTap: _tap,
+          onLongPress: widget.onLongPress == null
+              ? null
+              : () {
+                  _press(false);
+                  widget.onLongPress!();
+                },
+          onLongPressEnd:
+              widget.onLongPress == null ? null : (_) => _press(false),
+          child: AnimatedScale(
+            scale: !reduced && _pressed ? AppConstants.pressScale : 1,
+            duration: reduced || _snap
+                ? Duration.zero
+                : _pressed
+                    ? AppConstants.pressDuration
+                    : AppConstants.releaseDuration,
+            curve:
+                _pressed ? AppConstants.pressCurve : AppConstants.springCurve,
+            // GestureDetector, outside the transform, owns the stable hit region.
+            child: widget.child,
+          ),
+        ));
+  }
+}

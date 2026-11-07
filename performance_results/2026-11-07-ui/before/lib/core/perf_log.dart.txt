@@ -1,0 +1,63 @@
+import 'dart:convert';
+import 'dart:developer' as developer;
+import 'dart:io';
+import 'package:flutter/painting.dart';
+import 'package:flutter/scheduler.dart';
+
+/// Opt in with --dart-define=GUNBOOK_PERF=true, preferably in profile mode.
+class PerfLog {
+  static const enabled = bool.fromEnvironment('GUNBOOK_PERF');
+
+  static Map<String, Object> memory() => !enabled
+      ? {}
+      : {
+          'rss_bytes': ProcessInfo.currentRss,
+          'image_cache_bytes':
+              PaintingBinding.instance.imageCache.currentSizeBytes,
+          'live_images': PaintingBinding.instance.imageCache.liveImageCount,
+          'pending_images':
+              PaintingBinding.instance.imageCache.pendingImageCount,
+        };
+
+  static void event(String name, Map<String, Object?> values) {
+    if (!enabled) return;
+    final data = <String, Object?>{'event': name, ...values};
+    developer.Timeline.instantSync('gunbook.$name', arguments: data);
+    // ignore: avoid_print
+    print('GUNBOOK_PERF ${jsonEncode(data)}');
+  }
+}
+
+/// Aggregate only; individual frame logging would itself distort scrolling.
+class PerfFrames {
+  PerfFrames(this.screen) {
+    if (PerfLog.enabled) SchedulerBinding.instance.addTimingsCallback(_record);
+  }
+  final String screen;
+  int _count = 0, _over8 = 0, _over16 = 0, _maxBuild = 0, _maxRaster = 0;
+  void _record(List<FrameTiming> timings) {
+    for (final frame in timings) {
+      _count++;
+      final build = frame.buildDuration.inMicroseconds;
+      final raster = frame.rasterDuration.inMicroseconds;
+      if (build > 8333 || raster > 8333) _over8++;
+      if (build > 16667 || raster > 16667) _over16++;
+      if (build > _maxBuild) _maxBuild = build;
+      if (raster > _maxRaster) _maxRaster = raster;
+    }
+  }
+
+  void dispose() {
+    if (!PerfLog.enabled) return;
+    SchedulerBinding.instance.removeTimingsCallback(_record);
+    PerfLog.event('frames', {
+      'screen': screen,
+      'frames': _count,
+      'over_8ms': _over8,
+      'over_16ms': _over16,
+      'max_build_us': _maxBuild,
+      'max_raster_us': _maxRaster,
+      ...PerfLog.memory()
+    });
+  }
+}

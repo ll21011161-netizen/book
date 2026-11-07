@@ -1,0 +1,152 @@
+// lib/widgets/book_card.dart
+import 'package:flutter/material.dart';
+import '../models/library_item.dart';
+import 'app_image.dart';
+import '../core/theme.dart';
+import '../core/config.dart';
+import '../core/constants.dart';
+
+class BookCard extends StatefulWidget {
+  final MangaBook book;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final bool isSelected;
+  final bool isHovered;
+  final bool cropCover;
+
+  const BookCard({
+    Key? key,
+    required this.book,
+    required this.onTap,
+    required this.onLongPress,
+    this.isSelected = false,
+    this.isHovered = false,
+    this.cropCover = true,
+  }) : super(key: key);
+
+  @override
+  State<BookCard> createState() => _BookCardState();
+}
+
+class _BookCardState extends State<BookCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // 保留進度計算，用來判斷是否顯示「已看完」的打勾圖示
+    final double progress = widget.book.totalPageCount > 0
+        ? (widget.book.lastReadPage + 1) / widget.book.totalPageCount
+        : 0.0;
+    final bool isCompleted = progress >= 1.0;
+
+    return RepaintBoundary(
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: AppConstants.animDurationFast,
+        curve: AppConstants.animCurveStandard,
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) => setState(() => _isPressed = false),
+          onTapCancel: () => setState(() => _isPressed = false),
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Hero(
+                      tag: 'book_cover_${widget.book.id}',
+                      transitionOnUserGestures: true,
+                      child: ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.cornerRadius),
+                        child: Material(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHigh,
+                          child: AppImage(
+                            path: widget.book.coverPath,
+                            fit: widget.cropCover
+                                ? BoxFit.cover
+                                : BoxFit.contain,
+                            cacheWidth: AppConfig.thumbnailCacheWidth,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // 🌟 已經把這裡原本的進度條 (Progress Bar) 溫柔地移除了喔！
+
+                    if (widget.isHovered)
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.cornerRadius),
+                          border: Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 3),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.2),
+                        ),
+                      ),
+                    if (widget.isSelected)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.4),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.cornerRadius),
+                          border: Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2),
+                        ),
+                        child: Center(
+                            child: Icon(Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 32)),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 36,
+                child: Text(
+                  widget.book.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.25,
+                      color: Theme.of(context).textTheme.bodyLarge?.color),
+                ),
+              ),
+              SizedBox(
+                height: 16,
+                child: Row(
+                  children: [
+                    Text("${widget.book.totalPageCount} 頁",
+                        style: TextStyle(
+                            fontSize: 11,
+                            color:
+                                Theme.of(context).textTheme.bodySmall?.color)),
+                    const Spacer(),
+                    // 🌟 已經把原本的百分比文字移除了，只保留看完時的溫馨小勾勾！
+                    if (isCompleted)
+                      const Icon(Icons.check_circle,
+                          size: 12, color: Colors.greenAccent),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,52 @@
+﻿# Flutter / Dart
+**/.dart_tool/
+**/build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Codex Git backup
+/.baseline-git/
+
+# Android
+**/.gradle/
+android/local.properties
+android/key.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.vs/
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+*.old
+*.swp
+
+# Private files
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.p8
+*.key
+
+# Manga archives
+*.cbz
+*.cbr
+*.zip
+*.rar
+*.7z
+
+# Windows
+Thumbs.db
+Desktop.ini

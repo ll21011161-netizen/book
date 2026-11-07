@@ -1,0 +1,257 @@
+{
+  "desktop_bookshelf_before": {
+    "false": {
+      "time_us": {
+        "n": 5,
+        "median": 3749,
+        "min": 2513,
+        "max": 8866
+      },
+      "queries": {
+        "n": 5,
+        "median": 51,
+        "min": 51,
+        "max": 51
+      }
+    },
+    "true": {
+      "time_us": {
+        "n": 5,
+        "median": 2614,
+        "min": 2144,
+        "max": 5064
+      },
+      "queries": {
+        "n": 5,
+        "median": 51,
+        "min": 51,
+        "max": 51
+      }
+    }
+  },
+  "desktop_bookshelf_after": {
+    "false": {
+      "time_us": {
+        "n": 5,
+        "median": 3607,
+        "min": 3162,
+        "max": 7399
+      },
+      "queries": {
+        "n": 5,
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    },
+    "true": {
+      "time_us": {
+        "n": 5,
+        "median": 2712,
+        "min": 2637,
+        "max": 2919
+      },
+      "queries": {
+        "n": 5,
+        "median": 2,
+        "min": 2,
+        "max": 2
+      }
+    }
+  },
+  "desktop_cover_component": {
+    "original": {
+      "n": 5,
+      "median": 95254,
+      "min": 88064,
+      "max": 112455
+    },
+    "cold": {
+      "n": 5,
+      "median": 372862,
+      "min": 365654,
+      "max": 399544
+    },
+    "disk": {
+      "n": 5,
+      "median": 9562,
+      "min": 8933,
+      "max": 10966
+    },
+    "deferred": {
+      "n": 5,
+      "median": 118954,
+      "min": 86326,
+      "max": 125667
+    }
+  },
+  "desktop_thumbnail_workers": {
+    "1": {
+      "cold_us": {
+        "n": 3,
+        "median": 846310,
+        "min": 832363,
+        "max": 911041
+      },
+      "disk_us": {
+        "n": 3,
+        "median": 6462,
+        "min": 5881,
+        "max": 9771
+      }
+    },
+    "2": {
+      "cold_us": {
+        "n": 3,
+        "median": 552889,
+        "min": 546096,
+        "max": 589051
+      },
+      "disk_us": {
+        "n": 3,
+        "median": 6271,
+        "min": 5376,
+        "max": 6594
+      }
+    }
+  },
+  "pixel_queries_before": {
+    "n": 5,
+    "median": 148248,
+    "min": 109397,
+    "max": 155197
+  },
+  "pixel_queries_after": {
+    "n": 5,
+    "median": 176196,
+    "min": 136399,
+    "max": 376660
+  },
+  "pixel_headless_cover_component": {
+    "original": {
+      "n": 5,
+      "median": 1729395,
+      "min": 1351034,
+      "max": 1791145
+    },
+    "cold": {
+      "n": 5,
+      "median": 5371084,
+      "min": 4414117,
+      "max": 5456825
+    },
+    "disk": {
+      "n": 5,
+      "median": 117300,
+      "min": 72876,
+      "max": 120864
+    }
+  },
+  "pixel_headless_deferred": {
+    "n": 5,
+    "median": 1702535,
+    "min": 1397240,
+    "max": 1786033
+  },
+  "pixel_headless_reader": {
+    "1": {
+      "elapsed_us": {
+        "n": 5,
+        "median": 2546615,
+        "min": 1768340,
+        "max": 2563099
+      },
+      "median_queue_us": {
+        "n": 5,
+        "median": 1262152,
+        "min": 714520,
+        "max": 1284956
+      },
+      "max_queue_us": {
+        "n": 5,
+        "median": 2236314,
+        "min": 1464236,
+        "max": 2240027
+      },
+      "rss_bytes": {
+        "n": 5,
+        "median": 311627776,
+        "min": 310374400,
+        "max": 316055552
+      }
+    },
+    "2": {
+      "elapsed_us": {
+        "n": 5,
+        "median": 1180743,
+        "min": 1003328,
+        "max": 1203470
+      },
+      "median_queue_us": {
+        "n": 5,
+        "median": 577210,
+        "min": 497459,
+        "max": 597017
+      },
+      "max_queue_us": {
+        "n": 5,
+        "median": 900556,
+        "min": 766798,
+        "max": 903555
+      },
+      "rss_bytes": {
+        "n": 5,
+        "median": 370094080,
+        "min": 336003072,
+        "max": 371032064
+      }
+    }
+  },
+  "pixel_ui_events": {
+    "bookshelf_query": 0,
+    "bookshelf_first_frame": 0,
+    "detail_paths": 0,
+    "detail_first_thumbnail": 0,
+    "detail_first_row": 0,
+    "reader_decode": 0,
+    "reader_visible": 0,
+    "frames": 0,
+    "bench_complete": 0,
+    "bench_failed": 0
+  },
+  "local_import": {
+    "total_ms": {
+      "n": 3,
+      "median": 86,
+      "min": 84,
+      "max": 118
+    },
+    "notifications": {
+      "n": 3,
+      "median": 3,
+      "min": 3,
+      "max": 3
+    }
+  },
+  "pixel_matched_queries": {
+    "before": {
+      "n": 10,
+      "median": 186849.0,
+      "min": 108572,
+      "max": 1244562
+    },
+    "after": {
+      "n": 10,
+      "median": 74220.5,
+      "min": 54783,
+      "max": 138748
+    },
+    "reduction_percent": 60.28
+  },
+  "notes": [
+    "All times are component measurements, not first-visible times or FPS.",
+    "Unpaired Pixel query runs differ in startup and lock state; use pixel_matched_queries for comparison.",
+    "The phone remained locked; UI events and peak memory were not measured.",
+    "RSS values are end-of-batch samples, not peaks; codecs in the reader experiment dispose frames immediately."
+  ]
+}

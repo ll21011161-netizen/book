@@ -1,0 +1,22 @@
+[
+  "lib\\core\\anim_route.dart",
+  "lib\\core\\constants.dart",
+  "lib\\core\\perf_log.dart",
+  "lib\\main.dart",
+  "lib\\screens\\bookshelf\\bookshelf_screen.dart",
+  "lib\\screens\\bookshelf\\search_delegate.dart",
+  "lib\\screens\\details\\category_detail_screen.dart",
+  "lib\\screens\\reader\\manga_reader_screen.dart",
+  "lib\\screens\\reader\\reader_zoom.dart",
+  "lib\\screens\\settings_screen.dart",
+  "lib\\widgets\\book_card.dart",
+  "lib\\widgets\\folder_card.dart",
+  "lib\\widgets\\glass_box.dart",
+  "lib\\widgets\\reader_controls_transition.dart",
+  "lib\\widgets\\scale_button.dart",
+  "test\\hero_motion_test.dart",
+  "test\\navigation_motion_test.dart",
+  "test\\reader_motion_test.dart",
+  "test\\reader_zoom_test.dart",
+  "test\\settings_motion_test.dart"
+]

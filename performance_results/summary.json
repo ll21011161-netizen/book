@@ -1,0 +1,309 @@
+{
+  "import_baseline_small": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "total_ms": 581,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        },
+        {
+          "run": 1,
+          "total_ms": 578,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        },
+        {
+          "run": 2,
+          "total_ms": 544,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        }
+      ],
+      "medians": {
+        "total_ms": 578,
+        "pages": 500,
+        "bytes": 8192000,
+        "notifications": 8
+      }
+    }
+  },
+  "import_current_small": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "total_ms": 582,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        },
+        {
+          "run": 1,
+          "total_ms": 566,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        },
+        {
+          "run": 2,
+          "total_ms": 573,
+          "pages": 500,
+          "bytes": 8192000,
+          "notifications": 8
+        }
+      ],
+      "medians": {
+        "total_ms": 573,
+        "pages": 500,
+        "bytes": 8192000,
+        "notifications": 8
+      }
+    }
+  },
+  "import_baseline_large": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "total_ms": 59,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        },
+        {
+          "run": 1,
+          "total_ms": 31,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        },
+        {
+          "run": 2,
+          "total_ms": 29,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        }
+      ],
+      "medians": {
+        "total_ms": 31,
+        "pages": 4,
+        "bytes": 67108864,
+        "notifications": 3
+      }
+    }
+  },
+  "import_current_large": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "total_ms": 66,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        },
+        {
+          "run": 1,
+          "total_ms": 30,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        },
+        {
+          "run": 2,
+          "total_ms": 26,
+          "pages": 4,
+          "bytes": 67108864,
+          "notifications": 3
+        }
+      ],
+      "medians": {
+        "total_ms": 30,
+        "pages": 4,
+        "bytes": 67108864,
+        "notifications": 3
+      }
+    }
+  },
+  "paths_baseline": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "count": 5000,
+          "cold_us": 12529,
+          "repeat_us": 4245,
+          "queries": 2
+        },
+        {
+          "run": 1,
+          "count": 5000,
+          "cold_us": 3305,
+          "repeat_us": 3069,
+          "queries": 2
+        },
+        {
+          "run": 2,
+          "count": 5000,
+          "cold_us": 2987,
+          "repeat_us": 3493,
+          "queries": 2
+        }
+      ],
+      "medians": {
+        "count": 5000,
+        "cold_us": 3305,
+        "repeat_us": 3493,
+        "queries": 2
+      }
+    }
+  },
+  "paths_current": {
+    "all": {
+      "samples": [
+        {
+          "run": 0,
+          "count": 5000,
+          "cold_us": 11399,
+          "repeat_us": 149,
+          "queries": 1
+        },
+        {
+          "run": 1,
+          "count": 5000,
+          "cold_us": 2970,
+          "repeat_us": 76,
+          "queries": 1
+        },
+        {
+          "run": 2,
+          "count": 5000,
+          "cold_us": 1737,
+          "repeat_us": 21,
+          "queries": 1
+        }
+      ],
+      "medians": {
+        "count": 5000,
+        "cold_us": 2970,
+        "repeat_us": 76,
+        "queries": 1
+      }
+    }
+  },
+  "thumbnail_baseline_final": {
+    "1": {
+      "samples": [
+        {
+          "run": 0,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 964363,
+          "warm_us": 5393,
+          "rss_bytes": 134864896
+        },
+        {
+          "run": 1,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 947647,
+          "warm_us": 5261,
+          "rss_bytes": 137187328
+        },
+        {
+          "run": 2,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 1018552,
+          "warm_us": 5278,
+          "rss_bytes": 141180928
+        }
+      ],
+      "medians": {
+        "workers": 1,
+        "count": 24,
+        "cold_us": 964363,
+        "warm_us": 5278,
+        "rss_bytes": 137187328
+      }
+    }
+  },
+  "thumbnail_workers_validated": {
+    "1": {
+      "samples": [
+        {
+          "run": 0,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 984844,
+          "warm_us": 9388,
+          "rss_bytes": 135147520
+        },
+        {
+          "run": 1,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 946879,
+          "warm_us": 6646,
+          "rss_bytes": 142389248
+        },
+        {
+          "run": 2,
+          "workers": 1,
+          "count": 24,
+          "cold_us": 973981,
+          "warm_us": 5815,
+          "rss_bytes": 144736256
+        }
+      ],
+      "medians": {
+        "workers": 1,
+        "count": 24,
+        "cold_us": 973981,
+        "warm_us": 6646,
+        "rss_bytes": 142389248
+      }
+    },
+    "2": {
+      "samples": [
+        {
+          "run": 0,
+          "workers": 2,
+          "count": 24,
+          "cold_us": 592183,
+          "warm_us": 8114,
+          "rss_bytes": 138633216
+        },
+        {
+          "run": 1,
+          "workers": 2,
+          "count": 24,
+          "cold_us": 581387,
+          "warm_us": 6886,
+          "rss_bytes": 146538496
+        },
+        {
+          "run": 2,
+          "workers": 2,
+          "count": 24,
+          "cold_us": 583329,
+          "warm_us": 5934,
+          "rss_bytes": 142082048
+        }
+      ],
+      "medians": {
+        "workers": 2,
+        "count": 24,
+        "cold_us": 583329,
+        "warm_us": 6886,
+        "rss_bytes": 142082048
+      }
+    }
+  }
+}

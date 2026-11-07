@@ -1,0 +1,6761 @@
+[
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 44307,
+    "encode_us": 9240,
+    "write_validate_us": 2381,
+    "bytes": 5901,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 2592,
+    "elapsed_us": 57322,
+    "success": true,
+    "rss_bytes": 277815296,
+    "image_cache_bytes": 135000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_trim",
+    "remaining_bytes": 1664007
+  },
+  {
+    "event": "detail_bench_fixture",
+    "revision": "expanded_baseline",
+    "pages": 104,
+    "width": 2048,
+    "height": 3072,
+    "refresh_hz": 90.0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 0,
+    "rss_bytes": 244518912,
+    "image_cache_bytes": 135000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": false
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 26289
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 20
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 16935,
+    "kind": "lookup"
+  },
+  {
+    "event": "database_pages_query",
+    "elapsed_us": 27127,
+    "count": 104
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 27,
+    "count": 104,
+    "repeat": false
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 55340,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "lookup"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 150,
+    "repeat": false
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 238,
+    "repeat": false,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 80110,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 43980,
+    "encode_us": 10969,
+    "write_validate_us": 3494,
+    "bytes": 5974,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 79547,
+    "elapsed_us": 79575,
+    "success": true,
+    "rss_bytes": 334540800,
+    "image_cache_bytes": 2835000,
+    "live_images": 5,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_0_enter",
+    "frames": 29,
+    "over_8ms": 6,
+    "over_16ms": 3,
+    "max_build_us": 89655,
+    "max_raster_us": 64557,
+    "total_build_us": 181693,
+    "total_raster_us": 263908,
+    "rss_bytes": 334540800,
+    "image_cache_bytes": 2835000,
+    "live_images": 5,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40770,
+    "encode_us": 8614,
+    "write_validate_us": 2626,
+    "bytes": 5972,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 119668,
+    "elapsed_us": 54023,
+    "success": true,
+    "rss_bytes": 333443072,
+    "image_cache_bytes": 2970000,
+    "live_images": 6,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 33228,
+    "encode_us": 14065,
+    "write_validate_us": 2647,
+    "bytes": 5936,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 174678,
+    "elapsed_us": 51206,
+    "success": true,
+    "rss_bytes": 333746176,
+    "image_cache_bytes": 2970000,
+    "live_images": 6,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 35169,
+    "encode_us": 22800,
+    "write_validate_us": 4659,
+    "bytes": 5932,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 228468,
+    "elapsed_us": 64266,
+    "success": true,
+    "rss_bytes": 321798144,
+    "image_cache_bytes": 2970000,
+    "live_images": 6,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40956,
+    "encode_us": 30291,
+    "write_validate_us": 3571,
+    "bytes": 5939,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 336644,
+    "elapsed_us": 75867,
+    "success": true,
+    "rss_bytes": 296312832,
+    "image_cache_bytes": 2970000,
+    "live_images": 6,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 45489,
+    "encode_us": 22437,
+    "write_validate_us": 2832,
+    "bytes": 5912,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 413554,
+    "elapsed_us": 72603,
+    "success": true,
+    "rss_bytes": 331444224,
+    "image_cache_bytes": 3105000,
+    "live_images": 7,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40086,
+    "encode_us": 26783,
+    "write_validate_us": 6147,
+    "bytes": 5923,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 486721,
+    "elapsed_us": 74840,
+    "success": true,
+    "rss_bytes": 331534336,
+    "image_cache_bytes": 3240000,
+    "live_images": 8,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40389,
+    "encode_us": 31378,
+    "write_validate_us": 3567,
+    "bytes": 5940,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 562927,
+    "elapsed_us": 76773,
+    "success": true,
+    "rss_bytes": 366288896,
+    "image_cache_bytes": 3375000,
+    "live_images": 9,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 36055,
+    "encode_us": 29938,
+    "write_validate_us": 2892,
+    "bytes": 5940,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 639797,
+    "elapsed_us": 70588,
+    "success": true,
+    "rss_bytes": 331841536,
+    "image_cache_bytes": 3510000,
+    "live_images": 10,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37153,
+    "encode_us": 22733,
+    "write_validate_us": 3347,
+    "bytes": 5922,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 712550,
+    "elapsed_us": 64646,
+    "success": true,
+    "rss_bytes": 367067136,
+    "image_cache_bytes": 3645000,
+    "live_images": 11,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 30579,
+    "encode_us": 30399,
+    "write_validate_us": 4032,
+    "bytes": 5918,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 777094,
+    "elapsed_us": 66574,
+    "success": true,
+    "rss_bytes": 367681536,
+    "image_cache_bytes": 3780000,
+    "live_images": 12,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 36354,
+    "encode_us": 23983,
+    "write_validate_us": 4522,
+    "bytes": 5920,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 844356,
+    "elapsed_us": 67022,
+    "success": true,
+    "rss_bytes": 332963840,
+    "image_cache_bytes": 3915000,
+    "live_images": 13,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 35194,
+    "encode_us": 25843,
+    "write_validate_us": 3554,
+    "bytes": 5912,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 913421,
+    "elapsed_us": 66165,
+    "success": true,
+    "rss_bytes": 368340992,
+    "image_cache_bytes": 4050000,
+    "live_images": 14,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37873,
+    "encode_us": 25845,
+    "write_validate_us": 3286,
+    "bytes": 5898,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 980378,
+    "elapsed_us": 68506,
+    "success": true,
+    "rss_bytes": 368746496,
+    "image_cache_bytes": 4185000,
+    "live_images": 15,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 36305,
+    "encode_us": 42339,
+    "write_validate_us": 6159,
+    "bytes": 5921,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 1049901,
+    "elapsed_us": 86257,
+    "success": true,
+    "rss_bytes": 334360576,
+    "image_cache_bytes": 4320000,
+    "live_images": 16,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40420,
+    "encode_us": 28429,
+    "write_validate_us": 4768,
+    "bytes": 5890,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 1136792,
+    "elapsed_us": 75559,
+    "success": true,
+    "rss_bytes": 334471168,
+    "image_cache_bytes": 4455000,
+    "live_images": 17,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 45071,
+    "encode_us": 28568,
+    "write_validate_us": 3428,
+    "bytes": 5926,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 1213627,
+    "elapsed_us": 78538,
+    "success": true,
+    "rss_bytes": 369950720,
+    "image_cache_bytes": 4590000,
+    "live_images": 18,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 51061,
+    "encode_us": 31490,
+    "write_validate_us": 5643,
+    "bytes": 5962,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 1292723,
+    "elapsed_us": 90467,
+    "success": true,
+    "rss_bytes": 370343936,
+    "image_cache_bytes": 4725000,
+    "live_images": 19,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 44286,
+    "encode_us": 23485,
+    "write_validate_us": 6516,
+    "bytes": 5970,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 1385051,
+    "elapsed_us": 125831,
+    "success": true,
+    "rss_bytes": 336293888,
+    "image_cache_bytes": 4860000,
+    "live_images": 20,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 81,
+    "over_8ms": 31,
+    "over_16ms": 5,
+    "max_build_us": 89655,
+    "max_raster_us": 64557,
+    "total_build_us": 308461,
+    "total_raster_us": 720950,
+    "rss_bytes": 300224512,
+    "image_cache_bytes": 4860000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21595,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_0_return",
+    "frames": 27,
+    "over_8ms": 10,
+    "over_16ms": 2,
+    "max_build_us": 45073,
+    "max_raster_us": 20174,
+    "total_build_us": 90927,
+    "total_raster_us": 214155,
+    "rss_bytes": 300072960,
+    "image_cache_bytes": 4860000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 0,
+    "home_scroll": 0.0,
+    "rss_bytes": 300072960,
+    "image_cache_bytes": 4860000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 1,
+    "rss_bytes": 298385408,
+    "image_cache_bytes": 0,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 51436
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 31
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 31,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37296,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34653,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34343,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33979,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33591,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33217,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32691,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32303,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31725,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31294,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30884,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30527,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30018,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29615,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29244,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28772,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28378,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28010,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27163,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24609,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 94,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 132,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 62232,
+    "encode_us": 31436,
+    "write_validate_us": 1787,
+    "bytes": 5937,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 27569,
+    "elapsed_us": 118357,
+    "success": true,
+    "rss_bytes": 284995584,
+    "image_cache_bytes": 2700000,
+    "live_images": 20,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 17489,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 17199,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 45814,
+    "encode_us": 14206,
+    "write_validate_us": 2464,
+    "bytes": 5975,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 17002,
+    "elapsed_us": 68024,
+    "success": true,
+    "rss_bytes": 351780864,
+    "image_cache_bytes": 4995000,
+    "live_images": 22,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_1_enter",
+    "frames": 39,
+    "over_8ms": 11,
+    "over_16ms": 5,
+    "max_build_us": 29605,
+    "max_raster_us": 34273,
+    "total_build_us": 110268,
+    "total_raster_us": 332959,
+    "rss_bytes": 354873344,
+    "image_cache_bytes": 5130000,
+    "live_images": 23,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 49857,
+    "encode_us": 13199,
+    "write_validate_us": 2459,
+    "bytes": 5920,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 85124,
+    "elapsed_us": 66695,
+    "success": true,
+    "rss_bytes": 352776192,
+    "image_cache_bytes": 5130000,
+    "live_images": 23,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 38536,
+    "encode_us": 28227,
+    "write_validate_us": 6160,
+    "bytes": 5929,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 152330,
+    "elapsed_us": 74811,
+    "success": true,
+    "rss_bytes": 341336064,
+    "image_cache_bytes": 5265000,
+    "live_images": 24,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37599,
+    "encode_us": 21243,
+    "write_validate_us": 3589,
+    "bytes": 5877,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 228240,
+    "elapsed_us": 63873,
+    "success": true,
+    "rss_bytes": 341671936,
+    "image_cache_bytes": 5400000,
+    "live_images": 25,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37554,
+    "encode_us": 41542,
+    "write_validate_us": 5194,
+    "bytes": 5906,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 293162,
+    "elapsed_us": 85401,
+    "success": true,
+    "rss_bytes": 338067456,
+    "image_cache_bytes": 5535000,
+    "live_images": 26,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34356,
+    "encode_us": 22699,
+    "write_validate_us": 3376,
+    "bytes": 5925,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 378907,
+    "elapsed_us": 62138,
+    "success": true,
+    "rss_bytes": 312717312,
+    "image_cache_bytes": 5670000,
+    "live_images": 27,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 45317,
+    "encode_us": 29767,
+    "write_validate_us": 4376,
+    "bytes": 5912,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 441496,
+    "elapsed_us": 81508,
+    "success": true,
+    "rss_bytes": 347267072,
+    "image_cache_bytes": 5805000,
+    "live_images": 28,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37744,
+    "encode_us": 22831,
+    "write_validate_us": 4001,
+    "bytes": 5923,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 524191,
+    "elapsed_us": 66317,
+    "success": true,
+    "rss_bytes": 347549696,
+    "image_cache_bytes": 5940000,
+    "live_images": 29,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 42232,
+    "encode_us": 21197,
+    "write_validate_us": 3893,
+    "bytes": 5928,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 590854,
+    "elapsed_us": 68890,
+    "success": true,
+    "rss_bytes": 347709440,
+    "image_cache_bytes": 6075000,
+    "live_images": 30,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 44942,
+    "encode_us": 21618,
+    "write_validate_us": 3456,
+    "bytes": 5943,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 661318,
+    "elapsed_us": 71495,
+    "success": true,
+    "rss_bytes": 347242496,
+    "image_cache_bytes": 6210000,
+    "live_images": 31,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37501,
+    "encode_us": 29693,
+    "write_validate_us": 4088,
+    "bytes": 5929,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 731850,
+    "elapsed_us": 72711,
+    "success": true,
+    "rss_bytes": 382464000,
+    "image_cache_bytes": 6345000,
+    "live_images": 32,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 61792,
+    "encode_us": 20131,
+    "write_validate_us": 2097,
+    "bytes": 5975,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 15539,
+    "elapsed_us": 85030,
+    "success": true,
+    "rss_bytes": 345260032,
+    "image_cache_bytes": 6480000,
+    "live_images": 18,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 38009,
+    "encode_us": 16981,
+    "write_validate_us": 5491,
+    "bytes": 5963,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 95799,
+    "elapsed_us": 61009,
+    "success": true,
+    "rss_bytes": 318754816,
+    "image_cache_bytes": 6480000,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 31397,
+    "encode_us": 9877,
+    "write_validate_us": 1301,
+    "bytes": 5894,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 102286,
+    "elapsed_us": 43013,
+    "success": true,
+    "rss_bytes": 379240448,
+    "image_cache_bytes": 6480000,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 31079,
+    "encode_us": 11256,
+    "write_validate_us": 1493,
+    "bytes": 5926,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 123734,
+    "elapsed_us": 44290,
+    "success": true,
+    "rss_bytes": 388751360,
+    "image_cache_bytes": 6480000,
+    "live_images": 2,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 32011,
+    "encode_us": 25352,
+    "write_validate_us": 3484,
+    "bytes": 5928,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 160403,
+    "elapsed_us": 61909,
+    "success": true,
+    "rss_bytes": 388755456,
+    "image_cache_bytes": 6615000,
+    "live_images": 3,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6122,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 32284,
+    "encode_us": 18230,
+    "write_validate_us": 6900,
+    "bytes": 5878,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 223041,
+    "elapsed_us": 58372,
+    "success": true,
+    "rss_bytes": 323907584,
+    "image_cache_bytes": 6615000,
+    "live_images": 3,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 9338,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 9216,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3611,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3428,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3361,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3309,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4050,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3830,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3697,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3628,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 24875,
+    "encode_us": 27642,
+    "write_validate_us": 1627,
+    "bytes": 5923,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 294489,
+    "elapsed_us": 54801,
+    "success": true,
+    "rss_bytes": 319844352,
+    "image_cache_bytes": 6615000,
+    "live_images": 7,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4479,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4256,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4126,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4032,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4489,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4244,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4125,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4034,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4221,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4018,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3913,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3839,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3093,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2909,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2822,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2744,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 30439,
+    "encode_us": 14952,
+    "write_validate_us": 4747,
+    "bytes": 5929,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2982,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2756,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2679,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2657,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 349367,
+    "elapsed_us": 50724,
+    "success": true,
+    "rss_bytes": 321409024,
+    "image_cache_bytes": 6615000,
+    "live_images": 26,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8048,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7862,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7765,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7720,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34172,
+    "encode_us": 12659,
+    "write_validate_us": 2041,
+    "bytes": 5948,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 124475,
+    "elapsed_us": 49579,
+    "success": true,
+    "rss_bytes": 320487424,
+    "image_cache_bytes": 6615000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 33399,
+    "encode_us": 9132,
+    "write_validate_us": 3401,
+    "bytes": 5877,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 130824,
+    "elapsed_us": 46619,
+    "success": true,
+    "rss_bytes": 319655936,
+    "image_cache_bytes": 6885000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8193,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7457,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6514,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6945,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6211,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 42299,
+    "encode_us": 14201,
+    "write_validate_us": 1573,
+    "bytes": 5926,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 7028,
+    "elapsed_us": 64599,
+    "success": true,
+    "rss_bytes": 334192640,
+    "image_cache_bytes": 6885000,
+    "live_images": 32,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5020,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4833,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 10076,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5359,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5334,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 43737,
+    "encode_us": 11133,
+    "write_validate_us": 5452,
+    "bytes": 5875,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 63760,
+    "elapsed_us": 60710,
+    "success": true,
+    "rss_bytes": 322256896,
+    "image_cache_bytes": 6885000,
+    "live_images": 9,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 33911,
+    "encode_us": 18303,
+    "write_validate_us": 1978,
+    "bytes": 5911,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 124414,
+    "elapsed_us": 54686,
+    "success": true,
+    "rss_bytes": 324038656,
+    "image_cache_bytes": 6885000,
+    "live_images": 3,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37025,
+    "encode_us": 18075,
+    "write_validate_us": 1374,
+    "bytes": 5955,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 127283,
+    "elapsed_us": 56906,
+    "success": true,
+    "rss_bytes": 321773568,
+    "image_cache_bytes": 7425000,
+    "live_images": 7,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 22603,
+    "encode_us": 26073,
+    "write_validate_us": 3094,
+    "bytes": 5891,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 150668,
+    "elapsed_us": 52312,
+    "success": true,
+    "rss_bytes": 354738176,
+    "image_cache_bytes": 7425000,
+    "live_images": 7,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3017,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 30636,
+    "encode_us": 16249,
+    "write_validate_us": 10247,
+    "bytes": 5910,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 203823,
+    "elapsed_us": 58403,
+    "success": true,
+    "rss_bytes": 322445312,
+    "image_cache_bytes": 7560000,
+    "live_images": 8,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8271,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7579,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3691,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3590,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6142,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5853,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5616,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5408,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6291,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6074,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5854,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5941,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34865,
+    "encode_us": 20448,
+    "write_validate_us": 2481,
+    "bytes": 5918,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 286598,
+    "elapsed_us": 65065,
+    "success": true,
+    "rss_bytes": 332988416,
+    "image_cache_bytes": 7560000,
+    "live_images": 10,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4663,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4436,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4321,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4210,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4480,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4312,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4266,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4257,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4850,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4605,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4443,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4338,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 10421,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 10218,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 10088,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 9902,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3862,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3663,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3561,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3456,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4865,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4697,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4642,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4587,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 42672,
+    "encode_us": 16659,
+    "write_validate_us": 2081,
+    "bytes": 5961,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 352731,
+    "elapsed_us": 62031,
+    "success": true,
+    "rss_bytes": 324300800,
+    "image_cache_bytes": 7560000,
+    "live_images": 28,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4768,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4477,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4300,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4170,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 19786,
+    "encode_us": 11808,
+    "write_validate_us": 1792,
+    "bytes": 5904,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 127449,
+    "elapsed_us": 33893,
+    "success": true,
+    "rss_bytes": 327081984,
+    "image_cache_bytes": 7560000,
+    "live_images": 35,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 27741,
+    "encode_us": 8792,
+    "write_validate_us": 1786,
+    "bytes": 5927,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 130350,
+    "elapsed_us": 38746,
+    "success": true,
+    "rss_bytes": 324943872,
+    "image_cache_bytes": 7560000,
+    "live_images": 35,
+    "pending_images": 2
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5324,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4858,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4631,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4592,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4000,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3725,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3403,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3430,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3346,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3289,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3427,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 36154,
+    "encode_us": 13152,
+    "write_validate_us": 5778,
+    "bytes": 5874,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 3596,
+    "elapsed_us": 55973,
+    "success": true,
+    "rss_bytes": 326254592,
+    "image_cache_bytes": 7830000,
+    "live_images": 34,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2700,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2520,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2437,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2379,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3741,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3257,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2990,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2876,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2826,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 31198,
+    "encode_us": 11137,
+    "write_validate_us": 1565,
+    "bytes": 5931,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 48878,
+    "elapsed_us": 44485,
+    "success": true,
+    "rss_bytes": 384659456,
+    "image_cache_bytes": 7830000,
+    "live_images": 24,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 28644,
+    "encode_us": 16201,
+    "write_validate_us": 1764,
+    "bytes": 5909,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 93135,
+    "elapsed_us": 46990,
+    "success": true,
+    "rss_bytes": 357601280,
+    "image_cache_bytes": 7830000,
+    "live_images": 8,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 29818,
+    "encode_us": 12887,
+    "write_validate_us": 1736,
+    "bytes": 5944,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 125524,
+    "elapsed_us": 47182,
+    "success": true,
+    "rss_bytes": 324718592,
+    "image_cache_bytes": 7830000,
+    "live_images": 8,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 28072,
+    "encode_us": 11029,
+    "write_validate_us": 1360,
+    "bytes": 5920,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 123850,
+    "elapsed_us": 41013,
+    "success": true,
+    "rss_bytes": 384831488,
+    "image_cache_bytes": 8370000,
+    "live_images": 11,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 46170,
+    "encode_us": 10898,
+    "write_validate_us": 3353,
+    "bytes": 5916,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 143741,
+    "elapsed_us": 60984,
+    "success": true,
+    "rss_bytes": 384217088,
+    "image_cache_bytes": 8505000,
+    "live_images": 12,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3676,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3942,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3852,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3832,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14034,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6028,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5974,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 33789,
+    "encode_us": 36747,
+    "write_validate_us": 8309,
+    "bytes": 5929,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 205272,
+    "elapsed_us": 79648,
+    "success": true,
+    "rss_bytes": 323575808,
+    "image_cache_bytes": 8640000,
+    "live_images": 14,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5221,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5011,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4883,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4519,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3107,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2938,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2872,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2818,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3768,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3576,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3476,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3419,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3501,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3308,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3216,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3171,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3325,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3065,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2961,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 2906,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4318,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4105,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3996,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3900,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 43913,
+    "encode_us": 16457,
+    "write_validate_us": 1801,
+    "bytes": 5923,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 307772,
+    "elapsed_us": 62709,
+    "success": true,
+    "rss_bytes": 324866048,
+    "image_cache_bytes": 8640000,
+    "live_images": 29,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4203,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3973,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3829,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3691,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4137,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3900,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3669,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3657,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8697,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8515,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8404,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8334,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3602,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3357,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3247,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3184,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34606,
+    "encode_us": 20883,
+    "write_validate_us": 1746,
+    "bytes": 5936,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 117369,
+    "elapsed_us": 57776,
+    "success": true,
+    "rss_bytes": 323149824,
+    "image_cache_bytes": 8640000,
+    "live_images": 37,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 27585,
+    "encode_us": 11195,
+    "write_validate_us": 2545,
+    "bytes": 5946,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 130119,
+    "elapsed_us": 41874,
+    "success": true,
+    "rss_bytes": 325099520,
+    "image_cache_bytes": 8640000,
+    "live_images": 37,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6113,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5455,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5132,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4848,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7804,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7307,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6942,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6569,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8167,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7751,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6966,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4626,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3445,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3329,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3136,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3915,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3488,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5042,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4617,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4265,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3879,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 38198,
+    "encode_us": 15396,
+    "write_validate_us": 2015,
+    "bytes": 5917,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 7319,
+    "elapsed_us": 60417,
+    "success": true,
+    "rss_bytes": 325918720,
+    "image_cache_bytes": 8640000,
+    "live_images": 31,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5448,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5236,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5157,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8737,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8583,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8473,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8409,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4549,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4316,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 42725,
+    "encode_us": 11280,
+    "write_validate_us": 2139,
+    "bytes": 5951,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 57848,
+    "elapsed_us": 57761,
+    "success": true,
+    "rss_bytes": 324997120,
+    "image_cache_bytes": 8640000,
+    "live_images": 18,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 41211,
+    "encode_us": 13293,
+    "write_validate_us": 2993,
+    "bytes": 5941,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 115937,
+    "elapsed_us": 58329,
+    "success": true,
+    "rss_bytes": 326070272,
+    "image_cache_bytes": 8640000,
+    "live_images": 14,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34176,
+    "encode_us": 18448,
+    "write_validate_us": 3199,
+    "bytes": 5935,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 120831,
+    "elapsed_us": 59198,
+    "success": true,
+    "rss_bytes": 385925120,
+    "image_cache_bytes": 9045000,
+    "live_images": 15,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 36839,
+    "encode_us": 18846,
+    "write_validate_us": 2550,
+    "bytes": 5947,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 159151,
+    "elapsed_us": 59115,
+    "success": true,
+    "rss_bytes": 360235008,
+    "image_cache_bytes": 9180000,
+    "live_images": 16,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4285,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3796,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6928,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7047,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6809,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_miss",
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6606,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6272,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6091,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6558,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6244,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6134,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 5929,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 40870,
+    "encode_us": 30766,
+    "write_validate_us": 1517,
+    "bytes": 5936,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 219150,
+    "elapsed_us": 73758,
+    "success": true,
+    "rss_bytes": 324861952,
+    "image_cache_bytes": 9180000,
+    "live_images": 18,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 15271,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 15015,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14724,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14505,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14265,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14092,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 13905,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 13689,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6619,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6020,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6525,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 6027,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7698,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7449,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7263,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7165,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3695,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3463,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3434,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3333,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8418,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8302,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8156,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8138,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4300,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4126,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4069,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 4020,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 34603,
+    "encode_us": 32047,
+    "write_validate_us": 2139,
+    "bytes": 5958,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 283877,
+    "elapsed_us": 74013,
+    "success": true,
+    "rss_bytes": 327385088,
+    "image_cache_bytes": 9180000,
+    "live_images": 32,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8182,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 7834,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8928,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 8439,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3557,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3293,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3170,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3115,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3365,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3168,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3079,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 3014,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_stages",
+    "decode_us": 37902,
+    "encode_us": 30457,
+    "write_validate_us": 3879,
+    "bytes": 5951,
+    "width": 200,
+    "height": 300
+  },
+  {
+    "event": "thumbnail_generate",
+    "queue_us": 125831,
+    "elapsed_us": 76382,
+    "success": true,
+    "rss_bytes": 326123520,
+    "image_cache_bytes": 9180000,
+    "live_images": 37,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_scroll",
+    "frames": 230,
+    "over_8ms": 46,
+    "over_16ms": 3,
+    "max_build_us": 22481,
+    "max_raster_us": 17139,
+    "total_build_us": 636969,
+    "total_raster_us": 1650711,
+    "rss_bytes": 326004736,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 311,
+    "over_8ms": 73,
+    "over_16ms": 9,
+    "max_build_us": 54126,
+    "max_raster_us": 34273,
+    "total_build_us": 855034,
+    "total_raster_us": 2334484,
+    "rss_bytes": 324382720,
+    "image_cache_bytes": 9180000,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24142,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_1_return",
+    "frames": 26,
+    "over_8ms": 6,
+    "over_16ms": 1,
+    "max_build_us": 54126,
+    "max_raster_us": 15181,
+    "total_build_us": 98847,
+    "total_raster_us": 203092,
+    "rss_bytes": 324374528,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 1,
+    "home_scroll": 0.0,
+    "rss_bytes": 324374528,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 2,
+    "rss_bytes": 324374528,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 38382
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 34
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 34,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 44277,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 41800,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 41228,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40621,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40064,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 39425,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38948,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38317,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37870,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37548,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37140,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36724,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36488,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36011,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35699,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35276,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34890,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34538,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34062,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33590,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33247,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32921,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32613,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32329,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31819,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31423,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30961,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30641,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30242,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29673,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29461,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29248,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 88,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 88,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_2_enter",
+    "frames": 6,
+    "over_8ms": 1,
+    "over_16ms": 1,
+    "max_build_us": 33947,
+    "max_raster_us": 5642,
+    "total_build_us": 39301,
+    "total_raster_us": 24843,
+    "rss_bytes": 326684672,
+    "image_cache_bytes": 9180000,
+    "live_images": 32,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 6,
+    "over_8ms": 1,
+    "over_16ms": 1,
+    "max_build_us": 33947,
+    "max_raster_us": 5642,
+    "total_build_us": 39301,
+    "total_raster_us": 24843,
+    "rss_bytes": 324194304,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_2_return",
+    "frames": 7,
+    "over_8ms": 3,
+    "over_16ms": 1,
+    "max_build_us": 26421,
+    "max_raster_us": 14192,
+    "total_build_us": 34198,
+    "total_raster_us": 50266,
+    "rss_bytes": 322572288,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 2,
+    "home_scroll": 0.0,
+    "rss_bytes": 322838528,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 3,
+    "rss_bytes": 322838528,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 59457
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 49
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 49,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 57136,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 52654,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 51641,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 48475,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 49552,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 47538,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 46262,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 45334,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 44369,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 43157,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 42245,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 50881,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40395,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 39415,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38509,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37576,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 41561,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36683,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34563,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35588,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33660,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32703,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30575,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31523,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29871,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29140,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28288,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24016,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 77,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 77,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36710,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35916,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35209,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34477,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23233,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22511,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21463,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20274,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20244,
+    "kind": "generate"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_3_enter",
+    "frames": 36,
+    "over_8ms": 9,
+    "over_16ms": 2,
+    "max_build_us": 48748,
+    "max_raster_us": 10911,
+    "total_build_us": 121859,
+    "total_raster_us": 234747,
+    "rss_bytes": 324337664,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 57,
+    "over_8ms": 15,
+    "over_16ms": 3,
+    "max_build_us": 48748,
+    "max_raster_us": 21041,
+    "total_build_us": 193359,
+    "total_raster_us": 409423,
+    "rss_bytes": 337670144,
+    "image_cache_bytes": 9180000,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21658,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_3_return",
+    "frames": 27,
+    "over_8ms": 7,
+    "over_16ms": 1,
+    "max_build_us": 45473,
+    "max_raster_us": 21041,
+    "total_build_us": 86759,
+    "total_raster_us": 205256,
+    "rss_bytes": 337694720,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 3,
+    "home_scroll": 0.0,
+    "rss_bytes": 337694720,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 4,
+    "rss_bytes": 337694720,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 35755
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 31
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 31,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40314,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37831,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37322,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36940,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36641,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36314,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35959,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35631,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35105,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34799,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34466,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33979,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33452,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32328,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33263,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32507,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32290,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32050,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31846,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31572,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31315,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31140,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30957,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30813,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30621,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30349,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30070,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29717,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29525,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29296,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29210,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28990,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 93,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 94,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 13043,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_4_enter",
+    "frames": 35,
+    "over_8ms": 6,
+    "over_16ms": 3,
+    "max_build_us": 35266,
+    "max_raster_us": 12566,
+    "total_build_us": 123736,
+    "total_raster_us": 247094,
+    "rss_bytes": 338206720,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 55,
+    "over_8ms": 10,
+    "over_16ms": 4,
+    "max_build_us": 51290,
+    "max_raster_us": 20646,
+    "total_build_us": 202097,
+    "total_raster_us": 410252,
+    "rss_bytes": 336244736,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 17016,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_4_return",
+    "frames": 25,
+    "over_8ms": 4,
+    "over_16ms": 1,
+    "max_build_us": 51290,
+    "max_raster_us": 20646,
+    "total_build_us": 91495,
+    "total_raster_us": 187550,
+    "rss_bytes": 336236544,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 4,
+    "home_scroll": 0.0,
+    "rss_bytes": 336236544,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 5,
+    "rss_bytes": 336236544,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 44804
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 38
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 38,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 44289,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40763,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40201,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 39586,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 39080,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38199,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37692,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37163,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36709,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36081,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35586,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35162,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34678,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34237,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33683,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33158,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32588,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32214,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31639,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30907,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30428,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29991,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29585,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29150,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28805,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28411,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27683,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27197,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26779,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26425,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26013,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25546,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 78,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 78,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29348,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_5_enter",
+    "frames": 36,
+    "over_8ms": 4,
+    "over_16ms": 3,
+    "max_build_us": 38127,
+    "max_raster_us": 12756,
+    "total_build_us": 144171,
+    "total_raster_us": 250816,
+    "rss_bytes": 337051648,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 57,
+    "over_8ms": 8,
+    "over_16ms": 4,
+    "max_build_us": 38127,
+    "max_raster_us": 15485,
+    "total_build_us": 204746,
+    "total_raster_us": 416430,
+    "rss_bytes": 334422016,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 16680,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_5_return",
+    "frames": 28,
+    "over_8ms": 4,
+    "over_16ms": 1,
+    "max_build_us": 34409,
+    "max_raster_us": 15485,
+    "total_build_us": 74717,
+    "total_raster_us": 194483,
+    "rss_bytes": 334454784,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 5,
+    "home_scroll": 0.0,
+    "rss_bytes": 334454784,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 6,
+    "rss_bytes": 334454784,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 25362
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 22
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 22,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30970,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29132,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28834,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28507,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27925,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28076,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27888,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27727,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27471,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27207,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26986,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26732,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26369,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26080,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25823,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25608,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25477,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25529,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25248,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24997,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24724,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24355,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24051,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23667,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23333,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23075,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22833,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22587,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22478,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22218,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22042,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21791,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 50,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 50,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 14748,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_6_enter",
+    "frames": 39,
+    "over_8ms": 3,
+    "over_16ms": 2,
+    "max_build_us": 22257,
+    "max_raster_us": 11096,
+    "total_build_us": 95772,
+    "total_raster_us": 228512,
+    "rss_bytes": 334938112,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 59,
+    "over_8ms": 10,
+    "over_16ms": 3,
+    "max_build_us": 45835,
+    "max_raster_us": 17288,
+    "total_build_us": 164611,
+    "total_raster_us": 411125,
+    "rss_bytes": 336052224,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20234,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_6_return",
+    "frames": 26,
+    "over_8ms": 7,
+    "over_16ms": 1,
+    "max_build_us": 45835,
+    "max_raster_us": 17288,
+    "total_build_us": 82396,
+    "total_raster_us": 212216,
+    "rss_bytes": 335941632,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 6,
+    "home_scroll": 0.0,
+    "rss_bytes": 335941632,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 7,
+    "rss_bytes": 335941632,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 19388
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 16
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 16,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24999,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23562,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23336,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23180,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23038,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22901,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22749,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22436,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22283,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22096,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21871,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21726,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21587,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21461,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21396,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21269,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21150,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20989,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20848,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20569,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20410,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20363,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20218,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20028,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19892,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19746,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19562,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19396,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19250,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19067,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 18930,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 18642,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 55,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 55,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33573,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_7_enter",
+    "frames": 36,
+    "over_8ms": 5,
+    "over_16ms": 1,
+    "max_build_us": 21744,
+    "max_raster_us": 16427,
+    "total_build_us": 75952,
+    "total_raster_us": 261824,
+    "rss_bytes": 336052224,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 59,
+    "over_8ms": 15,
+    "over_16ms": 3,
+    "max_build_us": 50387,
+    "max_raster_us": 25301,
+    "total_build_us": 207581,
+    "total_raster_us": 479330,
+    "rss_bytes": 336494592,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24064,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_7_return",
+    "frames": 26,
+    "over_8ms": 9,
+    "over_16ms": 1,
+    "max_build_us": 50387,
+    "max_raster_us": 25301,
+    "total_build_us": 98031,
+    "total_raster_us": 210983,
+    "rss_bytes": 336588800,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 7,
+    "home_scroll": 0.0,
+    "rss_bytes": 336588800,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 8,
+    "rss_bytes": 336588800,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 41303
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 30
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 30,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38284,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35595,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34243,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35223,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33983,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33355,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32872,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32376,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31913,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31461,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31012,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30376,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29900,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29552,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29225,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28925,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28540,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28141,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27852,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27482,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27124,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26633,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26334,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26048,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25560,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25177,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24852,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24719,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24362,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24015,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23629,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23171,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 71,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 71,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34979,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_8_enter",
+    "frames": 36,
+    "over_8ms": 7,
+    "over_16ms": 2,
+    "max_build_us": 30868,
+    "max_raster_us": 12534,
+    "total_build_us": 97557,
+    "total_raster_us": 255032,
+    "rss_bytes": 337424384,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 58,
+    "over_8ms": 12,
+    "over_16ms": 4,
+    "max_build_us": 56344,
+    "max_raster_us": 20961,
+    "total_build_us": 228368,
+    "total_raster_us": 437461,
+    "rss_bytes": 335474688,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21477,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_8_return",
+    "frames": 25,
+    "over_8ms": 4,
+    "over_16ms": 1,
+    "max_build_us": 56344,
+    "max_raster_us": 20961,
+    "total_build_us": 92932,
+    "total_raster_us": 182455,
+    "rss_bytes": 335499264,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 8,
+    "home_scroll": 0.0,
+    "rss_bytes": 335499264,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 9,
+    "rss_bytes": 335499264,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 62226
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 52
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 52,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 57651,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 52657,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 51678,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 50795,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 49855,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 49064,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 48286,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 47486,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 46455,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 45646,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 44838,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 44010,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 43085,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 42300,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 41055,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 40083,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 39260,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38478,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 37639,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 36555,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35651,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34535,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33892,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33297,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32673,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32054,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31432,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30706,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30054,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29420,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28801,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28092,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 93,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 93,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26418,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_9_enter",
+    "frames": 34,
+    "over_8ms": 10,
+    "over_16ms": 3,
+    "max_build_us": 52041,
+    "max_raster_us": 13060,
+    "total_build_us": 147507,
+    "total_raster_us": 248148,
+    "rss_bytes": 336031744,
+    "image_cache_bytes": 9180000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 55,
+    "over_8ms": 20,
+    "over_16ms": 5,
+    "max_build_us": 52041,
+    "max_raster_us": 21749,
+    "total_build_us": 217306,
+    "total_raster_us": 447771,
+    "rss_bytes": 336031744,
+    "image_cache_bytes": 9180000,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21016,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_9_return",
+    "frames": 26,
+    "over_8ms": 9,
+    "over_16ms": 2,
+    "max_build_us": 41593,
+    "max_raster_us": 21749,
+    "total_build_us": 83668,
+    "total_raster_us": 221060,
+    "rss_bytes": 336019456,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 9,
+    "home_scroll": 0.0,
+    "rss_bytes": 336019456,
+    "image_cache_bytes": 9180000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_click",
+    "revision": "expanded_baseline",
+    "run": 10,
+    "rss_bytes": 334688256,
+    "image_cache_bytes": 0,
+    "live_images": 0,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_open",
+    "repeat": true
+  },
+  {
+    "event": "detail_route_first_frame",
+    "elapsed_us": 44438
+  },
+  {
+    "event": "detail_first_frame",
+    "elapsed_ms": 33
+  },
+  {
+    "event": "detail_paths",
+    "elapsed_ms": 33,
+    "count": 104,
+    "repeat": true
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 38148,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 35265,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34626,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 34111,
+    "kind": "lookup"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 33524,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32843,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 32280,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31750,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 31265,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30776,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30109,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29621,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 29081,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 28516,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27850,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 27182,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26602,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 26084,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 25480,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24914,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 24139,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23705,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 23342,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22884,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22432,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 22024,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21471,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20960,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20492,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 20067,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19565,
+    "kind": "generate"
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 19078,
+    "kind": "generate"
+  },
+  {
+    "event": "detail_first_thumbnail",
+    "elapsed_ms": 103,
+    "repeat": true
+  },
+  {
+    "event": "detail_first_row",
+    "elapsed_ms": 121,
+    "repeat": true,
+    "count": 4
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 30437,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_10_enter",
+    "frames": 39,
+    "over_8ms": 8,
+    "over_16ms": 3,
+    "max_build_us": 39542,
+    "max_raster_us": 14942,
+    "total_build_us": 141049,
+    "total_raster_us": 269185,
+    "rss_bytes": 308408320,
+    "image_cache_bytes": 6480000,
+    "live_images": 33,
+    "pending_images": 0
+  },
+  {
+    "event": "frames",
+    "screen": "detail",
+    "frames": 60,
+    "over_8ms": 9,
+    "over_16ms": 4,
+    "max_build_us": 39542,
+    "max_raster_us": 14942,
+    "total_build_us": 208886,
+    "total_raster_us": 424463,
+    "rss_bytes": 308019200,
+    "image_cache_bytes": 6480000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "thumbnail_hit",
+    "elapsed_us": 21990,
+    "kind": "lookup"
+  },
+  {
+    "event": "frames",
+    "screen": "detail_expanded_baseline_10_return",
+    "frames": 28,
+    "over_8ms": 1,
+    "over_16ms": 1,
+    "max_build_us": 39315,
+    "max_raster_us": 12341,
+    "total_build_us": 83049,
+    "total_raster_us": 192789,
+    "rss_bytes": 307986432,
+    "image_cache_bytes": 6480000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_returned",
+    "revision": "expanded_baseline",
+    "run": 10,
+    "home_scroll": 0.0,
+    "rss_bytes": 307986432,
+    "image_cache_bytes": 6480000,
+    "live_images": 1,
+    "pending_images": 0
+  },
+  {
+    "event": "detail_bench_complete",
+    "revision": "expanded_baseline"
+  }
+]

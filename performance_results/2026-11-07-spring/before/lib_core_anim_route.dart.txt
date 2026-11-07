@@ -1,0 +1,65 @@
+// lib/core/anim_route.dart
+import 'package:flutter/material.dart';
+import 'constants.dart'; // 🌟 第一步：溫柔地把我們的魔法工具箱引入進來！
+
+enum TransitionType { zoomFade, slideUp, fade } // 🌟 新增了 fade 模式喔！
+
+class AnimRoute<T> extends PageRouteBuilder<T> {
+  final Widget page;
+  final TransitionType type;
+
+  AnimRoute({
+    required this.page,
+    this.type = TransitionType.zoomFade,
+  }) : super(
+          pageBuilder: (context, animation, secondaryAnimation) => page,
+
+          // 🌟 原本是 200ms，我們換成 Normal 分級！(記得原本前面的 const 已經拿掉囉)
+          transitionDuration: AppConstants.animDurationNormal,
+
+          // 🌟 原本是 150ms，剛好是我們設定的 Fast 分級，完美契合！
+          reverseTransitionDuration: AppConstants.animDurationFast,
+
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            if (MediaQuery.disableAnimationsOf(context)) return child;
+            if (type == TransitionType.zoomFade) {
+              const beginScale = 0.92;
+              const endScale = 1.0;
+
+              var scaleAnimation =
+                  Tween<double>(begin: beginScale, end: endScale)
+                      // 🌟 縮放動畫：換上我們統一的標準曲線，輕快俐落！
+                      .chain(CurveTween(curve: AppConstants.animCurveStandard))
+                      .animate(animation);
+
+              var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+                  // 🌟 透明度淡入淡出：非常適合使用平滑曲線唷！
+                  .chain(CurveTween(curve: AppConstants.animCurveSmooth))
+                  .animate(animation);
+
+              return FadeTransition(
+                opacity: fadeAnimation,
+                child: ScaleTransition(
+                  scale: scaleAnimation,
+                  child: child,
+                ),
+              );
+            } else if (type == TransitionType.fade) {
+              // 🌟 專為 Hero 動畫準備的純淡入淡出模式！讓圖片自己飛，背景溫柔變換～
+              var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+                  .chain(CurveTween(curve: AppConstants.animCurveSmooth))
+                  .animate(animation);
+              return FadeTransition(opacity: fadeAnimation, child: child);
+            } else {
+              const begin = Offset(0.0, 1.0);
+              const end = Offset.zero;
+              var slideAnimation = Tween(begin: begin, end: end)
+                  // 🌟 滑動進場動畫：也換上標準曲線，保持個性一致！
+                  .chain(CurveTween(curve: AppConstants.animCurveStandard))
+                  .animate(animation);
+
+              return SlideTransition(position: slideAnimation, child: child);
+            }
+          },
+        );
+}

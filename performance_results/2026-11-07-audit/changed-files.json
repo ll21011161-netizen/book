@@ -1,0 +1,11 @@
+[
+  "lib\\core\\settings_provider.dart",
+  "lib\\data\\file_scanner.dart",
+  "lib\\screens\\bookshelf\\bookshelf_screen.dart",
+  "lib\\screens\\details\\folder_detail_screen.dart",
+  "test\\file_scanner_test.dart",
+  "test\\folder_safety_test.dart",
+  "test\\reader_image_test.dart",
+  "test\\recent_reading_test.dart",
+  "test\\settings_lifecycle_test.dart"
+]

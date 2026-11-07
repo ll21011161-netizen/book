@@ -1,0 +1,171 @@
+--- before/lib/widgets/spring_press.dart
++++ after/lib/widgets/spring_press.dart
+@@ -1,3 +1,4 @@
++import 'dart:async';
+ import 'package:flutter/material.dart';
+ import '../core/constants.dart';
+ 
+@@ -18,15 +19,34 @@
+   bool _pressed = false;
+   bool _snap = false;
+   int? _pointer;
++  Timer? _releaseTimer;
++  bool _minimumElapsed = false;
++  bool _releasePending = false;
+ 
+   @override
+   void didChangeDependencies() {
+     super.didChangeDependencies();
+-    if (!TickerMode.of(context)) {
+-      _pressed = false;
+-      _pointer = null;
+-      _snap = true;
++    if (!TickerMode.of(context) || MediaQuery.disableAnimationsOf(context)) {
++      // Hidden/disabled animations must not resume a held or half-scaled card.
++      // This is a lifecycle reset, never a consequence of Navigator.push.
++      _reset();
+     }
++  }
++
++  void _reset() {
++    _releaseTimer?.cancel();
++    _releaseTimer = null;
++    _minimumElapsed = false;
++    _releasePending = false;
++    _pressed = false;
++    _pointer = null;
++    _snap = true;
++  }
++
++  @override
++  void dispose() {
++    _releaseTimer?.cancel();
++    super.dispose();
+   }
+ 
+   void _release(PointerEvent event) {
+@@ -36,21 +56,54 @@
+   }
+ 
+   void _press(bool value) {
+-    if (_pressed == value && !_snap) return;
++    if (value) {
++      _releaseTimer?.cancel();
++      _minimumElapsed = false;
++      _releasePending = false;
++      _releaseTimer = Timer(AppConstants.pressMinDuration, () {
++        _releaseTimer = null;
++        _minimumElapsed = true;
++        if (_releasePending) _finishRelease();
++      });
++      setState(() {
++        _pressed = true;
++        _snap = false;
++      });
++    } else if (_pressed) {
++      if (!_minimumElapsed) {
++        // Delay only the visual release for very short taps. onTap is immediate.
++        _releasePending = true;
++      } else {
++        _finishRelease();
++      }
++    }
++  }
++
++  void _finishRelease() {
++    _releaseTimer?.cancel();
++    _releaseTimer = null;
++    _releasePending = false;
++    if (!mounted) return;
+     setState(() {
+-      _pressed = value;
++      _pressed = false;
+       _snap = false;
+     });
+   }
+ 
++  void _cancelPress() {
++    // Losing the tap arena to scrolling/dragging should not bounce under it.
++    setState(_reset);
++  }
++
+   void _tap() {
+     _press(false);
++    // A second pending pointer must not push another route behind the first.
++    if (!TickerMode.of(context) || ModalRoute.of(context)?.isCurrent == false) {
++      return;
++    }
+     widget.onTap();
+-    // A synchronous route push must measure the resting Hero rect, rather
+-    // than the in-flight press transform. No delay is added to navigation.
+-    if (mounted && ModalRoute.of(context)?.isCurrent == false) {
+-      setState(() => _snap = true);
+-    }
++    // Detail routes have no matching cover Hero. Their early transparent frames
++    // expose this live rebound; snapping here would erase that feedback.
+   }
+ 
+   @override
+@@ -58,15 +111,17 @@
+     final reduced = MediaQuery.disableAnimationsOf(context);
+     return Listener(
+         onPointerDown: (event) {
+-          if (_pointer != null) return;
++          if (_pointer != null || !TickerMode.of(context) || reduced) return;
+           _pointer = event.pointer;
+           _press(true);
+         },
+         onPointerUp: _release,
+-        onPointerCancel: _release,
++        onPointerCancel: (event) {
++          if (event.pointer == _pointer) _cancelPress();
++        },
+         child: GestureDetector(
+           behavior: HitTestBehavior.opaque,
+-          onTapCancel: () => _press(false),
++          onTapCancel: _cancelPress,
+           onTap: _tap,
+           onLongPress: widget.onLongPress == null
+               ? null
+@@ -83,8 +138,9 @@
+                 : _pressed
+                     ? AppConstants.pressDuration
+                     : AppConstants.releaseDuration,
+-            curve:
+-                _pressed ? AppConstants.pressCurve : AppConstants.springCurve,
++            curve: _pressed
++                ? AppConstants.pressCurve
++                : AppConstants.pressReleaseCurve,
+             // GestureDetector, outside the transform, owns the stable hit region.
+             child: widget.child,
+           ),
+--- before/lib/core/constants.dart
++++ after/lib/core/constants.dart
+@@ -1,19 +1,24 @@
+ import 'package:flutter/material.dart';
+ 
+ class AppConstants {
+-  static const Duration pressDuration = Duration(milliseconds: 90);
+-  static const Duration releaseDuration = Duration(milliseconds: 210);
++  static const Duration pressDuration = Duration(milliseconds: 100);
++  // A sub-frame tap still paints a brief compression; navigation never waits.
++  static const Duration pressMinDuration = Duration(milliseconds: 48);
++  static const Duration releaseDuration = Duration(milliseconds: 280);
+   static const Duration dialogDuration = Duration(milliseconds: 250);
+   static const Duration dialogDismissDuration = Duration(milliseconds: 150);
+   static const Duration dragLiftDuration = Duration(milliseconds: 170);
+   static const Duration dragTargetDuration = Duration(milliseconds: 190);
+   static const Duration dragResetDuration = Duration(milliseconds: 210);
+   static const Duration dragTiltDuration = Duration(milliseconds: 100);
+-  static const double pressScale = 0.95;
++  static const double pressScale = 0.94;
+   static const double dialogScale = 0.95;
+   static const double dragScale = 1.045;
+   static const double dragMaxTilt = 0.05;
+   static const Curve pressCurve = Curves.easeOutCubic;
++  // One soft overshoot: a full 0.94 -> 1 release peaks near 1.01.
++  // Keep this separate from the gentler dialog/drag spring.
++  static const Curve pressReleaseCurve = Cubic(0.2, 1.75, 0.35, 1);
+   // Limited overshoot: a 0.95 -> 1 release peaks at about 1.002.
+   static const Curve springCurve = Cubic(0.2, 0.85, 0.35, 1.15);
+   static const Duration detailEnterDuration = Duration(milliseconds: 380);

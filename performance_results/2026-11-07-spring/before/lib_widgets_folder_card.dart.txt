@@ -1,0 +1,189 @@
+// lib/widgets/folder_card.dart
+import 'package:flutter/material.dart';
+import '../models/library_item.dart';
+import 'page_thumbnail.dart';
+import '../core/theme.dart';
+import '../core/config.dart';
+import '../core/constants.dart'; // 🌟 引入動畫常數
+
+class FolderCard extends StatefulWidget {
+  final MangaFolder folder;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final bool isSelected;
+  final bool isHovered;
+
+  const FolderCard({
+    Key? key,
+    required this.folder,
+    required this.onTap,
+    required this.onLongPress,
+    this.isSelected = false,
+    this.isHovered = false,
+  }) : super(key: key);
+
+  @override
+  State<FolderCard> createState() => _FolderCardState();
+}
+
+class _FolderCardState extends State<FolderCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final thumbs = widget.folder.thumbnails;
+
+    return HeroMode(
+        enabled: !MediaQuery.disableAnimationsOf(context),
+        child: RepaintBoundary(
+          child: AnimatedScale(
+            scale: _isPressed ? 0.95 : 1.0,
+            // 🌟 統一使用極快的動畫節奏，俐落有彈性！
+            duration: AppConstants.motionDuration(
+                context,
+                _isPressed
+                    ? AppConstants.pressDuration
+                    : AppConstants.animDurationFast),
+            curve: AppConstants.animCurveStandard,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => _isPressed = true),
+              onTapUp: (_) => setState(() => _isPressed = false),
+              onTapCancel: () => setState(() => _isPressed = false),
+              onTap: widget.onTap,
+              onLongPress: widget.onLongPress,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Hero(
+                      tag: 'folder_cover_${widget.folder.id}',
+                      transitionOnUserGestures: true,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.cornerRadius),
+                            color: Theme.of(context).cardColor,
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2))
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.cornerRadius),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                if (thumbs.isEmpty)
+                                  const Center(
+                                      child: Icon(Icons.folder_open,
+                                          color: Colors.grey))
+                                else
+                                  Column(
+                                    children: [
+                                      Expanded(
+                                          child: Row(children: [
+                                        _buildTile(thumbs, 0),
+                                        const SizedBox(width: 1),
+                                        _buildTile(thumbs, 1)
+                                      ])),
+                                      const SizedBox(height: 1),
+                                      Expanded(
+                                          child: Row(children: [
+                                        _buildTile(thumbs, 2),
+                                        const SizedBox(width: 1),
+                                        _buildTile(thumbs, 3)
+                                      ])),
+                                    ],
+                                  ),
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(4)),
+                                    child: const Icon(Icons.folder,
+                                        color: Colors.white, size: 14),
+                                  ),
+                                ),
+                                if (widget.isHovered)
+                                  Container(
+                                      decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                              AppTheme.cornerRadius),
+                                          border: Border.all(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              width: 3),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary
+                                              .withOpacity(0.2))),
+                                if (widget.isSelected)
+                                  Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.4),
+                                          borderRadius: BorderRadius.circular(
+                                              AppTheme.cornerRadius),
+                                          border: Border.all(
+                                              color: Colors.blueAccent,
+                                              width: 2)),
+                                      child: const Center(
+                                          child: Icon(Icons.check_circle,
+                                              color: Colors.blueAccent,
+                                              size: 32))),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 36,
+                    child: Text(widget.folder.title,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            height: 1.25),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  SizedBox(
+                    height: 16,
+                    child: Text("${widget.folder.itemCount} 本",
+                        style: TextStyle(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ));
+  }
+
+  Widget _buildTile(List<String> paths, int index) {
+    if (index >= paths.length)
+      return Expanded(child: Container(color: Colors.grey[300]));
+    return Expanded(
+      child: PageThumbnail(
+        path: paths[index],
+        fit: BoxFit.cover,
+        cacheWidth: AppConfig.microThumbnailCacheWidth,
+        borderRadius: BorderRadius.zero,
+        preserveAnimation: true,
+        deferGenerationUntilReady: true,
+      ),
+    );
+  }
+}

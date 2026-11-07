@@ -1,0 +1,213 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:gun_book/widgets/page_thumbnail.dart';
+import 'package:gun_book/widgets/detail_cover.dart';
+import 'package:gun_book/core/anim_route.dart';
+import 'package:gun_book/data/database_helper.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/screens/details/category_detail_screen.dart';
+import 'support/sqlite_database.dart';
+
+class DetailDatabase extends DatabaseHelper {
+  DetailDatabase() : super.forTesting(SqliteDatabase(), 'unused');
+  final requests = <Completer<List<String>>>[];
+  @override
+  Future<List<String>> getBookPages(String id) {
+    final request = Completer<List<String>>();
+    requests.add(request);
+    return request.future;
+  }
+}
+
+void main() {
+  testWidgets('first row generates before fade completes; other misses wait',
+      (tester) async {
+    final db = DetailDatabase();
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        home: Builder(builder: (context) {
+          home = context;
+          return const Scaffold();
+        })));
+    final pages = List.generate(104, (i) => 'missing-$i.png');
+    final route = DetailRoute<void>(
+        context: home,
+        page: CategoryDetailScreen(
+            category: MangaBook(id: 'early', title: 'Book', filePaths: pages),
+            database: db,
+            onUpdate: () {}));
+    nav.currentState!.push(route);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(route.animation!.isCompleted, isFalse);
+    final thumbs = tester.widgetList<PageThumbnail>(find.byType(PageThumbnail));
+    expect(
+        thumbs.where((w) => w.priority == 0).every((w) => w.generationEnabled),
+        isTrue);
+    expect(thumbs.where((w) => w.priority == 1), isNotEmpty);
+    expect(
+        thumbs.where((w) => w.priority == 1).every((w) => !w.generationEnabled),
+        isTrue);
+    expect(thumbs.every((w) => !w.previewOnMiss), isTrue);
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widgetList<PageThumbnail>(find.byType(PageThumbnail))
+            .every((w) => w.generationEnabled),
+        isTrue);
+    db.requests.single.complete(pages);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    await (await db.database).close();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('covered detail stops queued generation and resumes on return',
+      (tester) async {
+    final db = DetailDatabase();
+    final nav = GlobalKey<NavigatorState>();
+    final pages = List.generate(8, (i) => 'missing-$i.png');
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        home: CategoryDetailScreen(
+            category: MangaBook(id: 'covered', title: 'Book', filePaths: pages),
+            database: db,
+            onUpdate: () {})));
+    db.requests.single.complete(pages);
+    await tester.pumpAndSettle();
+    Iterable<PageThumbnail> grid() => tester
+        .widgetList<PageThumbnail>(
+            find.byType(PageThumbnail, skipOffstage: false))
+        .where((w) => w.priority == 1);
+    expect(grid(), isNotEmpty);
+    expect(grid().every((w) => w.generationEnabled), isTrue);
+    nav.currentState!.push(MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Other page'))));
+    await tester.pumpAndSettle();
+    expect(grid().every((w) => !w.generationEnabled), isTrue);
+    nav.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(grid().every((w) => w.generationEnabled), isTrue);
+    await tester.pumpWidget(const SizedBox());
+    await (await db.database).close();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('page labels follow current order without exposing file names',
+      (tester) async {
+    final db = DetailDatabase();
+    final book = MangaBook(
+        id: 'labels',
+        title: 'Book title',
+        filePaths: ['long-file-a.png', 'long-file-b.png', 'long-file-c.png']);
+    await tester.pumpWidget(MaterialApp(
+        home: CategoryDetailScreen(
+            category: book, database: db, onUpdate: () {})));
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('long-file-a.png'), findsNothing);
+    for (final thumb
+        in tester.widgetList<PageThumbnail>(find.byType(PageThumbnail))) {
+      thumb.onImageReady?.call();
+    }
+    await tester.pump();
+    expect(find.byType(DetailCover), findsNothing);
+    expect(find.byType(FlexibleSpaceBar), findsNothing);
+    final labelRect = tester.getRect(find.text('1'));
+    final imageRect = tester.getRect(find.byType(PageThumbnail).first);
+    expect(labelRect.top, greaterThanOrEqualTo(imageRect.bottom));
+    db.requests.single.complete(['long-file-c.png', 'long-file-a.png']);
+    await tester.pumpAndSettle();
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('3'), findsNothing);
+    final tile = find
+        .ancestor(of: find.text('1'), matching: find.byType(GestureDetector))
+        .first;
+    final thumbnail = tester.widget<PageThumbnail>(
+        find.descendant(of: tile, matching: find.byType(PageThumbnail)));
+    expect(thumbnail.path, 'long-file-c.png');
+    expect(book.filePaths, ['long-file-c.png', 'long-file-a.png']);
+    expect(book.title, 'Book title');
+    await tester.pumpWidget(const SizedBox());
+    await (await db.database).close();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'query failure exits shimmer, retries and distinguishes empty book',
+      (tester) async {
+    final db = DetailDatabase();
+    final book =
+        MangaBook(id: 'book', title: 'test', filePaths: [], totalPageCount: 20);
+    await tester.pumpWidget(MaterialApp(
+        home: CategoryDetailScreen(
+            category: book, database: db, onUpdate: () {})));
+    expect(find.byType(Shimmer), findsWidgets);
+    db.requests.single.completeError(StateError('sqlite failure'));
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pump();
+    expect(db.requests.length, 2);
+    db.requests.last.complete([]);
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byIcon(Icons.refresh), findsNothing);
+    expect(book.totalPageCount, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await (await db.database).close();
+  });
+  testWidgets('quick departure ignores query completion and errors',
+      (tester) async {
+    final db = DetailDatabase();
+    for (final fail in [false, true]) {
+      await tester.pumpWidget(MaterialApp(
+          home: CategoryDetailScreen(
+              category: MangaBook(
+                  id: 'book', title: 'test', filePaths: [], totalPageCount: 2),
+              database: db,
+              onUpdate: () {})));
+      await tester.pumpWidget(const SizedBox());
+      if (fail) {
+        db.requests.last.completeError(StateError('sqlite'));
+      } else {
+        db.requests.last.complete(['missing.png']);
+      }
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    }
+    await (await db.database).close();
+  });
+
+  testWidgets(
+      'existing pages stay visible during refresh and large grid remains lazy',
+      (tester) async {
+    final db = DetailDatabase();
+    final pages = List.generate(1000, (i) => 'missing-fixture-$i.png');
+    final book = MangaBook(id: 'book', title: 'test', filePaths: pages);
+    await tester.pumpWidget(MaterialApp(
+        home: CategoryDetailScreen(
+            category: book, database: db, onUpdate: () {})));
+    expect(find.byType(Shimmer), findsNothing);
+    final built = find.byType(PageThumbnail).evaluate().length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(1000));
+    db.requests.single.completeError(StateError('sqlite'));
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byType(PageThumbnail), findsWidgets);
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    expect(tester.takeException(), isNull);
+    await (await db.database).close();
+  });
+}

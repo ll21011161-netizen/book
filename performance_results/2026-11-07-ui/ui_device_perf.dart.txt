@@ -1,0 +1,118 @@
+// Run ONLY in the isolated applicationId .ui20261107.
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:gun_book/core/perf_log.dart';
+import 'package:gun_book/core/settings_provider.dart';
+import 'package:gun_book/data/database_helper.dart';
+import 'package:gun_book/data/reader_image.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/screens/reader/manga_reader_screen.dart';
+import 'package:gun_book/screens/reader/manga_reader_before.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
+  runApp(ChangeNotifierProvider(create: (_) => SettingsProvider(), child:
+    MaterialApp(theme: ThemeData(useMaterial3: true), home: const Bench())));
+}
+
+class Bench extends StatefulWidget {
+  const Bench({super.key});
+  @override
+  State<Bench> createState() => BenchState();
+}
+
+class BenchState extends State<Bench> {
+  Widget view = const Center(child: Text('Preparing synthetic UI benchmark'));
+  int epoch = 0;
+  @override
+  void initState() {
+    super.initState();
+    unawaited(Future<void>.delayed(const Duration(seconds: 1), run));
+  }
+  List<T> widgets<T extends Widget>() {
+    final result = <T>[];
+    void visit(Element element) {
+      if (element.widget is T) result.add(element.widget as T);
+      element.visitChildren(visit);
+    }
+    context.visitChildElements(visit);
+    return result;
+  }
+  Future<void> show(Widget child) async {
+    setState(() => view = KeyedSubtree(key: ValueKey(epoch++), child: child));
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+  }
+  Future<void> run() async {
+    try {
+      final root = await getTemporaryDirectory();
+      final paths = <String>[];
+      for (var i = 0; i < 4; i++) {
+        final file = File('${root.path}/ui-fixture-$i.png');
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+        canvas.drawColor(Color(0xff102030 + i * 0x201008), BlendMode.src);
+        final paint = Paint();
+        for (var line = 0; line < 80; line++) {
+          paint.color = Color(0xff000000 | ((line * 73019 + i * 12345) & 0xffffff));
+          canvas.drawRect(Rect.fromLTWH((line % 8) * 256, (line ~/ 8) * 307.2, 240, 290), paint);
+        }
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(2048, 3072);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        await file.writeAsBytes(data!.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+        image.dispose(); picture.dispose(); paths.add(file.path);
+      }
+      final book = MangaBook(id: 'ui-fixture', title: 'GunBook isolated UI benchmark', filePaths: paths);
+      await DatabaseHelper.instance.saveBook(book);
+      // Warm all four identical full-resolution image providers before either
+      // variant. This isolates animation composition from cold decode costs.
+      for (final path in paths) {
+        if (!mounted) return;
+        await precacheImage(ReaderFileImage(File(path)), context);
+      }
+      PerfLog.event('ui_bench_environment', {
+        'width': 2048, 'height': 3072, 'pages': paths.length,
+        'display_hz': View.of(context).display.refreshRate,
+        'cache': 'decoded-warm', 'scope': 'real-reader-synthetic-images',
+      });
+      // Warm shaders/transitions for both variants, then alternate run order.
+      for (var run = -1; run < 4; run++) {
+        for (final mode in run.isEven ? ['before', 'after'] : ['after', 'before']) {
+          final reader = mode == 'before'
+            ? BeforeMangaReaderScreen(book: book, initialPage: 0)
+            : MangaReaderScreen(book: book, initialPage: 0);
+          await show(reader);
+          final page = widgets<PageView>().single.controller!;
+          final frames = PerfFrames('ui_bench_paging_${mode}_$run');
+          for (final target in [1, 2, 3, 2, 1, 0, 1, 2, 3, 2, 1, 0]) {
+            await page.animateToPage(target, duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+            await Future<void>.delayed(const Duration(milliseconds: 40));
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          frames.dispose();
+          final controls = PerfFrames('ui_bench_controls_${mode}_$run');
+          final toggle = widgets<GestureDetector>().firstWhere((w) => w.onTap != null).onTap!;
+          for (var n = 0; n < 12; n++) {
+            toggle();
+            await Future<void>.delayed(const Duration(milliseconds: 320));
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          controls.dispose();
+          await show(const SizedBox());
+        }
+      }
+      PerfLog.event('ui_bench_complete', {});
+      await show(const Center(child: Text('Isolated UI benchmark complete')));
+    } catch (error, stack) {
+      PerfLog.event('ui_bench_error', {'error': '$error', 'stack': '$stack'});
+    }
+  }
+  @override
+  Widget build(BuildContext context) => Scaffold(backgroundColor: Colors.black, body: view);
+}

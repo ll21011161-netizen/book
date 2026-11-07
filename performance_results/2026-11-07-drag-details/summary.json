@@ -1,0 +1,576 @@
+{
+  "profile": {
+    "complete": true,
+    "errors": [],
+    "runs": [
+      {
+        "run": 0,
+        "detail_route_first_frame": 17167,
+        "detail_first_frame": 8,
+        "detail_first_thumbnail": 65,
+        "detail_first_row": 232,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_0_enter",
+          "frames": 39,
+          "over_8ms": 4,
+          "over_16ms": 2,
+          "max_build_us": 29929,
+          "max_raster_us": 31072,
+          "total_build_us": 79167,
+          "total_raster_us": 208769,
+          "rss_bytes": 331452416,
+          "image_cache_bytes": 810000,
+          "live_images": 5,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 1,
+        "detail_route_first_frame": 41173,
+        "detail_first_frame": 26,
+        "detail_first_thumbnail": 64,
+        "detail_first_row": 109,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_1_enter",
+          "frames": 40,
+          "over_8ms": 6,
+          "over_16ms": 3,
+          "max_build_us": 44482,
+          "max_raster_us": 24614,
+          "total_build_us": 102808,
+          "total_raster_us": 229802,
+          "rss_bytes": 401719296,
+          "image_cache_bytes": 3645000,
+          "live_images": 26,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 2,
+        "detail_route_first_frame": 48519,
+        "detail_first_frame": 38,
+        "detail_first_thumbnail": 75,
+        "detail_first_row": 75,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_2_enter",
+          "frames": 6,
+          "over_8ms": 1,
+          "over_16ms": 1,
+          "max_build_us": 38373,
+          "max_raster_us": 6512,
+          "total_build_us": 45456,
+          "total_raster_us": 30914,
+          "rss_bytes": 297922560,
+          "image_cache_bytes": 6480000,
+          "live_images": 37,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 3,
+        "detail_route_first_frame": 42204,
+        "detail_first_frame": 37,
+        "detail_first_thumbnail": 82,
+        "detail_first_row": 82,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_3_enter",
+          "frames": 34,
+          "over_8ms": 4,
+          "over_16ms": 3,
+          "max_build_us": 37511,
+          "max_raster_us": 8432,
+          "total_build_us": 105204,
+          "total_raster_us": 201173,
+          "rss_bytes": 295731200,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 4,
+        "detail_route_first_frame": 35497,
+        "detail_first_frame": 30,
+        "detail_first_thumbnail": 67,
+        "detail_first_row": 67,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_4_enter",
+          "frames": 36,
+          "over_8ms": 12,
+          "over_16ms": 2,
+          "max_build_us": 30452,
+          "max_raster_us": 11090,
+          "total_build_us": 109712,
+          "total_raster_us": 233200,
+          "rss_bytes": 293888000,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 5,
+        "detail_route_first_frame": 40216,
+        "detail_first_frame": 30,
+        "detail_first_thumbnail": 60,
+        "detail_first_row": 61,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_5_enter",
+          "frames": 37,
+          "over_8ms": 4,
+          "over_16ms": 2,
+          "max_build_us": 30833,
+          "max_raster_us": 11707,
+          "total_build_us": 97807,
+          "total_raster_us": 208623,
+          "rss_bytes": 295567360,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 6,
+        "detail_route_first_frame": 32505,
+        "detail_first_frame": 21,
+        "detail_first_thumbnail": 55,
+        "detail_first_row": 55,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_6_enter",
+          "frames": 38,
+          "over_8ms": 7,
+          "over_16ms": 1,
+          "max_build_us": 21858,
+          "max_raster_us": 13622,
+          "total_build_us": 80190,
+          "total_raster_us": 215999,
+          "rss_bytes": 295706624,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 7,
+        "detail_route_first_frame": 44788,
+        "detail_first_frame": 34,
+        "detail_first_thumbnail": 72,
+        "detail_first_row": 72,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_7_enter",
+          "frames": 37,
+          "over_8ms": 3,
+          "over_16ms": 1,
+          "max_build_us": 34554,
+          "max_raster_us": 7662,
+          "total_build_us": 92874,
+          "total_raster_us": 192953,
+          "rss_bytes": 293871616,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 8,
+        "detail_route_first_frame": 40132,
+        "detail_first_frame": 32,
+        "detail_first_thumbnail": 71,
+        "detail_first_row": 71,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_8_enter",
+          "frames": 36,
+          "over_8ms": 4,
+          "over_16ms": 2,
+          "max_build_us": 31596,
+          "max_raster_us": 8996,
+          "total_build_us": 99913,
+          "total_raster_us": 204080,
+          "rss_bytes": 295301120,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 9,
+        "detail_route_first_frame": 42550,
+        "detail_first_frame": 33,
+        "detail_first_thumbnail": 63,
+        "detail_first_row": 63,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_9_enter",
+          "frames": 37,
+          "over_8ms": 4,
+          "over_16ms": 2,
+          "max_build_us": 33394,
+          "max_raster_us": 8594,
+          "total_build_us": 93089,
+          "total_raster_us": 221441,
+          "rss_bytes": 294096896,
+          "image_cache_bytes": 6480000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 10,
+        "detail_route_first_frame": 36449,
+        "detail_first_frame": 30,
+        "detail_first_thumbnail": 107,
+        "detail_first_row": 162,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_compact_10_enter",
+          "frames": 35,
+          "over_8ms": 3,
+          "over_16ms": 3,
+          "max_build_us": 31281,
+          "max_raster_us": 8344,
+          "total_build_us": 106703,
+          "total_raster_us": 172687,
+          "rss_bytes": 325914624,
+          "image_cache_bytes": 4995000,
+          "live_images": 36,
+          "pending_images": 0
+        }
+      }
+    ],
+    "warm_medians": {
+      "detail_route_first_frame": 40216,
+      "detail_first_frame": 30,
+      "detail_first_thumbnail": 67,
+      "detail_first_row": 71
+    },
+    "entry_samples": {
+      "avg_build_ms_median": 2.606816216216216,
+      "avg_raster_ms_median": 5.676536549707603,
+      "max_build_ms": 44.482,
+      "max_raster_ms": 31.072,
+      "over16": 21,
+      "frames": 369,
+      "rss_mib_median": 281.94140625,
+      "image_cache_mib_median": 6.1798095703125
+    },
+    "cache": {
+      "thumbnail_hit": {
+        "count": 587,
+        "median_us": 23719
+      },
+      "thumbnail_generate": {
+        "count": 66,
+        "median_us": 67646.5
+      }
+    },
+    "returns": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "baseline": {
+    "complete": true,
+    "errors": [],
+    "runs": [
+      {
+        "run": 0,
+        "detail_route_first_frame": 26289,
+        "detail_first_frame": 20,
+        "detail_first_thumbnail": 150,
+        "detail_first_row": 238,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_0_enter",
+          "frames": 29,
+          "over_8ms": 6,
+          "over_16ms": 3,
+          "max_build_us": 89655,
+          "max_raster_us": 64557,
+          "total_build_us": 181693,
+          "total_raster_us": 263908,
+          "rss_bytes": 334540800,
+          "image_cache_bytes": 2835000,
+          "live_images": 5,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 1,
+        "detail_route_first_frame": 51436,
+        "detail_first_frame": 31,
+        "detail_first_thumbnail": 94,
+        "detail_first_row": 132,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_1_enter",
+          "frames": 39,
+          "over_8ms": 11,
+          "over_16ms": 5,
+          "max_build_us": 29605,
+          "max_raster_us": 34273,
+          "total_build_us": 110268,
+          "total_raster_us": 332959,
+          "rss_bytes": 354873344,
+          "image_cache_bytes": 5130000,
+          "live_images": 23,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 2,
+        "detail_route_first_frame": 38382,
+        "detail_first_frame": 34,
+        "detail_first_thumbnail": 88,
+        "detail_first_row": 88,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_2_enter",
+          "frames": 6,
+          "over_8ms": 1,
+          "over_16ms": 1,
+          "max_build_us": 33947,
+          "max_raster_us": 5642,
+          "total_build_us": 39301,
+          "total_raster_us": 24843,
+          "rss_bytes": 326684672,
+          "image_cache_bytes": 9180000,
+          "live_images": 32,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 3,
+        "detail_route_first_frame": 59457,
+        "detail_first_frame": 49,
+        "detail_first_thumbnail": 77,
+        "detail_first_row": 77,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_3_enter",
+          "frames": 36,
+          "over_8ms": 9,
+          "over_16ms": 2,
+          "max_build_us": 48748,
+          "max_raster_us": 10911,
+          "total_build_us": 121859,
+          "total_raster_us": 234747,
+          "rss_bytes": 324337664,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 4,
+        "detail_route_first_frame": 35755,
+        "detail_first_frame": 31,
+        "detail_first_thumbnail": 93,
+        "detail_first_row": 94,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_4_enter",
+          "frames": 35,
+          "over_8ms": 6,
+          "over_16ms": 3,
+          "max_build_us": 35266,
+          "max_raster_us": 12566,
+          "total_build_us": 123736,
+          "total_raster_us": 247094,
+          "rss_bytes": 338206720,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 5,
+        "detail_route_first_frame": 44804,
+        "detail_first_frame": 38,
+        "detail_first_thumbnail": 78,
+        "detail_first_row": 78,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_5_enter",
+          "frames": 36,
+          "over_8ms": 4,
+          "over_16ms": 3,
+          "max_build_us": 38127,
+          "max_raster_us": 12756,
+          "total_build_us": 144171,
+          "total_raster_us": 250816,
+          "rss_bytes": 337051648,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 6,
+        "detail_route_first_frame": 25362,
+        "detail_first_frame": 22,
+        "detail_first_thumbnail": 50,
+        "detail_first_row": 50,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_6_enter",
+          "frames": 39,
+          "over_8ms": 3,
+          "over_16ms": 2,
+          "max_build_us": 22257,
+          "max_raster_us": 11096,
+          "total_build_us": 95772,
+          "total_raster_us": 228512,
+          "rss_bytes": 334938112,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 7,
+        "detail_route_first_frame": 19388,
+        "detail_first_frame": 16,
+        "detail_first_thumbnail": 55,
+        "detail_first_row": 55,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_7_enter",
+          "frames": 36,
+          "over_8ms": 5,
+          "over_16ms": 1,
+          "max_build_us": 21744,
+          "max_raster_us": 16427,
+          "total_build_us": 75952,
+          "total_raster_us": 261824,
+          "rss_bytes": 336052224,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 8,
+        "detail_route_first_frame": 41303,
+        "detail_first_frame": 30,
+        "detail_first_thumbnail": 71,
+        "detail_first_row": 71,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_8_enter",
+          "frames": 36,
+          "over_8ms": 7,
+          "over_16ms": 2,
+          "max_build_us": 30868,
+          "max_raster_us": 12534,
+          "total_build_us": 97557,
+          "total_raster_us": 255032,
+          "rss_bytes": 337424384,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 9,
+        "detail_route_first_frame": 62226,
+        "detail_first_frame": 52,
+        "detail_first_thumbnail": 93,
+        "detail_first_row": 93,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_9_enter",
+          "frames": 34,
+          "over_8ms": 10,
+          "over_16ms": 3,
+          "max_build_us": 52041,
+          "max_raster_us": 13060,
+          "total_build_us": 147507,
+          "total_raster_us": 248148,
+          "rss_bytes": 336031744,
+          "image_cache_bytes": 9180000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      },
+      {
+        "run": 10,
+        "detail_route_first_frame": 44438,
+        "detail_first_frame": 33,
+        "detail_first_thumbnail": 103,
+        "detail_first_row": 121,
+        "entry": {
+          "event": "frames",
+          "screen": "detail_expanded_baseline_10_enter",
+          "frames": 39,
+          "over_8ms": 8,
+          "over_16ms": 3,
+          "max_build_us": 39542,
+          "max_raster_us": 14942,
+          "total_build_us": 141049,
+          "total_raster_us": 269185,
+          "rss_bytes": 308408320,
+          "image_cache_bytes": 6480000,
+          "live_images": 33,
+          "pending_images": 0
+        }
+      }
+    ],
+    "warm_medians": {
+      "detail_route_first_frame": 44438,
+      "detail_first_frame": 31,
+      "detail_first_thumbnail": 78,
+      "detail_first_row": 78
+    },
+    "entry_samples": {
+      "avg_build_ms_median": 3.460143253968254,
+      "avg_raster_ms_median": 7.072025396825397,
+      "max_build_ms": 89.655,
+      "max_raster_ms": 64.557,
+      "over16": 27,
+      "frames": 359,
+      "rss_mib_median": 320.474609375,
+      "image_cache_mib_median": 8.754730224609375
+    },
+    "cache": {
+      "thumbnail_hit": {
+        "count": 570,
+        "median_us": 22357.5
+      },
+      "thumbnail_generate": {
+        "count": 70,
+        "median_us": 63291.0
+      }
+    },
+    "returns": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

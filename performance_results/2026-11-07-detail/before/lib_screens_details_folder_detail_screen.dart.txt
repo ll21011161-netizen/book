@@ -1,0 +1,530 @@
+// lib/screens/details/folder_detail_screen.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/anim_route.dart';
+import '../../core/settings_provider.dart';
+import '../../core/strings.dart';
+import '../../core/utils.dart';
+import '../../data/database_helper.dart';
+import '../../models/library_item.dart';
+import '../../widgets/app_image.dart';
+import '../../widgets/book_card.dart';
+import 'category_detail_screen.dart';
+
+class FolderDetailScreen extends StatefulWidget {
+  final MangaFolder folder;
+  final VoidCallback onUpdate;
+  final DatabaseHelper? database;
+
+  const FolderDetailScreen(
+      {super.key, required this.folder, required this.onUpdate, this.database});
+
+  @override
+  State<FolderDetailScreen> createState() => _FolderDetailScreenState();
+}
+
+class _FolderDetailScreenState extends State<FolderDetailScreen> {
+  DatabaseHelper get _database => widget.database ?? DatabaseHelper.instance;
+  List<MangaBook> _items = [];
+  bool _isLoading = true;
+  bool _hasMore = true;
+  int _offset = 0;
+  int _loadGeneration = 0;
+  bool _mutationBusy = false;
+  double _dragTravel = 0;
+  bool _dragCancelled = false;
+  Object? _loadError;
+  final int _limit = 50;
+
+  final ScrollController _scrollController = ScrollController();
+
+  final ValueNotifier<bool> _selModeNotifier = ValueNotifier(false);
+  final ValueNotifier<Set<String>> _selIdsNotifier = ValueNotifier({});
+
+  final ValueNotifier<bool> _pickCoverModeNotifier = ValueNotifier(false);
+  final ValueNotifier<Set<String>> _pickedCoverIdsNotifier = ValueNotifier({});
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _loadItems(refresh: true);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _selModeNotifier.dispose();
+    _selIdsNotifier.dispose();
+    _pickCoverModeNotifier.dispose();
+    _pickedCoverIdsNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoading &&
+        _hasMore) {
+      _loadItems();
+    }
+  }
+
+  Future<void> _loadItems({bool refresh = false}) async {
+    if (!mounted || _mutationBusy || (_isLoading && !refresh)) return;
+    final generation = ++_loadGeneration;
+    final offset = refresh ? 0 : _offset;
+    final limit = refresh && _offset > _limit ? _offset : _limit;
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final items = await _database.fetchFolderBooks(
+          folderId: widget.folder.id, limit: limit, offset: offset);
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        final byId = {
+          for (final item in refresh ? <MangaBook>[] : _items) item.id: item
+        };
+        for (final item in items) {
+          byId[item.id] = item;
+        }
+        _items = byId.values.toList();
+        _offset = offset + items.length;
+        _hasMore = items.length == limit;
+      });
+    } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() => _loadError = error);
+      context.showSnackBar('資料夾載入失敗，請重試');
+    } finally {
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _mutate(Future<void> Function() action) async {
+    if (!mounted || _mutationBusy) return;
+    _mutationBusy = true;
+    ++_loadGeneration; // Pending reads must not overwrite a completed edit.
+    setState(() => _isLoading = false);
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) context.showSnackBar('操作失敗，請重試：$error');
+    } finally {
+      _mutationBusy = false;
+      if (mounted) await _loadItems(refresh: true);
+    }
+  }
+
+  Future<void> _moveOut() async {
+    if (_selIdsNotifier.value.isEmpty) return;
+    final ids = Set<String>.of(_selIdsNotifier.value);
+    await _mutate(() async {
+      await _database.moveItems(ids.toList(), null);
+      if (!mounted) return;
+      setState(() {
+        _items.removeWhere((e) => ids.contains(e.id));
+        widget.folder.itemCount =
+            (widget.folder.itemCount - ids.length).clamp(0, 1 << 31);
+      });
+      _selModeNotifier.value = false;
+      _selIdsNotifier.value = {};
+      widget.onUpdate();
+    });
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    if (_mutationBusy ||
+        oldIndex == newIndex ||
+        oldIndex < 0 ||
+        oldIndex >= _items.length ||
+        newIndex < 0 ||
+        newIndex > _items.length) return;
+    if (oldIndex < newIndex) newIndex--;
+    final reordered = List<MangaBook>.of(_items);
+    reordered.insert(newIndex, reordered.removeAt(oldIndex));
+    await _mutate(() async {
+      // Publish only after the atomic DB batch has succeeded.
+      await _database.updateSortOrder(reordered.map((e) => e.id).toList());
+      if (!mounted) return;
+      setState(() => _items = reordered);
+      widget.onUpdate();
+    });
+  }
+
+  Future<void> _renameSel() async {
+    if (_selIdsNotifier.value.length != 1) return;
+    final id = _selIdsNotifier.value.first;
+    final item = _items.where((e) => e.id == id).firstOrNull;
+    if (item == null) return;
+    await _mutate(() async {
+      final newName = await DialogUtils.showInput(context,
+          title: AppStrings.get('rename'), initial: item.title);
+      if (!mounted || !newName.isValid) return;
+      await _database.updateTitle(id, newName!);
+      if (!mounted) return;
+      setState(() => item.title = newName);
+      _selModeNotifier.value = false;
+      _selIdsNotifier.value = {};
+      widget.onUpdate();
+    });
+  }
+
+  void _handleLongPress(String id) {
+    if (_pickCoverModeNotifier.value) return;
+    if (!_selModeNotifier.value) {
+      _selModeNotifier.value = true;
+      _selIdsNotifier.value = {id};
+    }
+  }
+
+  void _startPickCover() {
+    _selModeNotifier.value = false;
+    _selIdsNotifier.value = {};
+    _pickCoverModeNotifier.value = true;
+    _pickedCoverIdsNotifier.value = Set.from(widget.folder.coverBookIds);
+    context.showSnackBar("請選擇最多 4 本漫畫作為封面");
+  }
+
+  void _toggleCoverPick(String id) {
+    final current = Set<String>.from(_pickedCoverIdsNotifier.value);
+    if (current.contains(id)) {
+      current.remove(id);
+    } else {
+      if (current.length >= 4) {
+        context.showSnackBar("最多只能選擇 4 本");
+        return;
+      }
+      current.add(id);
+    }
+    _pickedCoverIdsNotifier.value = current;
+  }
+
+  Future<void> _saveCovers() async {
+    final newCovers = _pickedCoverIdsNotifier.value.toList();
+    await _mutate(() async {
+      await _database.updateFolderCovers(widget.folder.id, newCovers);
+      if (!mounted) return;
+      setState(() => widget.folder.coverBookIds = newCovers);
+      _pickCoverModeNotifier.value = false;
+      _pickedCoverIdsNotifier.value = {};
+      widget.onUpdate();
+      context.showSnackBar('封面已更新');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = context.select<SettingsProvider, int>(
+      (settings) => settings.bookshelfColumns,
+    );
+    final cropCovers = context.select<SettingsProvider, bool>(
+      (settings) => settings.cropBookCovers,
+    );
+    String? bgCover;
+    if (widget.folder.thumbnails.isNotEmpty)
+      bgCover = widget.folder.thumbnails.first;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        // 🌟 移除 cacheExtent 魔法：保持最極致的滑動體驗！
+        slivers: [
+          ValueListenableBuilder<bool>(
+              valueListenable: _pickCoverModeNotifier,
+              builder: (context, pickMode, _) {
+                return ValueListenableBuilder<bool>(
+                    valueListenable: _selModeNotifier,
+                    builder: (context, selMode, _) {
+                      return ValueListenableBuilder<Set<String>>(
+                          valueListenable: pickMode
+                              ? _pickedCoverIdsNotifier
+                              : _selIdsNotifier,
+                          builder: (context, activeIds, _) {
+                            final bool allSelected = _items.isNotEmpty &&
+                                activeIds.length == _items.length;
+
+                            List<Widget> actions = [];
+                            if (pickMode) {
+                              actions = [
+                                Center(
+                                    child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8.0),
+                                        child: Text("已選 ${activeIds.length}/4",
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16)))),
+                                IconButton(
+                                    icon: const Icon(Icons.check,
+                                        color: Colors.greenAccent),
+                                    tooltip: "儲存封面",
+                                    onPressed: _saveCovers),
+                                IconButton(
+                                    icon: const Icon(Icons.close),
+                                    tooltip: "取消",
+                                    onPressed: () {
+                                      _pickCoverModeNotifier.value = false;
+                                      _pickedCoverIdsNotifier.value = {};
+                                    }),
+                              ];
+                            } else if (selMode) {
+                              actions = [
+                                IconButton(
+                                    icon: Icon(allSelected
+                                        ? Icons.deselect
+                                        : Icons.select_all),
+                                    onPressed: () => _selIdsNotifier.value =
+                                        allSelected
+                                            ? {}
+                                            : _items.map((e) => e.id).toSet()),
+                                if (activeIds.length == 1)
+                                  IconButton(
+                                      icon: const Icon(Icons.edit),
+                                      onPressed: _renameSel),
+                                IconButton(
+                                    icon: const Icon(Icons.outbond),
+                                    tooltip: "移出資料夾",
+                                    onPressed: _moveOut),
+                                IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () {
+                                      _selModeNotifier.value = false;
+                                      _selIdsNotifier.value = {};
+                                    })
+                              ];
+                            } else {
+                              actions = [
+                                IconButton(
+                                    icon: const Icon(Icons.image),
+                                    tooltip: "設定封面",
+                                    onPressed: _startPickCover),
+                                IconButton(
+                                    icon: const Icon(Icons.checklist),
+                                    onPressed: () =>
+                                        _selModeNotifier.value = true)
+                              ];
+                            }
+
+                            return SliverAppBar(
+                              expandedHeight: 200,
+                              pinned: true,
+                              stretch: true,
+                              actions: actions,
+                              flexibleSpace: FlexibleSpaceBar(
+                                  stretchModes: const [
+                                    StretchMode.zoomBackground
+                                  ],
+                                  collapseMode: CollapseMode.parallax,
+                                  title: Text(
+                                      pickMode ? "設定封面" : widget.folder.title,
+                                      style: TextStyle(
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.color)),
+                                  background: bgCover != null
+                                      ? Hero(
+                                          tag:
+                                              'folder_cover_${widget.folder.id}',
+                                          child: Opacity(
+                                              opacity: 0.3,
+                                              child: AppImage(
+                                                  path: bgCover,
+                                                  fit: BoxFit.cover,
+                                                  cacheWidth: 800)),
+                                        )
+                                      : null),
+                            );
+                          });
+                    });
+              }),
+          if (_loadError != null)
+            SliverToBoxAdapter(
+                child: Center(
+                    child: TextButton.icon(
+                        onPressed: () => _loadItems(refresh: true),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('重新載入')))),
+          if (_items.isEmpty && !_isLoading)
+            SliverFillRemaining(
+                child: Center(
+                    child: Text(AppStrings.get('empty'),
+                        style: const TextStyle(color: Colors.grey))))
+          else
+            SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate((_, i) {
+                    if (i == _items.length)
+                      return const Center(child: CircularProgressIndicator());
+
+                    final b = _items[i];
+
+                    return ValueListenableBuilder<bool>(
+                        valueListenable: _pickCoverModeNotifier,
+                        builder: (context, pickMode, _) {
+                          return ValueListenableBuilder<bool>(
+                              valueListenable: _selModeNotifier,
+                              builder: (context, selMode, _) {
+                                return ValueListenableBuilder<Set<String>>(
+                                    valueListenable: pickMode
+                                        ? _pickedCoverIdsNotifier
+                                        : _selIdsNotifier,
+                                    builder: (context, activeIds, _) {
+                                      final isSelectedNormal = selMode &&
+                                          !pickMode &&
+                                          activeIds.contains(b.id);
+                                      final isSelectedCover =
+                                          pickMode && activeIds.contains(b.id);
+                                      final isSelected =
+                                          isSelectedNormal || isSelectedCover;
+
+                                      Widget w() => Stack(
+                                            children: [
+                                              BookCard(
+                                                book: b,
+                                                cropCover: cropCovers,
+                                                isSelected: pickMode
+                                                    ? false
+                                                    : isSelected,
+                                                onTap: () {
+                                                  if (pickMode) {
+                                                    _toggleCoverPick(b.id);
+                                                  } else if (selMode) {
+                                                    final current =
+                                                        Set<String>.from(
+                                                            activeIds);
+                                                    isSelectedNormal
+                                                        ? current.remove(b.id)
+                                                        : current.add(b.id);
+                                                    _selIdsNotifier.value =
+                                                        current;
+                                                  } else {
+                                                    Navigator.push(
+                                                        context,
+                                                        AnimRoute(
+                                                            page:
+                                                                CategoryDetailScreen(
+                                                                    category: b,
+                                                                    onUpdate:
+                                                                        () {
+                                                                      _loadItems(
+                                                                          refresh:
+                                                                              true);
+                                                                      widget
+                                                                          .onUpdate();
+                                                                    }),
+                                                            type: TransitionType
+                                                                .fade));
+                                                  }
+                                                },
+                                                onLongPress: () =>
+                                                    _handleLongPress(b.id),
+                                              ),
+                                              if (pickMode && isSelectedCover)
+                                                Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(4),
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                                color:
+                                                                    Colors.blue,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                                boxShadow: [
+                                                              BoxShadow(
+                                                                  color: Colors
+                                                                      .black26,
+                                                                  blurRadius: 4,
+                                                                  offset:
+                                                                      Offset(
+                                                                          0, 2))
+                                                            ]),
+                                                        child: const Icon(
+                                                            Icons.check,
+                                                            color: Colors.white,
+                                                            size: 20))),
+                                            ],
+                                          );
+
+                                      if (selMode || pickMode) return w();
+
+                                      return Listener(
+                                          onPointerCancel: (_) =>
+                                              _dragCancelled = true,
+                                          child: LayoutBuilder(
+                                              builder: (context, constraints) {
+                                            return LongPressDraggable<int>(
+                                                data: i,
+                                                delay: const Duration(
+                                                    milliseconds: 300),
+                                                onDragStarted: () {
+                                                  _dragTravel = 0;
+                                                  _dragCancelled = false;
+                                                },
+                                                onDragUpdate: (details) =>
+                                                    _dragTravel +=
+                                                        details.delta.distance,
+                                                onDragEnd: (details) {
+                                                  if (!_dragCancelled &&
+                                                      !details.wasAccepted &&
+                                                      _dragTravel < 12 &&
+                                                      mounted &&
+                                                      ModalRoute.of(context)
+                                                              ?.isCurrent ==
+                                                          true) {
+                                                    _handleLongPress(b.id);
+                                                  }
+                                                },
+                                                feedback: HeroMode(
+                                                    enabled: false,
+                                                    child: SizedBox(
+                                                        width: constraints
+                                                            .maxWidth,
+                                                        height: constraints
+                                                            .maxHeight,
+                                                        child: Opacity(
+                                                            opacity: 0.9,
+                                                            child: Material(
+                                                                color: Colors
+                                                                    .transparent,
+                                                                child: w())))),
+                                                childWhenDragging: Opacity(
+                                                    opacity: 0.3, child: w()),
+                                                child: DragTarget<int>(
+                                                    onWillAccept: (d) =>
+                                                        d != null && d != i,
+                                                    onAccept: (o) =>
+                                                        _reorder(o, i),
+                                                    builder: (ctx,
+                                                            candidateData,
+                                                            rejectedData) =>
+                                                        w()));
+                                          }));
+                                    });
+                              });
+                        });
+                  }, childCount: _items.length + (_isLoading ? 1 : 0)),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      childAspectRatio: 0.52,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 16),
+                ))
+        ],
+      ),
+    );
+  }
+}

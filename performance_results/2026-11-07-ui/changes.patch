@@ -1,0 +1,2139 @@
+--- before/lib\core\anim_route.dart
++++ after/lib\core\anim_route.dart
+@@ -12,48 +12,54 @@
+     required this.page,
+     this.type = TransitionType.zoomFade,
+   }) : super(
+-    pageBuilder: (context, animation, secondaryAnimation) => page,
+-    
+-    // 🌟 原本是 200ms，我們換成 Normal 分級！(記得原本前面的 const 已經拿掉囉)
+-    transitionDuration: AppConstants.animDurationNormal,
+-    
+-    // 🌟 原本是 150ms，剛好是我們設定的 Fast 分級，完美契合！
+-    reverseTransitionDuration: AppConstants.animDurationFast,
+-    
+-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+-      if (type == TransitionType.zoomFade) {
+-        const beginScale = 0.92;
+-        const endScale = 1.0;
++          pageBuilder: (context, animation, secondaryAnimation) => page,
+ 
+-        var scaleAnimation = Tween<double>(begin: beginScale, end: endScale)
+-            // 🌟 縮放動畫：換上我們統一的標準曲線，輕快俐落！
+-            .animate(CurvedAnimation(parent: animation, curve: AppConstants.animCurveStandard));
++          // 🌟 原本是 200ms，我們換成 Normal 分級！(記得原本前面的 const 已經拿掉囉)
++          transitionDuration: AppConstants.animDurationNormal,
+ 
+-        var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+-            // 🌟 透明度淡入淡出：非常適合使用平滑曲線唷！
+-            .animate(CurvedAnimation(parent: animation, curve: AppConstants.animCurveSmooth));
++          // 🌟 原本是 150ms，剛好是我們設定的 Fast 分級，完美契合！
++          reverseTransitionDuration: AppConstants.animDurationFast,
+ 
+-        return FadeTransition(
+-          opacity: fadeAnimation,
+-          child: ScaleTransition(
+-            scale: scaleAnimation,
+-            child: child,
+-          ),
++          transitionsBuilder: (context, animation, secondaryAnimation, child) {
++            if (MediaQuery.disableAnimationsOf(context)) return child;
++            if (type == TransitionType.zoomFade) {
++              const beginScale = 0.92;
++              const endScale = 1.0;
++
++              var scaleAnimation =
++                  Tween<double>(begin: beginScale, end: endScale)
++                      // 🌟 縮放動畫：換上我們統一的標準曲線，輕快俐落！
++                      .chain(CurveTween(curve: AppConstants.animCurveStandard))
++                      .animate(animation);
++
++              var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
++                  // 🌟 透明度淡入淡出：非常適合使用平滑曲線唷！
++                  .chain(CurveTween(curve: AppConstants.animCurveSmooth))
++                  .animate(animation);
++
++              return FadeTransition(
++                opacity: fadeAnimation,
++                child: ScaleTransition(
++                  scale: scaleAnimation,
++                  child: child,
++                ),
++              );
++            } else if (type == TransitionType.fade) {
++              // 🌟 專為 Hero 動畫準備的純淡入淡出模式！讓圖片自己飛，背景溫柔變換～
++              var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
++                  .chain(CurveTween(curve: AppConstants.animCurveSmooth))
++                  .animate(animation);
++              return FadeTransition(opacity: fadeAnimation, child: child);
++            } else {
++              const begin = Offset(0.0, 1.0);
++              const end = Offset.zero;
++              var slideAnimation = Tween(begin: begin, end: end)
++                  // 🌟 滑動進場動畫：也換上標準曲線，保持個性一致！
++                  .chain(CurveTween(curve: AppConstants.animCurveStandard))
++                  .animate(animation);
++
++              return SlideTransition(position: slideAnimation, child: child);
++            }
++          },
+         );
+-      } else if (type == TransitionType.fade) {
+-        // 🌟 專為 Hero 動畫準備的純淡入淡出模式！讓圖片自己飛，背景溫柔變換～
+-        var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0)
+-            .animate(CurvedAnimation(parent: animation, curve: AppConstants.animCurveSmooth));
+-        return FadeTransition(opacity: fadeAnimation, child: child);
+-      } else {
+-        const begin = Offset(0.0, 1.0);
+-        const end = Offset.zero;
+-        var slideAnimation = Tween(begin: begin, end: end)
+-            // 🌟 滑動進場動畫：也換上標準曲線，保持個性一致！
+-            .animate(CurvedAnimation(parent: animation, curve: AppConstants.animCurveStandard));
+-
+-        return SlideTransition(position: slideAnimation, child: child);
+-      }
+-    },
+-  );
+-}+}
+--- before/lib\core\constants.dart
++++ after/lib\core\constants.dart
+@@ -1,10 +1,17 @@
+ import 'package:flutter/material.dart';
+ 
+ class AppConstants {
++  static const Duration pressDuration = Duration(milliseconds: 100);
++  static const Duration navigationDuration = Duration(milliseconds: 260);
++  static const Duration controlsDuration = Duration(milliseconds: 200);
++  static const Duration zoomDuration = Duration(milliseconds: 200);
++
++  static Duration motionDuration(BuildContext context, Duration duration) =>
++      MediaQuery.disableAnimationsOf(context) ? Duration.zero : duration;
+   // ==========================================
+   // ⏱️ 動畫時間分級 (Animation Durations)
+   // ==========================================
+-  
++
+   /// 極快 (Fast)：150 毫秒
+   /// 適用場景：微小互動回饋、按鈕點擊縮放、開關切換 (Switch) 等。
+   static const Duration animDurationFast = Duration(milliseconds: 150);
+@@ -14,13 +21,14 @@
+   static const Duration animDurationNormal = Duration(milliseconds: 250);
+ 
+   /// 較慢 (Slow)：400 毫秒
+-  /// 適用場景：大範圍畫面切換、閱讀器翻頁、分頁切換、跨畫面轉場 (Hero animation) 等。
++  /// 保留給需要較長追蹤的動作；導航與控制列使用各自的時長，
++  /// 閱讀器手勢翻頁沿用 PageView 的滑動慣性。
+   static const Duration animDurationSlow = Duration(milliseconds: 400);
+ 
+   // ==========================================
+   // 🎢 動畫曲線分級 (Animation Curves)
+   // ==========================================
+-  
++
+   /// 標準曲線 (Standard)：Curves.easeOutCubic
+   /// 特性：啟動快速俐落，結尾平滑緩慢停下。
+   /// 適用場景：絕大多數的 UI 元件彈出、位移，能給人輕快且不拖泥帶水的感覺。
+@@ -30,4 +38,4 @@
+   /// 特性：起步平緩、中間加速、結尾再平緩。
+   /// 適用場景：顏色漸變、透明度淡入淡出 (Fade) 或是不需要特別強調物理慣性的柔和轉場。
+   static const Curve animCurveSmooth = Curves.easeInOut;
+-}+}
+--- before/lib\core\perf_log.dart
++++ after/lib\core\perf_log.dart
+@@ -35,11 +35,14 @@
+   }
+   final String screen;
+   int _count = 0, _over8 = 0, _over16 = 0, _maxBuild = 0, _maxRaster = 0;
++  int _totalBuild = 0, _totalRaster = 0;
+   void _record(List<FrameTiming> timings) {
+     for (final frame in timings) {
+       _count++;
+       final build = frame.buildDuration.inMicroseconds;
+       final raster = frame.rasterDuration.inMicroseconds;
++      _totalBuild += build;
++      _totalRaster += raster;
+       if (build > 8333 || raster > 8333) _over8++;
+       if (build > 16667 || raster > 16667) _over16++;
+       if (build > _maxBuild) _maxBuild = build;
+@@ -57,6 +60,8 @@
+       'over_16ms': _over16,
+       'max_build_us': _maxBuild,
+       'max_raster_us': _maxRaster,
++      'total_build_us': _totalBuild,
++      'total_raster_us': _totalRaster,
+       ...PerfLog.memory()
+     });
+   }
+--- before/lib\main.dart
++++ after/lib\main.dart
+@@ -50,7 +50,13 @@
+ }
+ 
+ class MainScreen extends StatefulWidget {
+-  const MainScreen({super.key});
++  const MainScreen(
++      {super.key,
++      this.pages = const [
++        BookshelfScreen(key: ValueKey('BookShelf')),
++        SettingsScreen(),
++      ]});
++  final List<Widget> pages;
+   @override
+   State<MainScreen> createState() => _MainScreenState();
+ }
+@@ -61,6 +67,7 @@
+ 
+   // 🌟 追蹤導覽列是不是應該要乖乖出現的狀態
+   final ValueNotifier<bool> _isNavVisibleNotifier = ValueNotifier(true);
++  double _scrollTravel = 0;
+ 
+   @override
+   void initState() {
+@@ -78,9 +85,15 @@
+   void _onNavChange(int index) {
+     if (_idx == index) return;
+     setState(() => _idx = index);
++    _scrollTravel = 0;
++    _isNavVisibleNotifier.value = true;
++    if (MediaQuery.disableAnimationsOf(context)) {
++      _pageController.jumpToPage(index);
++      return;
++    }
+     _pageController.animateToPage(
+       index,
+-      duration: AppConstants.animDurationSlow,
++      duration: AppConstants.navigationDuration,
+       curve: AppConstants.animCurveStandard,
+     );
+   }
+@@ -90,15 +103,25 @@
+     // 🌟 核心修正：只偵測「上下滑動（垂直）」，忽略切換頁面的「左右滑動（水平）」！
+     if (notification.metrics.axis != Axis.vertical) return false;
+ 
+-    if (notification is ScrollUpdateNotification) {
+-      if (notification.scrollDelta != null) {
+-        if (notification.scrollDelta! > 2) {
+-          // 往下看書或捲動設定的時候，溫柔地把導覽列收起來，讓畫面更大！
+-          if (_isNavVisibleNotifier.value) _isNavVisibleNotifier.value = false;
+-        } else if (notification.scrollDelta! < -2) {
+-          // 往上滑的時候，代表可能要找選單了，趕快彈出來！
+-          if (!_isNavVisibleNotifier.value) _isNavVisibleNotifier.value = true;
+-        }
++    if (notification.metrics.pixels <=
++        notification.metrics.minScrollExtent + 1) {
++      _scrollTravel = 0;
++      _isNavVisibleNotifier.value = true;
++    } else if (notification is ScrollStartNotification ||
++        notification is ScrollEndNotification) {
++      _scrollTravel = 0;
++    } else if (notification is ScrollUpdateNotification &&
++        notification.dragDetails != null) {
++      final delta = notification.scrollDelta ?? 0;
++      if (delta == 0) return false;
++      if (_scrollTravel.sign != delta.sign) _scrollTravel = 0;
++      _scrollTravel += delta;
++      if (_scrollTravel >= 24) {
++        _isNavVisibleNotifier.value = false;
++        _scrollTravel = 0;
++      } else if (_scrollTravel <= -12) {
++        _isNavVisibleNotifier.value = true;
++        _scrollTravel = 0;
+       }
+     }
+     return false; // 讓滾動事件繼續傳遞喔
+@@ -106,27 +129,47 @@
+ 
+   @override
+   Widget build(BuildContext context) {
++    assert(widget.pages.length == 2);
+     return Scaffold(
+-      extendBody: false,
+-      body: NotificationListener<ScrollNotification>(
+-        onNotification: _handleScrollNotification,
+-        child: PageView(
+-          controller: _pageController,
+-          physics: const NeverScrollableScrollPhysics(),
+-          children: const [
+-            BookshelfScreen(key: ValueKey('BookShelf')),
+-            SettingsScreen(),
+-          ],
+-        ),
+-      ),
++      extendBody: true,
++      body: Builder(builder: (context) {
++        final media = MediaQuery.of(context);
++        // extendBody includes the bar in padding.bottom. Nested SafeAreas
++        // should retain only the system inset, even while the bar is hidden.
++        return MediaQuery(
++          data: media.copyWith(
++              padding: media.padding.copyWith(
++                  bottom: media.viewInsets.bottom > 0
++                      ? 0
++                      : media.viewPadding.bottom)),
++          child: NotificationListener<ScrollNotification>(
++            onNotification: _handleScrollNotification,
++            child: PageView(
++              controller: _pageController,
++              physics: const NeverScrollableScrollPhysics(),
++              children: widget.pages,
++            ),
++          ),
++        );
++      }),
+       bottomNavigationBar: ValueListenableBuilder<bool>(
+         valueListenable: _isNavVisibleNotifier,
+-        builder: (context, visible, child) => AnimatedSlide(
+-          offset: visible ? Offset.zero : const Offset(0, 2),
+-          duration: AppConstants.animDurationNormal,
+-          child: child,
++        builder: (context, visible, child) => IgnorePointer(
++          ignoring: !visible,
++          child: ExcludeSemantics(
++            excluding: !visible,
++            child: AnimatedSlide(
++              offset: visible ? Offset.zero : const Offset(0, 1),
++              duration: AppConstants.motionDuration(
++                  context, AppConstants.controlsDuration),
++              curve: AppConstants.animCurveStandard,
++              child: child,
++            ),
++          ),
+         ),
+         child: NavigationBar(
++          animationDuration: AppConstants.motionDuration(
++              context, AppConstants.animDurationNormal),
+           selectedIndex: _idx,
+           onDestinationSelected: _onNavChange,
+           destinations: [
+--- before/lib\screens\bookshelf\bookshelf_screen.dart
++++ after/lib\screens\bookshelf\bookshelf_screen.dart
+@@ -441,7 +441,8 @@
+                   valueListenable: _selModeNotifier,
+                   builder: (context, selMode, _) {
+                     return AnimatedSwitcher(
+-                        duration: AppConstants.animDurationNormal,
++                        duration: AppConstants.motionDuration(
++                            context, AppConstants.animDurationNormal),
+                         child: selMode
+                             ? Text(
+                                 "${selIds.length} ${AppStrings.get('selected')}",
+@@ -601,14 +602,17 @@
+                                       feedback: Material(
+                                           color: Colors.transparent,
+                                           elevation: 0,
+-                                          child: PhysicsDragFeedback(
+-                                            velocityNotifier:
+-                                                _dragVelocityNotifier,
+-                                            child: SizedBox(
+-                                                width: 110,
+-                                                height: 160,
+-                                                child: buildItem(hover: true)),
+-                                          )),
++                                          child: HeroMode(
++                                              enabled: false,
++                                              child: PhysicsDragFeedback(
++                                                velocityNotifier:
++                                                    _dragVelocityNotifier,
++                                                child: SizedBox(
++                                                    width: 110,
++                                                    height: 160,
++                                                    child:
++                                                        buildItem(hover: true)),
++                                              ))),
+                                       childWhenDragging: Opacity(
+                                           opacity: 0.3, child: buildItem()),
+                                       child: DragTarget<String>(onWillAccept:
+@@ -674,7 +678,10 @@
+                                                     return AnimatedContainer(
+                                                       // 🌟 懸停動畫統一節奏
+                                                       duration: AppConstants
+-                                                          .animDurationNormal,
++                                                          .motionDuration(
++                                                              context,
++                                                              AppConstants
++                                                                  .animDurationNormal),
+                                                       decoration: isMergeGlow
+                                                           ? BoxDecoration(
+                                                               borderRadius:
+@@ -701,7 +708,10 @@
+                                                             : 1.0,
+                                                         // 🌟 縮放動畫統一節奏
+                                                         duration: AppConstants
+-                                                            .animDurationNormal,
++                                                            .motionDuration(
++                                                                context,
++                                                                AppConstants
++                                                                    .animDurationNormal),
+                                                         child: buildItem(
+                                                             hover: isHovering ||
+                                                                 isMergeGlow),
+@@ -730,34 +740,14 @@
+ 
+   @override
+   Widget build(BuildContext context) {
++    final reduced = MediaQuery.disableAnimationsOf(context);
+     return ValueListenableBuilder<Offset>(
+       valueListenable: velocityNotifier,
+-      builder: (context, delta, _) {
+-        return TweenAnimationBuilder<Offset>(
+-          tween: Tween(begin: Offset.zero, end: delta),
+-          duration: AppConstants.animDurationFast,
+-          curve: AppConstants.animCurveStandard,
+-          builder: (context, smoothDelta, childWidget) {
+-            final tiltX = (smoothDelta.dy * 0.015).clamp(-0.25, 0.25);
+-            final tiltY = (-smoothDelta.dx * 0.015).clamp(-0.25, 0.25);
+-            final rotateZ = (smoothDelta.dx * 0.005).clamp(-0.1, 0.1);
+-            return Transform(
+-              alignment: Alignment.center,
+-              transform: Matrix4.identity()
+-                ..setEntry(3, 2, 0.002)
+-                ..rotateX(tiltX)
+-                ..rotateY(tiltY)
+-                ..rotateZ(rotateZ)
+-                ..scale(1.05),
+-              child: Opacity(
+-                opacity: 0.9,
+-                child: childWidget,
+-              ),
+-            );
+-          },
+-          child: child,
+-        );
+-      },
++      child: Transform.scale(scale: reduced ? 1 : 1.05, child: child),
++      builder: (context, delta, child) => Transform.rotate(
++        angle: reduced ? 0 : (delta.dx * 0.002).clamp(-0.06, 0.06),
++        child: child,
++      ),
+     );
+   }
+ }
+--- before/lib\screens\bookshelf\search_delegate.dart
++++ after/lib\screens\bookshelf\search_delegate.dart
+@@ -93,6 +93,7 @@
+             return ListView.builder(
+               itemCount: 8,
+               itemBuilder: (_, i) => Shimmer.fromColors(
++                enabled: !MediaQuery.disableAnimationsOf(context),
+                 baseColor: Colors.grey[300]!,
+                 highlightColor: Colors.grey[100]!,
+                 child: ListTile(
+--- before/lib\screens\details\category_detail_screen.dart
++++ after/lib\screens\details\category_detail_screen.dart
+@@ -416,6 +416,7 @@
+                 sliver: SliverGrid(
+                   delegate: SliverChildBuilderDelegate(
+                     (_, i) => Shimmer.fromColors(
++                        enabled: !MediaQuery.disableAnimationsOf(context),
+                         baseColor:
+                             isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                         highlightColor:
+--- before/lib\screens\reader\manga_reader_screen.dart
++++ after/lib\screens\reader\manga_reader_screen.dart
+@@ -17,14 +17,19 @@
+ import '../../data/reader_image.dart';
+ import '../../models/library_item.dart';
+ import '../../widgets/glass_box.dart';
++import '../../widgets/reader_controls_transition.dart';
+ import 'reader_zoom.dart';
+ 
+ class MangaReaderScreen extends StatefulWidget {
+   final MangaBook book;
+   final int initialPage;
++  final DatabaseHelper? database;
+ 
+   const MangaReaderScreen(
+-      {super.key, required this.book, required this.initialPage});
++      {super.key,
++      required this.book,
++      required this.initialPage,
++      this.database});
+ 
+   @override
+   State<MangaReaderScreen> createState() => _MangaReaderScreenState();
+@@ -51,6 +56,13 @@
+   bool _active = true;
+   bool _leaving = false;
+   bool _allowPop = false;
++  bool _restoreDarkMode = false;
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    _restoreDarkMode = Theme.of(context).brightness == Brightness.dark;
++  }
+ 
+   @override
+   void initState() {
+@@ -61,8 +73,9 @@
+     _pageNotifier.value = initial;
+     _dragNotifier.value = initial.toDouble();
+     _pc = PageController(initialPage: initial);
+-    _progress = ReadingProgress(
+-        (page) => DatabaseHelper.instance.updateProgress(widget.book.id, page));
++    _progress = ReadingProgress((page) =>
++        (widget.database ?? DatabaseHelper.instance)
++            .updateProgress(widget.book.id, page));
+     _progress.onError = (error) {
+       if (mounted) context.showSnackBar('閱讀進度尚未儲存，離開時會重試：$error');
+     };
+@@ -106,7 +119,7 @@
+     _frames.dispose();
+     _isZoomedNotifier.removeListener(_onZoomChanged);
+     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+-    AppTheme.setSystemStyle(false);
++    AppTheme.setSystemStyle(_restoreDarkMode);
+ 
+     WidgetsBinding.instance.removeObserver(this);
+     _prefetch.dispose();
+@@ -205,16 +218,24 @@
+ 
+   void _turnNext() {
+     if (_pageNotifier.value < widget.book.filePaths.length - 1) {
++      if (MediaQuery.disableAnimationsOf(context)) {
++        _pc.jumpToPage(_pageNotifier.value + 1);
++        return;
++      }
+       _pc.nextPage(
+-          duration: AppConstants.animDurationSlow,
++          duration: AppConstants.navigationDuration,
+           curve: AppConstants.animCurveStandard);
+     }
+   }
+ 
+   void _turnPrev() {
+     if (_pageNotifier.value > 0) {
++      if (MediaQuery.disableAnimationsOf(context)) {
++        _pc.jumpToPage(_pageNotifier.value - 1);
++        return;
++      }
+       _pc.previousPage(
+-          duration: AppConstants.animDurationSlow,
++          duration: AppConstants.navigationDuration,
+           curve: AppConstants.animCurveStandard);
+     }
+   }
+@@ -267,42 +288,20 @@
+                         reverse: _rtl,
+                         onPageChanged: _onPageChanged,
+                         itemBuilder: (_, i) {
+-                          return AnimatedBuilder(
+-                            animation: _pc,
+-                            builder: (context, child) {
+-                              double pageOffset = 0.0;
+-                              if (_pc.position.haveDimensions) {
+-                                pageOffset = _pc.page! - i;
+-                              } else {
+-                                pageOffset =
+-                                    (_pageNotifier.value - i).toDouble();
+-                              }
+-                              double scale = 1.0 -
+-                                  (pageOffset.abs() * 0.05).clamp(0.0, 0.2);
+-                              double opacity = 1.0 -
+-                                  (pageOffset.abs() * 0.8).clamp(0.0, 1.0);
+-                              return Transform.scale(
+-                                scale: scale,
+-                                child: Opacity(
+-                                  opacity: opacity,
+-                                  child: child,
+-                                ),
+-                              );
+-                            },
+-                            child: _MangaPage(
+-                              key: ValueKey(widget.book.filePaths[i]),
+-                              path: widget.book.filePaths[i],
+-                              currentPage: _pageNotifier,
+-                              pageIndex: i,
+-                              onImageReady: () => _onPageReady(i),
+-                              zoomLevel: _z > 1.0 ? _z : 2.5,
+-                              enableHero: i == widget.initialPage,
+-                              tag: widget.book.filePaths[i],
+-                              isZoomedNotifier: _isZoomedNotifier,
+-                              rtlMode: _rtl,
+-                              onTurnNext: _turnNext,
+-                              onTurnPrev: _turnPrev,
+-                            ),
++                          return _MangaPage(
++                            key: ValueKey(widget.book.filePaths[i]),
++                            path: widget.book.filePaths[i],
++                            currentPage: _pageNotifier,
++                            pageIndex: i,
++                            onImageReady: () => _onPageReady(i),
++                            zoomLevel: _z > 1.0 ? _z : 2.5,
++                            enableHero: i == widget.initialPage &&
++                                !MediaQuery.disableAnimationsOf(context),
++                            tag: widget.book.filePaths[i],
++                            isZoomedNotifier: _isZoomedNotifier,
++                            rtlMode: _rtl,
++                            onTurnNext: _turnNext,
++                            onTurnPrev: _turnPrev,
+                           );
+                         },
+                       );
+@@ -312,145 +311,137 @@
+             ValueListenableBuilder<bool>(
+               valueListenable: _uiNotifier,
+               builder: (context, uiVisible, child) {
+-                return AnimatedPositioned(
+-                  duration: AppConstants.animDurationNormal,
+-                  curve: AppConstants.animCurveStandard,
+-                  top: uiVisible ? 0 : -100,
++                return Positioned(
++                  top: 0,
+                   left: 0,
+                   right: 0,
+-                  child: AnimatedOpacity(
+-                    duration: AppConstants.animDurationNormal,
+-                    opacity: uiVisible ? 1.0 : 0.0,
+-                    child: GlassBox(
+-                      color: Colors.black,
+-                      opacity: 0.8,
+-                      border: const Border(
+-                          bottom:
+-                              BorderSide(color: Colors.white12, width: 0.5)),
+-                      child: SafeArea(
+-                        bottom: false,
+-                        child: Padding(
+-                          padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
+-                          child: Row(
+-                            children: [
+-                              IconButton(
+-                                  icon: const Icon(Icons.arrow_back,
+-                                      color: Colors.white),
+-                                  onPressed: _requestClose),
+-                              Expanded(
+-                                  child: Text(widget.book.title,
+-                                      style: const TextStyle(
+-                                          color: Colors.white,
+-                                          fontSize: 16,
+-                                          fontWeight: FontWeight.bold),
+-                                      overflow: TextOverflow.ellipsis)),
+-                              if (_rtl)
+-                                const Chip(
+-                                    label: Text("RTL",
+-                                        style: TextStyle(
+-                                            fontSize: 10, color: Colors.black)),
+-                                    backgroundColor: Colors.white,
+-                                    padding: EdgeInsets.zero,
+-                                    visualDensity: VisualDensity.compact)
+-                            ],
+-                          ),
+-                        ),
+-                      ),
+-                    ),
++                  child: ReaderControlsTransition(
++                    visible: uiVisible,
++                    fromTop: true,
++                    child: child!,
+                   ),
+                 );
+               },
++              child: GlassBox(
++                blur: 0,
++                color: Colors.black,
++                opacity: 0.8,
++                border: const Border(
++                    bottom: BorderSide(color: Colors.white12, width: 0.5)),
++                child: SafeArea(
++                  bottom: false,
++                  child: Padding(
++                    padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
++                    child: Row(
++                      children: [
++                        IconButton(
++                            icon: const Icon(Icons.arrow_back,
++                                color: Colors.white),
++                            onPressed: _requestClose),
++                        Expanded(
++                            child: Text(widget.book.title,
++                                style: const TextStyle(
++                                    color: Colors.white,
++                                    fontSize: 16,
++                                    fontWeight: FontWeight.bold),
++                                overflow: TextOverflow.ellipsis)),
++                        if (_rtl)
++                          const Chip(
++                              label: Text("RTL",
++                                  style: TextStyle(
++                                      fontSize: 10, color: Colors.black)),
++                              backgroundColor: Colors.white,
++                              padding: EdgeInsets.zero,
++                              visualDensity: VisualDensity.compact)
++                      ],
++                    ),
++                  ),
++                ),
++              ),
+             ),
+             ValueListenableBuilder<bool>(
+               valueListenable: _uiNotifier,
+               builder: (context, uiVisible, child) {
+-                return AnimatedPositioned(
+-                  duration: AppConstants.animDurationNormal,
+-                  curve: AppConstants.animCurveStandard,
+-                  bottom: uiVisible ? 0 : -140,
++                return Positioned(
++                  bottom: 0,
+                   left: 0,
+                   right: 0,
+-                  child: AnimatedOpacity(
+-                    duration: AppConstants.animDurationNormal,
+-                    opacity: uiVisible ? 1.0 : 0.0,
+-                    child: GlassBox(
+-                      color: Colors.black,
+-                      opacity: 0.8,
+-                      border: const Border(
+-                          top: BorderSide(color: Colors.white12, width: 0.5)),
+-                      child: SafeArea(
+-                        top: false,
+-                        child: Padding(
+-                          padding: const EdgeInsets.symmetric(
+-                              horizontal: 20, vertical: 16),
+-                          child: Column(
+-                            mainAxisSize: MainAxisSize.min,
+-                            children: [
+-                              Row(
+-                                mainAxisAlignment:
+-                                    MainAxisAlignment.spaceBetween,
+-                                children: [
+-                                  ValueListenableBuilder<int>(
+-                                      valueListenable: _pageNotifier,
+-                                      builder: (context, currentPage, _) {
+-                                        return Text("Page ${currentPage + 1}",
+-                                            style: const TextStyle(
+-                                                color: Colors.white70));
+-                                      }),
+-                                  Text("$total",
+-                                      style: const TextStyle(
+-                                          color: Colors.white70)),
+-                                ],
+-                              ),
+-                              SliderTheme(
+-                                data: SliderTheme.of(context).copyWith(
+-                                  trackHeight: 4,
+-                                  thumbShape: const RoundSliderThumbShape(
+-                                      enabledThumbRadius: 8),
+-                                  overlayShape: const RoundSliderOverlayShape(
+-                                      overlayRadius: 16),
+-                                  activeTrackColor: AppTheme.accent,
+-                                  inactiveTrackColor: Colors.white24,
+-                                  thumbColor: Colors.white,
+-                                ),
+-                                child: ValueListenableBuilder<double>(
+-                                    valueListenable: _dragNotifier,
+-                                    builder: (context, dragValue, _) {
+-                                      return Slider(
+-                                        value: dragValue.clamp(
+-                                            0.0,
+-                                            total > 1
+-                                                ? (total - 1).toDouble()
+-                                                : 1.0),
+-                                        min: 0,
+-                                        max: total > 1
+-                                            ? (total - 1).toDouble()
+-                                            : 1.0,
+-                                        divisions: total > 1 ? total - 1 : 1,
+-                                        onChanged: (v) {
+-                                          _dragNotifier.value = v;
+-                                          // Scrubbing previews the number; decode only the final target.
+-                                        },
+-                                        onChangeStart: (_) {
+-                                          _isDraggingNotifier.value = true;
+-                                          _prefetch.cancelPending();
+-                                        },
+-                                        onChangeEnd: (value) {
+-                                          _isDraggingNotifier.value = false;
+-                                          _pc.jumpToPage(value.toInt());
+-                                          _manageMemory(value.toInt());
+-                                        },
+-                                      );
+-                                    }),
+-                              ),
+-                            ],
+-                          ),
+-                        ),
+-                      ),
+-                    ),
++                  child: ReaderControlsTransition(
++                    visible: uiVisible,
++                    fromTop: false,
++                    child: child!,
+                   ),
+                 );
+               },
++              child: GlassBox(
++                blur: 0,
++                color: Colors.black,
++                opacity: 0.8,
++                border: const Border(
++                    top: BorderSide(color: Colors.white12, width: 0.5)),
++                child: SafeArea(
++                  top: false,
++                  child: Padding(
++                    padding: const EdgeInsets.symmetric(
++                        horizontal: 20, vertical: 16),
++                    child: Column(
++                      mainAxisSize: MainAxisSize.min,
++                      children: [
++                        Row(
++                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
++                          children: [
++                            ValueListenableBuilder<int>(
++                                valueListenable: _pageNotifier,
++                                builder: (context, currentPage, _) {
++                                  return Text("Page ${currentPage + 1}",
++                                      style: const TextStyle(
++                                          color: Colors.white70));
++                                }),
++                            Text("$total",
++                                style: const TextStyle(color: Colors.white70)),
++                          ],
++                        ),
++                        SliderTheme(
++                          data: SliderTheme.of(context).copyWith(
++                            trackHeight: 4,
++                            thumbShape: const RoundSliderThumbShape(
++                                enabledThumbRadius: 8),
++                            overlayShape: const RoundSliderOverlayShape(
++                                overlayRadius: 16),
++                            activeTrackColor: AppTheme.accent,
++                            inactiveTrackColor: Colors.white24,
++                            thumbColor: Colors.white,
++                          ),
++                          child: ValueListenableBuilder<double>(
++                              valueListenable: _dragNotifier,
++                              builder: (context, dragValue, _) {
++                                return Slider(
++                                  value: dragValue.clamp(0.0,
++                                      total > 1 ? (total - 1).toDouble() : 1.0),
++                                  min: 0,
++                                  max: total > 1 ? (total - 1).toDouble() : 1.0,
++                                  divisions: total > 1 ? total - 1 : 1,
++                                  onChanged: (v) {
++                                    _dragNotifier.value = v;
++                                    // Scrubbing previews the number; decode only the final target.
++                                  },
++                                  onChangeStart: (_) {
++                                    _isDraggingNotifier.value = true;
++                                    _prefetch.cancelPending();
++                                  },
++                                  onChangeEnd: (value) {
++                                    _isDraggingNotifier.value = false;
++                                    _pc.jumpToPage(value.toInt());
++                                    _manageMemory(value.toInt());
++                                  },
++                                );
++                              }),
++                        ),
++                      ],
++                    ),
++                  ),
++                ),
++              ),
+             ),
+             ValueListenableBuilder<bool>(
+               valueListenable: _isDraggingNotifier,
+@@ -461,7 +452,8 @@
+                   child: Center(
+                     child: TweenAnimationBuilder<double>(
+                       tween: Tween(begin: 0.0, end: 1.0),
+-                      duration: AppConstants.animDurationNormal,
++                      duration: AppConstants.motionDuration(
++                          context, AppConstants.animDurationNormal),
+                       builder: (context, value, child) => Transform.scale(
+                         scale: value,
+                         child: Opacity(opacity: value, child: child),
+@@ -604,13 +596,7 @@
+             if (mounted) widget.onImageReady();
+           });
+         }
+-        if (wasSync) return child;
+-        return AnimatedOpacity(
+-          opacity: frame == null ? 0 : 1,
+-          duration: AppConstants.animDurationNormal,
+-          curve: AppConstants.animCurveStandard,
+-          child: child,
+-        );
++        return child;
+       },
+     );
+ 
+--- before/lib\screens\reader\reader_zoom.dart
++++ after/lib\screens\reader\reader_zoom.dart
+@@ -1,5 +1,6 @@
+ import 'package:flutter/foundation.dart';
+ import 'package:flutter/material.dart';
++import '../../core/constants.dart';
+ 
+ /// Zooms a single reader page without rebuilding the image on matrix changes.
+ class ReaderZoom extends StatefulWidget {
+@@ -37,17 +38,17 @@
+     super.initState();
+     _transform.addListener(_reportScale);
+     widget.currentPage?.addListener(_resetForPageChange);
+-    _animation = AnimationController(
+-        vsync: this, duration: const Duration(milliseconds: 200))
+-      ..addListener(() {
+-        if (_tween != null) _transform.value = _tween!.value;
+-      })
+-      ..addStatusListener((status) {
+-        if (status == AnimationStatus.completed) {
+-          _zoomingIn = false;
+-          _reportScale();
+-        }
+-      });
++    _animation =
++        AnimationController(vsync: this, duration: AppConstants.zoomDuration)
++          ..addListener(() {
++            if (_tween != null) _transform.value = _tween!.value;
++          })
++          ..addStatusListener((status) {
++            if (status == AnimationStatus.completed) {
++              _zoomingIn = false;
++              _reportScale();
++            }
++          });
+   }
+ 
+   void _resetForPageChange() {
+@@ -119,8 +120,15 @@
+         ..setTranslationRaw(x, y, 0);
+       if (_zoomingIn) widget.isZoomed.value = true;
+     }
+-    _tween = Matrix4Tween(begin: Matrix4.copy(current), end: target)
+-        .animate(CurvedAnimation(parent: _animation, curve: Curves.easeInOut));
++    if (MediaQuery.disableAnimationsOf(context)) {
++      _zoomingIn = false;
++      _tween = null;
++      _transform.value = target;
++      _reportScale();
++      return;
++    }
++    _tween = Matrix4Tween(begin: Matrix4.copy(current), end: target).animate(
++        CurveTween(curve: AppConstants.animCurveStandard).animate(_animation));
+     _animation.forward(from: 0);
+   }
+ 
+--- before/lib\screens\settings_screen.dart
++++ after/lib\screens\settings_screen.dart
+@@ -16,8 +16,6 @@
+ 
+ class _SettingsScreenState extends State<SettingsScreen>
+     with AutomaticKeepAliveClientMixin {
+-  double? _zoomDraft;
+-
+   @override
+   bool get wantKeepAlive => true;
+ 
+@@ -27,7 +25,6 @@
+     final settings = context.watch<SettingsProvider>();
+     final theme = Theme.of(context);
+     final colors = theme.colorScheme;
+-    final zoom = _zoomDraft ?? settings.zoomLevel;
+ 
+     return Scaffold(
+       body: SafeArea(
+@@ -168,62 +165,7 @@
+                         onChanged: settings.setRtlMode,
+                       ),
+                       const Divider(height: 28),
+-                      Row(
+-                        children: [
+-                          const Icon(Icons.zoom_in_rounded),
+-                          const SizedBox(width: 12),
+-                          Expanded(
+-                              child: Text('雙擊放大倍率',
+-                                  style: theme.textTheme.titleMedium)),
+-                          Text(
+-                            '${zoom.toStringAsFixed(1)}×',
+-                            style: theme.textTheme.titleMedium?.copyWith(
+-                              color: colors.primary,
+-                              fontWeight: FontWeight.w800,
+-                            ),
+-                          ),
+-                        ],
+-                      ),
+-                      const SizedBox(height: 4),
+-                      Text(
+-                        '雙擊圖片時使用此倍率；雙指仍可自由縮放。',
+-                        style: theme.textTheme.bodySmall?.copyWith(
+-                          color: colors.onSurfaceVariant,
+-                        ),
+-                      ),
+-                      Slider(
+-                        value: zoom
+-                            .clamp(AppConfig.zoomMin, AppConfig.zoomMax)
+-                            .toDouble(),
+-                        min: AppConfig.zoomMin,
+-                        max: AppConfig.zoomMax,
+-                        divisions: AppConfig.zoomDivisions,
+-                        label: '${zoom.toStringAsFixed(1)}×',
+-                        onChanged: (value) =>
+-                            setState(() => _zoomDraft = value),
+-                        onChangeEnd: (value) {
+-                          settings.setZoomLevel(value);
+-                          setState(() => _zoomDraft = null);
+-                        },
+-                      ),
+-                      Row(
+-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+-                        children: [
+-                          Text('${AppConfig.zoomMin.toStringAsFixed(1)}×',
+-                              style: theme.textTheme.bodySmall),
+-                          TextButton.icon(
+-                            onPressed: () {
+-                              settings.setZoomLevel(2.5);
+-                              setState(() => _zoomDraft = null);
+-                            },
+-                            icon:
+-                                const Icon(Icons.restart_alt_rounded, size: 18),
+-                            label: const Text('恢復預設 2.5×'),
+-                          ),
+-                          Text('${AppConfig.zoomMax.toStringAsFixed(1)}×',
+-                              style: theme.textTheme.bodySmall),
+-                        ],
+-                      ),
++                      const _ZoomSetting(),
+                     ],
+                   ),
+                 ),
+@@ -311,3 +253,74 @@
+     );
+   }
+ }
++
++class _ZoomSetting extends StatefulWidget {
++  const _ZoomSetting();
++  @override
++  State<_ZoomSetting> createState() => _ZoomSettingState();
++}
++
++class _ZoomSettingState extends State<_ZoomSetting> {
++  double? _zoomDraft;
++  @override
++  Widget build(BuildContext context) {
++    final savedZoom =
++        context.select<SettingsProvider, double>((s) => s.zoomLevel);
++    final settings = context.read<SettingsProvider>();
++    final theme = Theme.of(context);
++    final colors = theme.colorScheme;
++    final zoom = _zoomDraft ?? savedZoom;
++    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
++      Row(
++        children: [
++          const Icon(Icons.zoom_in_rounded),
++          const SizedBox(width: 12),
++          Expanded(child: Text('雙擊放大倍率', style: theme.textTheme.titleMedium)),
++          Text(
++            '${zoom.toStringAsFixed(1)}×',
++            style: theme.textTheme.titleMedium?.copyWith(
++              color: colors.primary,
++              fontWeight: FontWeight.w800,
++            ),
++          ),
++        ],
++      ),
++      const SizedBox(height: 4),
++      Text(
++        '雙擊圖片時使用此倍率；雙指仍可自由縮放。',
++        style: theme.textTheme.bodySmall?.copyWith(
++          color: colors.onSurfaceVariant,
++        ),
++      ),
++      Slider(
++        value: zoom.clamp(AppConfig.zoomMin, AppConfig.zoomMax).toDouble(),
++        min: AppConfig.zoomMin,
++        max: AppConfig.zoomMax,
++        divisions: AppConfig.zoomDivisions,
++        label: '${zoom.toStringAsFixed(1)}×',
++        onChanged: (value) => setState(() => _zoomDraft = value),
++        onChangeEnd: (value) {
++          settings.setZoomLevel(value);
++          setState(() => _zoomDraft = null);
++        },
++      ),
++      Row(
++        mainAxisAlignment: MainAxisAlignment.spaceBetween,
++        children: [
++          Text('${AppConfig.zoomMin.toStringAsFixed(1)}×',
++              style: theme.textTheme.bodySmall),
++          TextButton.icon(
++            onPressed: () {
++              settings.setZoomLevel(2.5);
++              setState(() => _zoomDraft = null);
++            },
++            icon: const Icon(Icons.restart_alt_rounded, size: 18),
++            label: const Text('恢復預設 2.5×'),
++          ),
++          Text('${AppConfig.zoomMax.toStringAsFixed(1)}×',
++              style: theme.textTheme.bodySmall),
++        ],
++      ),
++    ]);
++  }
++}
+--- before/lib\widgets\book_card.dart
++++ after/lib\widgets\book_card.dart
+@@ -39,117 +39,126 @@
+         : 0.0;
+     final bool isCompleted = progress >= 1.0;
+ 
+-    return RepaintBoundary(
+-      child: AnimatedScale(
+-        scale: _isPressed ? 0.95 : 1.0,
+-        duration: AppConstants.animDurationFast,
+-        curve: AppConstants.animCurveStandard,
+-        child: GestureDetector(
+-          onTapDown: (_) => setState(() => _isPressed = true),
+-          onTapUp: (_) => setState(() => _isPressed = false),
+-          onTapCancel: () => setState(() => _isPressed = false),
+-          onTap: widget.onTap,
+-          onLongPress: widget.onLongPress,
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.start,
+-            children: [
+-              Expanded(
+-                child: Stack(
+-                  fit: StackFit.expand,
+-                  children: [
+-                    Hero(
+-                      tag: 'book_cover_${widget.book.id}',
+-                      transitionOnUserGestures: true,
+-                      child: ClipRRect(
+-                        borderRadius:
+-                            BorderRadius.circular(AppTheme.cornerRadius),
+-                        child: Material(
+-                          color: Theme.of(context)
+-                              .colorScheme
+-                              .surfaceContainerHigh,
+-                          child: PageThumbnail(
+-                            path: widget.book.coverPath ?? '',
+-                            fit: widget.cropCover
+-                                ? BoxFit.cover
+-                                : BoxFit.contain,
+-                            cacheWidth: AppConfig.thumbnailCacheWidth,
+-                            borderRadius: BorderRadius.zero,
+-                            preserveAnimation: true,
+-                            deferGenerationUntilReady: true,
++    return HeroMode(
++        enabled: !MediaQuery.disableAnimationsOf(context),
++        child: RepaintBoundary(
++          child: AnimatedScale(
++            scale: _isPressed ? 0.95 : 1.0,
++            duration: AppConstants.motionDuration(
++                context,
++                _isPressed
++                    ? AppConstants.pressDuration
++                    : AppConstants.animDurationFast),
++            curve: AppConstants.animCurveStandard,
++            child: GestureDetector(
++              onTapDown: (_) => setState(() => _isPressed = true),
++              onTapUp: (_) => setState(() => _isPressed = false),
++              onTapCancel: () => setState(() => _isPressed = false),
++              onTap: widget.onTap,
++              onLongPress: widget.onLongPress,
++              child: Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                children: [
++                  Expanded(
++                    child: Stack(
++                      fit: StackFit.expand,
++                      children: [
++                        Hero(
++                          tag: 'book_cover_${widget.book.id}',
++                          transitionOnUserGestures: true,
++                          child: ClipRRect(
++                            borderRadius:
++                                BorderRadius.circular(AppTheme.cornerRadius),
++                            child: Material(
++                              color: Theme.of(context)
++                                  .colorScheme
++                                  .surfaceContainerHigh,
++                              child: PageThumbnail(
++                                path: widget.book.coverPath ?? '',
++                                fit: widget.cropCover
++                                    ? BoxFit.cover
++                                    : BoxFit.contain,
++                                cacheWidth: AppConfig.thumbnailCacheWidth,
++                                borderRadius: BorderRadius.zero,
++                                preserveAnimation: true,
++                                deferGenerationUntilReady: true,
++                              ),
++                            ),
+                           ),
+                         ),
+-                      ),
++
++                        // 🌟 已經把這裡原本的進度條 (Progress Bar) 溫柔地移除了喔！
++
++                        if (widget.isHovered)
++                          Container(
++                            decoration: BoxDecoration(
++                              borderRadius:
++                                  BorderRadius.circular(AppTheme.cornerRadius),
++                              border: Border.all(
++                                  color: Theme.of(context).colorScheme.primary,
++                                  width: 3),
++                              color: Theme.of(context)
++                                  .colorScheme
++                                  .primary
++                                  .withOpacity(0.2),
++                            ),
++                          ),
++                        if (widget.isSelected)
++                          Container(
++                            decoration: BoxDecoration(
++                              color: Colors.black.withOpacity(0.4),
++                              borderRadius:
++                                  BorderRadius.circular(AppTheme.cornerRadius),
++                              border: Border.all(
++                                  color: Theme.of(context).colorScheme.primary,
++                                  width: 2),
++                            ),
++                            child: Center(
++                                child: Icon(Icons.check_circle,
++                                    color:
++                                        Theme.of(context).colorScheme.primary,
++                                    size: 32)),
++                          ),
++                      ],
+                     ),
+-
+-                    // 🌟 已經把這裡原本的進度條 (Progress Bar) 溫柔地移除了喔！
+-
+-                    if (widget.isHovered)
+-                      Container(
+-                        decoration: BoxDecoration(
+-                          borderRadius:
+-                              BorderRadius.circular(AppTheme.cornerRadius),
+-                          border: Border.all(
+-                              color: Theme.of(context).colorScheme.primary,
+-                              width: 3),
+-                          color: Theme.of(context)
+-                              .colorScheme
+-                              .primary
+-                              .withOpacity(0.2),
+-                        ),
+-                      ),
+-                    if (widget.isSelected)
+-                      Container(
+-                        decoration: BoxDecoration(
+-                          color: Colors.black.withOpacity(0.4),
+-                          borderRadius:
+-                              BorderRadius.circular(AppTheme.cornerRadius),
+-                          border: Border.all(
+-                              color: Theme.of(context).colorScheme.primary,
+-                              width: 2),
+-                        ),
+-                        child: Center(
+-                            child: Icon(Icons.check_circle,
+-                                color: Theme.of(context).colorScheme.primary,
+-                                size: 32)),
+-                      ),
+-                  ],
+-                ),
++                  ),
++                  const SizedBox(height: 6),
++                  SizedBox(
++                    height: 36,
++                    child: Text(
++                      widget.book.title,
++                      maxLines: 2,
++                      overflow: TextOverflow.ellipsis,
++                      style: TextStyle(
++                          fontSize: 13,
++                          fontWeight: FontWeight.w500,
++                          height: 1.25,
++                          color: Theme.of(context).textTheme.bodyLarge?.color),
++                    ),
++                  ),
++                  SizedBox(
++                    height: 16,
++                    child: Row(
++                      children: [
++                        Text("${widget.book.totalPageCount} 頁",
++                            style: TextStyle(
++                                fontSize: 11,
++                                color: Theme.of(context)
++                                    .textTheme
++                                    .bodySmall
++                                    ?.color)),
++                        const Spacer(),
++                        // 🌟 已經把原本的百分比文字移除了，只保留看完時的溫馨小勾勾！
++                        if (isCompleted)
++                          const Icon(Icons.check_circle,
++                              size: 12, color: Colors.greenAccent),
++                      ],
++                    ),
++                  ),
++                ],
+               ),
+-              const SizedBox(height: 6),
+-              SizedBox(
+-                height: 36,
+-                child: Text(
+-                  widget.book.title,
+-                  maxLines: 2,
+-                  overflow: TextOverflow.ellipsis,
+-                  style: TextStyle(
+-                      fontSize: 13,
+-                      fontWeight: FontWeight.w500,
+-                      height: 1.25,
+-                      color: Theme.of(context).textTheme.bodyLarge?.color),
+-                ),
+-              ),
+-              SizedBox(
+-                height: 16,
+-                child: Row(
+-                  children: [
+-                    Text("${widget.book.totalPageCount} 頁",
+-                        style: TextStyle(
+-                            fontSize: 11,
+-                            color:
+-                                Theme.of(context).textTheme.bodySmall?.color)),
+-                    const Spacer(),
+-                    // 🌟 已經把原本的百分比文字移除了，只保留看完時的溫馨小勾勾！
+-                    if (isCompleted)
+-                      const Icon(Icons.check_circle,
+-                          size: 12, color: Colors.greenAccent),
+-                  ],
+-                ),
+-              ),
+-            ],
++            ),
+           ),
+-        ),
+-      ),
+-    );
++        ));
+   }
+ }
+--- before/lib\widgets\folder_card.dart
++++ after/lib\widgets\folder_card.dart
+@@ -33,134 +33,143 @@
+   Widget build(BuildContext context) {
+     final thumbs = widget.folder.thumbnails;
+ 
+-    return RepaintBoundary(
+-      child: AnimatedScale(
+-        scale: _isPressed ? 0.95 : 1.0,
+-        // 🌟 統一使用極快的動畫節奏，俐落有彈性！
+-        duration: AppConstants.animDurationFast,
+-        curve: AppConstants.animCurveStandard,
+-        child: GestureDetector(
+-          onTapDown: (_) => setState(() => _isPressed = true),
+-          onTapUp: (_) => setState(() => _isPressed = false),
+-          onTapCancel: () => setState(() => _isPressed = false),
+-          onTap: widget.onTap,
+-          onLongPress: widget.onLongPress,
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.start,
+-            children: [
+-              Expanded(
+-                child: Hero(
+-                  tag: 'folder_cover_${widget.folder.id}',
+-                  transitionOnUserGestures: true,
+-                  child: Material(
+-                    color: Colors.transparent,
+-                    child: Container(
+-                      decoration: BoxDecoration(
+-                        borderRadius:
+-                            BorderRadius.circular(AppTheme.cornerRadius),
+-                        color: Theme.of(context).cardColor,
+-                        boxShadow: const [
+-                          BoxShadow(
+-                              color: Colors.black12,
+-                              blurRadius: 4,
+-                              offset: Offset(0, 2))
+-                        ],
+-                      ),
+-                      child: ClipRRect(
+-                        borderRadius:
+-                            BorderRadius.circular(AppTheme.cornerRadius),
+-                        child: Stack(
+-                          fit: StackFit.expand,
+-                          children: [
+-                            if (thumbs.isEmpty)
+-                              const Center(
+-                                  child: Icon(Icons.folder_open,
+-                                      color: Colors.grey))
+-                            else
+-                              Column(
+-                                children: [
+-                                  Expanded(
+-                                      child: Row(children: [
+-                                    _buildTile(thumbs, 0),
+-                                    const SizedBox(width: 1),
+-                                    _buildTile(thumbs, 1)
+-                                  ])),
+-                                  const SizedBox(height: 1),
+-                                  Expanded(
+-                                      child: Row(children: [
+-                                    _buildTile(thumbs, 2),
+-                                    const SizedBox(width: 1),
+-                                    _buildTile(thumbs, 3)
+-                                  ])),
+-                                ],
+-                              ),
+-                            Positioned(
+-                              top: 6,
+-                              right: 6,
+-                              child: Container(
+-                                padding: const EdgeInsets.all(4),
+-                                decoration: BoxDecoration(
+-                                    color: Colors.black54,
+-                                    borderRadius: BorderRadius.circular(4)),
+-                                child: const Icon(Icons.folder,
+-                                    color: Colors.white, size: 14),
+-                              ),
+-                            ),
+-                            if (widget.isHovered)
+-                              Container(
+-                                  decoration: BoxDecoration(
+-                                      borderRadius: BorderRadius.circular(
+-                                          AppTheme.cornerRadius),
+-                                      border: Border.all(
++    return HeroMode(
++        enabled: !MediaQuery.disableAnimationsOf(context),
++        child: RepaintBoundary(
++          child: AnimatedScale(
++            scale: _isPressed ? 0.95 : 1.0,
++            // 🌟 統一使用極快的動畫節奏，俐落有彈性！
++            duration: AppConstants.motionDuration(
++                context,
++                _isPressed
++                    ? AppConstants.pressDuration
++                    : AppConstants.animDurationFast),
++            curve: AppConstants.animCurveStandard,
++            child: GestureDetector(
++              onTapDown: (_) => setState(() => _isPressed = true),
++              onTapUp: (_) => setState(() => _isPressed = false),
++              onTapCancel: () => setState(() => _isPressed = false),
++              onTap: widget.onTap,
++              onLongPress: widget.onLongPress,
++              child: Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
++                children: [
++                  Expanded(
++                    child: Hero(
++                      tag: 'folder_cover_${widget.folder.id}',
++                      transitionOnUserGestures: true,
++                      child: Material(
++                        color: Colors.transparent,
++                        child: Container(
++                          decoration: BoxDecoration(
++                            borderRadius:
++                                BorderRadius.circular(AppTheme.cornerRadius),
++                            color: Theme.of(context).cardColor,
++                            boxShadow: const [
++                              BoxShadow(
++                                  color: Colors.black12,
++                                  blurRadius: 4,
++                                  offset: Offset(0, 2))
++                            ],
++                          ),
++                          child: ClipRRect(
++                            borderRadius:
++                                BorderRadius.circular(AppTheme.cornerRadius),
++                            child: Stack(
++                              fit: StackFit.expand,
++                              children: [
++                                if (thumbs.isEmpty)
++                                  const Center(
++                                      child: Icon(Icons.folder_open,
++                                          color: Colors.grey))
++                                else
++                                  Column(
++                                    children: [
++                                      Expanded(
++                                          child: Row(children: [
++                                        _buildTile(thumbs, 0),
++                                        const SizedBox(width: 1),
++                                        _buildTile(thumbs, 1)
++                                      ])),
++                                      const SizedBox(height: 1),
++                                      Expanded(
++                                          child: Row(children: [
++                                        _buildTile(thumbs, 2),
++                                        const SizedBox(width: 1),
++                                        _buildTile(thumbs, 3)
++                                      ])),
++                                    ],
++                                  ),
++                                Positioned(
++                                  top: 6,
++                                  right: 6,
++                                  child: Container(
++                                    padding: const EdgeInsets.all(4),
++                                    decoration: BoxDecoration(
++                                        color: Colors.black54,
++                                        borderRadius: BorderRadius.circular(4)),
++                                    child: const Icon(Icons.folder,
++                                        color: Colors.white, size: 14),
++                                  ),
++                                ),
++                                if (widget.isHovered)
++                                  Container(
++                                      decoration: BoxDecoration(
++                                          borderRadius: BorderRadius.circular(
++                                              AppTheme.cornerRadius),
++                                          border: Border.all(
++                                              color: Theme.of(context)
++                                                  .colorScheme
++                                                  .primary,
++                                              width: 3),
+                                           color: Theme.of(context)
+                                               .colorScheme
+-                                              .primary,
+-                                          width: 3),
+-                                      color: Theme.of(context)
+-                                          .colorScheme
+-                                          .primary
+-                                          .withOpacity(0.2))),
+-                            if (widget.isSelected)
+-                              Container(
+-                                  decoration: BoxDecoration(
+-                                      color: Colors.black.withOpacity(0.4),
+-                                      borderRadius: BorderRadius.circular(
+-                                          AppTheme.cornerRadius),
+-                                      border: Border.all(
+-                                          color: Colors.blueAccent, width: 2)),
+-                                  child: const Center(
+-                                      child: Icon(Icons.check_circle,
+-                                          color: Colors.blueAccent, size: 32))),
+-                          ],
++                                              .primary
++                                              .withOpacity(0.2))),
++                                if (widget.isSelected)
++                                  Container(
++                                      decoration: BoxDecoration(
++                                          color: Colors.black.withOpacity(0.4),
++                                          borderRadius: BorderRadius.circular(
++                                              AppTheme.cornerRadius),
++                                          border: Border.all(
++                                              color: Colors.blueAccent,
++                                              width: 2)),
++                                      child: const Center(
++                                          child: Icon(Icons.check_circle,
++                                              color: Colors.blueAccent,
++                                              size: 32))),
++                              ],
++                            ),
++                          ),
+                         ),
+                       ),
+                     ),
+                   ),
+-                ),
++                  const SizedBox(height: 6),
++                  SizedBox(
++                    height: 36,
++                    child: Text(widget.folder.title,
++                        style: const TextStyle(
++                            fontSize: 13,
++                            fontWeight: FontWeight.bold,
++                            height: 1.25),
++                        maxLines: 2,
++                        overflow: TextOverflow.ellipsis),
++                  ),
++                  SizedBox(
++                    height: 16,
++                    child: Text("${widget.folder.itemCount} 本",
++                        style: TextStyle(
++                            color:
++                                Theme.of(context).colorScheme.onSurfaceVariant,
++                            fontSize: 11)),
++                  ),
++                ],
+               ),
+-              const SizedBox(height: 6),
+-              SizedBox(
+-                height: 36,
+-                child: Text(widget.folder.title,
+-                    style: const TextStyle(
+-                        fontSize: 13,
+-                        fontWeight: FontWeight.bold,
+-                        height: 1.25),
+-                    maxLines: 2,
+-                    overflow: TextOverflow.ellipsis),
+-              ),
+-              SizedBox(
+-                height: 16,
+-                child: Text("${widget.folder.itemCount} 本",
+-                    style: TextStyle(
+-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+-                        fontSize: 11)),
+-              ),
+-            ],
++            ),
+           ),
+-        ),
+-      ),
+-    );
++        ));
+   }
+ 
+   Widget _buildTile(List<String> paths, int index) {
+--- before/lib\widgets\glass_box.dart
++++ after/lib\widgets\glass_box.dart
+@@ -6,9 +6,24 @@
+   final double blur, opacity;
+   final Color color;
+   final Border? border;
+-  const GlassBox({super.key, required this.child, this.blur = 10, this.opacity = 0.7, this.color = Colors.white, this.border});
++  const GlassBox(
++      {super.key,
++      required this.child,
++      this.blur = 10,
++      this.opacity = 0.7,
++      this.color = Colors.white,
++      this.border});
+   @override
+   Widget build(BuildContext context) {
+-    return ClipRect(child: BackdropFilter(filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: Container(decoration: BoxDecoration(color: color.withOpacity(opacity), border: border), child: child)));
++    final surface = DecoratedBox(
++      decoration: BoxDecoration(
++          color: color.withValues(alpha: opacity), border: border),
++      child: child,
++    );
++    if (blur <= 0) return surface;
++    return ClipRect(
++        child: BackdropFilter(
++            filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
++            child: surface));
+   }
+-}+}
+--- before/lib\widgets\reader_controls_transition.dart
++++ after/lib\widgets\reader_controls_transition.dart
+@@ -0,0 +1,30 @@
++import 'package:flutter/material.dart';
++import '../core/constants.dart';
++
++/// Paint-only motion: the controls keep a stable layout while sliding entirely
++/// outside the viewport, including large text and system safe areas.
++class ReaderControlsTransition extends StatelessWidget {
++  const ReaderControlsTransition(
++      {super.key,
++      required this.visible,
++      required this.fromTop,
++      required this.child});
++  final bool visible;
++  final bool fromTop;
++  final Widget child;
++
++  @override
++  Widget build(BuildContext context) => IgnorePointer(
++        ignoring: !visible,
++        child: ExcludeSemantics(
++          excluding: !visible,
++          child: AnimatedSlide(
++            offset: visible ? Offset.zero : Offset(0, fromTop ? -1 : 1),
++            duration: AppConstants.motionDuration(
++                context, AppConstants.controlsDuration),
++            curve: AppConstants.animCurveStandard,
++            child: TickerMode(enabled: visible, child: child),
++          ),
++        ),
++      );
++}
+--- before/lib\widgets\scale_button.dart
++++ after/lib\widgets\scale_button.dart
+@@ -21,11 +21,14 @@
+       onTap: widget.onTap,
+       // 🌟 統一使用標準的動畫時間與曲線！
+       child: AnimatedScale(
+-        scale: _pressed ? 0.95 : 1.0, 
+-        duration: AppConstants.animDurationFast, 
+-        curve: AppConstants.animCurveStandard, 
+-        child: widget.child
+-      ),
++          scale: _pressed ? 0.95 : 1.0,
++          duration: AppConstants.motionDuration(
++              context,
++              _pressed
++                  ? AppConstants.pressDuration
++                  : AppConstants.animDurationFast),
++          curve: AppConstants.animCurveStandard,
++          child: widget.child),
+     );
+   }
+-}+}
+--- before/test\hero_motion_test.dart
++++ after/test\hero_motion_test.dart
+@@ -0,0 +1,67 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/anim_route.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/screens/details/category_detail_screen.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'support/sqlite_database.dart';
++
++class HeroDatabase extends DatabaseHelper {
++  HeroDatabase() : super.forTesting(SqliteDatabase(), 'unused');
++  @override
++  Future<List<String>> getBookPages(String id) async => [];
++}
++
++void main() {
++  for (final reduced in [false, true]) {
++    testWidgets(
++        'book cover route tolerates interrupted return reduced=$reduced',
++        (tester) async {
++      SharedPreferences.setMockInitialValues({});
++      final db = HeroDatabase();
++      final book =
++          MangaBook(id: 'book', title: 'very long title ' * 20, filePaths: []);
++      final navigator = GlobalKey<NavigatorState>();
++      await tester.pumpWidget(ChangeNotifierProvider(
++          create: (_) => SettingsProvider(),
++          child: MaterialApp(
++              navigatorKey: navigator,
++              builder: (context, child) => MediaQuery(
++                  data: MediaQuery.of(context)
++                      .copyWith(disableAnimations: reduced),
++                  child: child!),
++              home: Scaffold(
++                  body: Center(
++                      child: SizedBox(
++                          width: 110,
++                          height: 200,
++                          child: BookCard(
++                              book: book,
++                              onLongPress: () {},
++                              onTap: () {
++                                navigator.currentState!.push(AnimRoute<void>(
++                                    type: TransitionType.fade,
++                                    page: CategoryDetailScreen(
++                                        category: book,
++                                        database: db,
++                                        onUpdate: () {})));
++                              })))))));
++      await tester.pump();
++      await tester.tap(find.byType(BookCard));
++      await tester.pump();
++      await tester.pump(const Duration(milliseconds: 70));
++      expect(find.byType(CategoryDetailScreen), findsOneWidget);
++      navigator.currentState!.pop();
++      await tester.pumpAndSettle();
++      expect(find.byType(BookCard), findsOneWidget);
++      expect(tester.takeException(), isNull);
++      await tester.pumpWidget(const SizedBox());
++      await tester.pumpAndSettle();
++      await (await db.database).close();
++    });
++  }
++}
+--- before/test\navigation_motion_test.dart
++++ after/test\navigation_motion_test.dart
+@@ -0,0 +1,126 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:gun_book/main.dart';
++
++void main() {
++  late BuildContext scrollContext;
++  Widget app({bool reduced = false}) => MaterialApp(
++        builder: (context, child) => MediaQuery(
++            data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
++            child: child!),
++        home: MainScreen(pages: [
++          Builder(builder: (context) {
++            scrollContext = context;
++            return SafeArea(
++                child: ListView(children: const [SizedBox(height: 2000)]));
++          }),
++          const ColoredBox(color: Colors.blue),
++        ]),
++      );
++  void scroll(double delta, {bool drag = true, double pixels = 100}) {
++    ScrollUpdateNotification(
++      metrics: FixedScrollMetrics(
++          minScrollExtent: 0,
++          maxScrollExtent: 2000,
++          pixels: pixels,
++          viewportDimension: 600,
++          axisDirection: AxisDirection.down,
++          devicePixelRatio: 1),
++      context: scrollContext,
++      scrollDelta: delta,
++      dragDetails: drag ? DragUpdateDetails(globalPosition: Offset.zero) : null,
++    ).dispatch(scrollContext);
++  }
++
++  testWidgets(
++      'navigation ignores jitter and momentum; hiding preserves viewport',
++      (tester) async {
++    await tester.pumpWidget(app());
++    final initialSize = tester.getSize(find.byType(PageView));
++    expect(initialSize.height,
++        tester.view.physicalSize.height / tester.view.devicePixelRatio);
++    expect(tester.getBottomRight(find.byType(ListView)).dy,
++        tester.view.physicalSize.height / tester.view.devicePixelRatio);
++    scroll(3);
++    await tester.pump();
++    expect(tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
++        Offset.zero);
++    scroll(21);
++    await tester.pump();
++    expect(
++        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset.dy, 1);
++    expect(
++        tester
++            .widget<IgnorePointer>(find
++                .ancestor(
++                    of: find.byType(NavigationBar),
++                    matching: find.byType(IgnorePointer))
++                .first)
++            .ignoring,
++        isTrue);
++    scroll(-3);
++    await tester.pump();
++    expect(
++        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset.dy, 1);
++    scroll(-100, drag: false);
++    await tester.pump();
++    expect(
++        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset.dy, 1);
++    scroll(-9);
++    await tester.pumpAndSettle();
++    expect(tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
++        Offset.zero);
++    expect(tester.getSize(find.byType(PageView)), initialSize);
++    scroll(30);
++    await tester.pump();
++    scroll(0, pixels: 0);
++    await tester.pumpAndSettle();
++    expect(tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset,
++        Offset.zero);
++  });
++  testWidgets(
++      'rapid navigation reversals keep the final selection and page aligned',
++      (tester) async {
++    await tester.pumpWidget(app());
++    void select(int index) => tester
++        .widget<NavigationBar>(find.byType(NavigationBar))
++        .onDestinationSelected!(index);
++    select(1);
++    select(1);
++    await tester.pump(const Duration(milliseconds: 60));
++    select(0);
++    await tester.pump(const Duration(milliseconds: 30));
++    select(1);
++    await tester.pumpAndSettle();
++    expect(
++        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
++        1);
++    expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, 1);
++    select(0);
++    await tester.pump(const Duration(milliseconds: 30));
++    await tester.pumpWidget(const SizedBox());
++    await tester.pumpAndSettle();
++    expect(tester.takeException(), isNull);
++  });
++  testWidgets('reduced motion jumps to destination; resizing retains selection',
++      (tester) async {
++    await tester.pumpWidget(app(reduced: true));
++    tester
++        .widget<NavigationBar>(find.byType(NavigationBar))
++        .onDestinationSelected!(1);
++    await tester.pump();
++    expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, 1);
++    expect(
++        tester
++            .widget<NavigationBar>(find.byType(NavigationBar))
++            .animationDuration,
++        Duration.zero);
++    tester.view.physicalSize = const Size(600, 800);
++    addTearDown(tester.view.resetPhysicalSize);
++    await tester.pump();
++    expect(
++        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
++        1);
++    expect(tester.takeException(), isNull);
++  });
++}
+--- before/test\reader_motion_test.dart
++++ after/test\reader_motion_test.dart
+@@ -0,0 +1,173 @@
++import 'dart:io';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/screens/reader/manga_reader_screen.dart';
++import 'package:gun_book/widgets/reader_controls_transition.dart';
++import 'package:gun_book/widgets/glass_box.dart';
++import 'support/sqlite_database.dart';
++import 'support/test_image.dart';
++
++class ReaderDatabase extends DatabaseHelper {
++  ReaderDatabase() : super.forTesting(SqliteDatabase(), 'unused');
++  final saved = <int>[];
++  @override
++  Future<void> updateProgress(String id, int page) async {
++    saved.add(page);
++  }
++}
++
++void main() {
++  for (final dark in [false, true]) {
++    testWidgets('leaving reader restores system icon contrast dark=$dark',
++        (tester) async {
++      SharedPreferences.setMockInitialValues({});
++      final db = ReaderDatabase();
++      await tester.pumpWidget(ChangeNotifierProvider(
++          create: (_) => SettingsProvider(),
++          child: MaterialApp(
++              theme: dark ? ThemeData.dark() : ThemeData.light(),
++              home: MangaReaderScreen(
++                  book: MangaBook(id: 'empty', title: 'empty', filePaths: []),
++                  initialPage: 0,
++                  database: db))));
++      await tester.pump();
++      await tester.pumpWidget(const SizedBox());
++      await tester.pump();
++      expect(SystemChrome.latestStyle?.systemNavigationBarIconBrightness,
++          dark ? Brightness.light : Brightness.dark);
++      await (await db.database).close();
++    });
++  }
++  for (final rtl in [false, true]) {
++    testWidgets('plain full-resolution paging and rapid controls rtl=$rtl',
++        (tester) async {
++      SharedPreferences.setMockInitialValues({'read_rtl': rtl ? 1 : 0});
++      final directory = await tester.runAsync(
++          () => Directory.systemTemp.createTemp('gunbook-ui-reader-'));
++      final paths = <String>[];
++      await tester.runAsync(() async {
++        for (var n = 0; n < 3; n++) {
++          paths.add((await writeTestImage('${directory!.path}/$n.png',
++                  width: 1080, height: 1600))
++              .path);
++        }
++      });
++      final db = ReaderDatabase();
++      await tester.pumpWidget(ChangeNotifierProvider(
++          create: (_) => SettingsProvider(),
++          child: MaterialApp(
++              home: MangaReaderScreen(
++                  book: MangaBook(id: 'test', title: 'test', filePaths: paths),
++                  initialPage: 0,
++                  database: db))));
++      await tester.pump();
++      await tester.runAsync(
++          () => Future<void>.delayed(const Duration(milliseconds: 100)));
++      await tester.pumpAndSettle();
++      final pager = find.byType(PageView);
++      expect(tester.widget<PageView>(pager).reverse, rtl);
++      expect(find.descendant(of: pager, matching: find.byType(Opacity)),
++          findsNothing);
++      expect(find.descendant(of: pager, matching: find.byType(AnimatedOpacity)),
++          findsNothing);
++      expect(find.byType(BackdropFilter), findsNothing);
++      final image = tester
++          .widgetList<Image>(
++              find.descendant(of: pager, matching: find.byType(Image)))
++          .first;
++      final slider = tester.widget<Slider>(find.byType(Slider));
++      final pageState = tester.state(find.byType(InteractiveViewer).first);
++      void toggle() => tester
++          .widgetList<GestureDetector>(
++              find.ancestor(of: pager, matching: find.byType(GestureDetector)))
++          .firstWhere((w) => w.onTap != null)
++          .onTap!();
++      toggle();
++      await tester.pump(const Duration(milliseconds: 40));
++      toggle();
++      await tester.pump(const Duration(milliseconds: 20));
++      for (final transition in tester.widgetList<ReaderControlsTransition>(
++          find.byType(ReaderControlsTransition))) {
++        expect(transition.visible, isFalse);
++      }
++      expect(
++          tester.state(find.byType(InteractiveViewer).first), same(pageState));
++      expect(tester.widget<Slider>(find.byType(Slider)), same(slider));
++      expect(
++          tester
++              .widgetList<Image>(
++                  find.descendant(of: pager, matching: find.byType(Image)))
++              .first
++              .image,
++          image.image);
++      final center = tester.getCenter(pager);
++      await tester.dragFrom(center, Offset(rtl ? 600 : -600, 0));
++      await tester.pumpAndSettle();
++      final controller = tester.widget<PageView>(pager).controller!;
++      expect(controller.page, closeTo(1, .01));
++      controller.jumpToPage(2);
++      await tester.pumpAndSettle();
++      expect(controller.page, closeTo(2, .01));
++      expect(tester.takeException(), isNull);
++      await tester.pumpWidget(const SizedBox());
++      await tester.pump();
++      expect(db.saved.last, 2);
++      PaintingBinding.instance.imageCache.clear();
++      PaintingBinding.instance.imageCache.clearLiveImages();
++      await tester.runAsync(() => directory!.delete(recursive: true));
++      await (await db.database).close();
++    });
++  }
++  testWidgets(
++      'hidden controls reject touches and rapid reversal stays consistent',
++      (tester) async {
++    final visible = ValueNotifier(false);
++    var taps = 0;
++    await tester.pumpWidget(MaterialApp(
++        home: Scaffold(
++            body: Stack(children: [
++      ValueListenableBuilder<bool>(
++          valueListenable: visible,
++          builder: (_, show, __) => ReaderControlsTransition(
++              visible: show,
++              fromTop: true,
++              child: GlassBox(
++                  blur: 0,
++                  child: SizedBox(
++                      height: 120,
++                      child: TextButton(
++                          onPressed: () => taps++,
++                          child: const Text('controls')))))),
++    ]))));
++    visible.value = true;
++    await tester.pump();
++    await tester.pump(const Duration(milliseconds: 70));
++    visible.value = false;
++    await tester.pump();
++    expect(
++        tester
++            .widget<IgnorePointer>(find
++                .descendant(
++                    of: find.byType(ReaderControlsTransition),
++                    matching: find.byType(IgnorePointer))
++                .first)
++            .ignoring,
++        isTrue);
++    visible.value = true;
++    await tester.pumpAndSettle();
++    await tester.tap(find.text('controls'));
++    expect(taps, 1);
++    visible.value = false;
++    await tester.pump();
++    await tester.pumpWidget(const SizedBox());
++    await tester.pumpAndSettle();
++    expect(tester.takeException(), isNull);
++    visible.dispose();
++  });
++}
+--- before/test\reader_zoom_test.dart
++++ after/test\reader_zoom_test.dart
+@@ -3,6 +3,41 @@
+ import 'package:gun_book/screens/reader/reader_zoom.dart';
+ 
+ void main() {
++  testWidgets(
++      'reduced motion applies configured zoom immediately without a ticker',
++      (tester) async {
++    final zoomed = ValueNotifier(false);
++    await tester.pumpWidget(MaterialApp(
++        builder: (context, child) => MediaQuery(
++            data: MediaQuery.of(context).copyWith(disableAnimations: true),
++            child: child!),
++        home: Scaffold(
++            body: ReaderZoom(
++                isZoomed: zoomed,
++                doubleTapScale: 3.2,
++                child: const SizedBox.expand(
++                    child: ColoredBox(color: Colors.blue))))));
++    final point = tester.getCenter(find.byType(InteractiveViewer));
++    await tester.tapAt(point);
++    await tester.pump(const Duration(milliseconds: 40));
++    await tester.tapAt(point);
++    await tester.pump();
++    final matrix = tester
++        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
++        .transformationController!;
++    expect(matrix.value.getMaxScaleOnAxis(), closeTo(3.2, .001));
++    expect(zoomed.value, isTrue);
++    await tester.pump(const Duration(milliseconds: 350));
++    await tester.tapAt(point);
++    await tester.pump(const Duration(milliseconds: 40));
++    await tester.tapAt(point);
++    await tester.pump();
++    expect(matrix.value.getMaxScaleOnAxis(), closeTo(1, .001));
++    expect(zoomed.value, isFalse);
++    await tester.pumpWidget(const SizedBox());
++    await tester.pump(const Duration(milliseconds: 100));
++    zoomed.dispose();
++  });
+   testWidgets('double tap zooms around the tap and returns smoothly',
+       (tester) async {
+     final zoomed = ValueNotifier(false);
+@@ -256,9 +291,14 @@
+     zoomed.dispose();
+     size.dispose();
+   });
+-  testWidgets('rapid taps and disposal during animation are safe', (tester) async {
+-    final zoomed = ValueNotifier(false);
+-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: ReaderZoom(isZoomed: zoomed, child: const ColoredBox(color: Colors.blue)))));
++  testWidgets('rapid taps and disposal during animation are safe',
++      (tester) async {
++    final zoomed = ValueNotifier(false);
++    await tester.pumpWidget(MaterialApp(
++        home: Scaffold(
++            body: ReaderZoom(
++                isZoomed: zoomed,
++                child: const ColoredBox(color: Colors.blue)))));
+     final center = tester.getCenter(find.byType(InteractiveViewer));
+     for (var n = 0; n < 3; n++) {
+       await tester.tapAt(center);
+@@ -271,5 +311,4 @@
+     expect(tester.takeException(), isNull);
+     zoomed.dispose();
+   });
+-
+ }
+--- before/test\settings_motion_test.dart
++++ after/test\settings_motion_test.dart
+@@ -0,0 +1,33 @@
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/screens/settings_screen.dart';
++
++void main() {
++  testWidgets('zoom scrubbing rebuilds locally and saves only on release',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({'z_level': 2.5});
++    final settings = SettingsProvider();
++    await tester.pumpWidget(ChangeNotifierProvider.value(
++        value: settings, child: const MaterialApp(home: SettingsScreen())));
++    await tester.pump();
++    await tester.scrollUntilVisible(find.byType(Slider), 300,
++        scrollable: find.byType(Scrollable));
++    await tester.pumpAndSettle();
++    final list = tester.widget<ListView>(find.byType(ListView));
++    final slider = tester.widget<Slider>(find.byType(Slider));
++    slider.onChanged!(3.2);
++    await tester.pump();
++    expect(tester.widget<ListView>(find.byType(ListView)), same(list));
++    expect(settings.zoomLevel, 2.5);
++    expect(tester.widget<Slider>(find.byType(Slider)).value, 3.2);
++    tester.widget<Slider>(find.byType(Slider)).onChangeEnd!(3.2);
++    await tester.pump();
++    expect(settings.zoomLevel, 3.2);
++    expect((await SharedPreferences.getInstance()).getDouble('z_level'), 3.2);
++    await tester.pumpWidget(const SizedBox());
++    settings.dispose();
++  });
++}

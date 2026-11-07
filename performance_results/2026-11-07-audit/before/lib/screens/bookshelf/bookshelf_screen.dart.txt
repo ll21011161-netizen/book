@@ -1,0 +1,757 @@
+// lib/screens/bookshelf/bookshelf_screen.dart
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/bookshelf_header.dart';
+import '../reader/manga_reader_screen.dart';
+
+import '../../core/constants.dart';
+import '../../core/perf_log.dart';
+import '../../core/settings_provider.dart';
+import '../../core/strings.dart';
+import '../../core/theme.dart';
+import '../../core/utils.dart';
+import '../../core/anim_route.dart';
+import '../../data/database_helper.dart';
+import '../../models/library_item.dart';
+import '../../widgets/book_card.dart';
+import '../../widgets/folder_card.dart';
+import '../../widgets/smooth_input_dialog.dart';
+
+import '../details/category_detail_screen.dart';
+import '../details/folder_detail_screen.dart';
+import 'search_delegate.dart';
+
+class BookshelfScreen extends StatefulWidget {
+  const BookshelfScreen({super.key, this.database});
+  final DatabaseHelper? database;
+
+  @override
+  State<BookshelfScreen> createState() => BookshelfScreenState();
+}
+
+class BookshelfScreenState extends State<BookshelfScreen>
+    with AutomaticKeepAliveClientMixin {
+  DatabaseHelper get _database => widget.database ?? DatabaseHelper.instance;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  late final PerfFrames _frames;
+  final Stopwatch _firstLoad = Stopwatch();
+  bool _firstLoadLogged = false;
+  List<LibraryItem> _items = [];
+  int _filter = 0;
+  List<String> _recentIds = [];
+  MangaBook? _recentBook;
+  int _recentGeneration = 0;
+
+  Future<void> _loadRecent(int generation) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted || generation != _recentGeneration) return;
+      final ids = prefs.getStringList('recent_read_book_ids') ?? <String>[];
+      MangaBook? book;
+      if (ids.isNotEmpty) {
+        book = _items
+            .whereType<MangaBook>()
+            .where((b) => b.id == ids.first)
+            .firstOrNull;
+        book ??= await _database.getRecentBookSummary(ids);
+      }
+      if (mounted && generation == _recentGeneration) {
+        setState(() {
+          _recentIds = ids;
+          _recentBook = book;
+        });
+      }
+    } catch (error) {
+      // Keep an existing panel during transient preferences/database failures.
+      if (mounted && generation == _recentGeneration) {
+        context.showSnackBar('最近閱讀載入失敗：$error');
+      }
+    }
+  }
+
+  List<LibraryItem> get _visibleItems {
+    switch (_filter) {
+      case 1:
+        final books = _items
+            .whereType<MangaBook>()
+            .where((b) => _recentIds.contains(b.id))
+            .toList();
+        books.sort((a, b) =>
+            _recentIds.indexOf(a.id).compareTo(_recentIds.indexOf(b.id)));
+        return books;
+      case 2:
+        return _items.whereType<MangaFolder>().toList();
+      case 3:
+        return _items
+            .whereType<MangaBook>()
+            .where((b) => b.readCount == 0)
+            .toList();
+      default:
+        return _items;
+    }
+  }
+
+  Future<void> _continueReading(MangaBook book) async {
+    if (_openingReader) return;
+    _openingReader = true;
+    try {
+      final full = await _database.getBookFull(book.id);
+      if (!mounted || full.filePaths.isEmpty) return;
+      await _database.incrementReadCount(book.id);
+      if (!mounted) return;
+      await Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+              builder: (_) => MangaReaderScreen(
+                  book: full, initialPage: full.lastReadPage)));
+      if (mounted) loadData(refresh: true);
+    } catch (_) {
+      if (mounted) context.showSnackBar('無法開啟漫畫，請稍後重試');
+    }
+  }
+
+  final ValueNotifier<bool> _selModeNotifier = ValueNotifier(false);
+  final ValueNotifier<Set<String>> _selIdsNotifier = ValueNotifier({});
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<Offset> _dragVelocityNotifier =
+      ValueNotifier(Offset.zero);
+  bool _isLoading = false;
+  bool _hasMore = true;
+  int _offset = 0;
+  int _loadGeneration = 0;
+  bool _mutationBusy = false;
+  bool _openingReader = false;
+  final int _limit = 50;
+  StreamSubscription? _dbSubscription;
+  Timer? _hoverTimer;
+  Timer? _refreshTimer;
+
+  final ValueNotifier<int?> _hoverIndexNotifier = ValueNotifier(null);
+  final ValueNotifier<bool> _isMergeModeNotifier = ValueNotifier(false);
+
+  @override
+  void initState() {
+    super.initState();
+    _frames = PerfFrames('bookshelf');
+    if (PerfLog.enabled) _firstLoad.start();
+    loadData(refresh: true);
+    _scrollController.addListener(_onScroll);
+    _dbSubscription = _database.onDatabaseChanged.listen((_) {
+      _refreshTimer?.cancel();
+      _refreshTimer = Timer(const Duration(milliseconds: 40), () {
+        if (mounted) loadData(refresh: true);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _frames.dispose();
+    _hoverTimer?.cancel();
+    _refreshTimer?.cancel();
+    _dbSubscription?.cancel();
+    _scrollController.dispose();
+    _selModeNotifier.dispose();
+    _selIdsNotifier.dispose();
+    _dragVelocityNotifier.dispose();
+    _hoverIndexNotifier.dispose();
+    _isMergeModeNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 500 &&
+        !_isLoading &&
+        _hasMore) {
+      loadData();
+    }
+  }
+
+  Future<void> loadData({bool refresh = false}) async {
+    if (!mounted || (_isLoading && !refresh)) return;
+    if (refresh) {
+      _refreshTimer?.cancel();
+      _recentGeneration++;
+    }
+    final recentGeneration = _recentGeneration;
+    final limit = refresh && _offset > _limit ? _offset : _limit;
+    final watch = Stopwatch()..start();
+    final generation = ++_loadGeneration;
+    final offset = refresh ? 0 : _offset;
+    setState(() => _isLoading = true);
+    try {
+      final result = await _database.fetchItems(limit: limit, offset: offset);
+      PerfLog.event('bookshelf_query', {
+        'elapsed_ms': watch.elapsedMilliseconds,
+        'offset': offset,
+        'count': result.length
+      });
+      if (!mounted || generation != _loadGeneration) return;
+      if (!_firstLoadLogged) {
+        _firstLoadLogged = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            PerfLog.event('bookshelf_first_frame',
+                {'elapsed_ms': _firstLoad.elapsedMilliseconds});
+          }
+        });
+      }
+      setState(() {
+        final byId = {
+          for (final item in refresh ? <LibraryItem>[] : _items) item.id: item
+        };
+        for (final item in result) {
+          byId[item.id] = item;
+        }
+        _items = byId.values.toList();
+        _offset = offset + result.length;
+        _hasMore = result.length == limit;
+        _isLoading = false;
+      });
+      if (refresh) unawaited(_loadRecent(recentGeneration));
+      if (_filter != 0 && _hasMore) loadData();
+    } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() => _isLoading = false);
+      context.showSnackBar('載入失敗：$error');
+    }
+  }
+
+  void showAdd() {
+    showDialog(
+        context: context,
+        builder: (_) => Dialog(
+            shape: AppStyles.dialogShape,
+            child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(AppStrings.get('add_content'), style: AppStyles.title),
+                  const SizedBox(height: 20),
+                  ListTile(
+                      leading: const Icon(Icons.library_add_check),
+                      title: Text(AppStrings.get('batch_import')),
+                      onTap: () {
+                        context.pop();
+                        LibraryActions.batchImport(context);
+                      }),
+                  ListTile(
+                      leading: const Icon(Icons.create_new_folder),
+                      title: Text(AppStrings.get('create')),
+                      onTap: () {
+                        context.pop();
+                        LibraryActions.createEmptyBook(context);
+                      }),
+                ]))));
+  }
+
+  void _createFolder() async {
+    if (_selIdsNotifier.value.isEmpty) return;
+    try {
+      await LibraryActions.createFolder(
+          context, _selIdsNotifier.value.toList(), _endSel);
+    } catch (error) {
+      if (mounted) context.showSnackBar('建立資料夾失敗：$error');
+    }
+  }
+
+  void _deleteSel() async {
+    final ids = _selIdsNotifier.value.toList();
+    if (!await DialogUtils.showConfirm(context,
+            title: AppStrings.get('confirm_delete')) ||
+        !mounted) return;
+    try {
+      await _database.deleteItems(ids);
+      if (mounted) _endSel();
+    } catch (error) {
+      if (mounted) context.showSnackBar('刪除失敗，資料未變更：$error');
+    }
+  }
+
+  void _renameSel() async {
+    if (_selIdsNotifier.value.length != 1) return;
+    final id = _selIdsNotifier.value.first;
+    final item = _items.firstWhere((e) => e.id == id);
+    final newName = await DialogUtils.showInput(context,
+        title: AppStrings.get('rename'), initial: item.title);
+    if (newName.isValid) {
+      await _database.updateTitle(id, newName!);
+      if (mounted) _endSel();
+    }
+  }
+
+  void _moveSel() {
+    final ids = _selIdsNotifier.value.toList();
+    if (_items.any((item) => ids.contains(item.id) && item is MangaFolder)) {
+      context.showSnackBar('資料夾不能移入其他資料夾');
+      return;
+    }
+    final folders = _items
+        .whereType<MangaFolder>()
+        .where((folder) => !ids.contains(folder.id))
+        .toList();
+    if (folders.isEmpty || ids.isEmpty) return;
+    showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+              title: Text(AppStrings.get('move_to')),
+              content: SizedBox(
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: folders.length,
+                    itemBuilder: (_, i) => ListTile(
+                        title: Text(folders[i].title),
+                        onTap: () async {
+                          if (_mutationBusy) return;
+                          _mutationBusy = true;
+                          try {
+                            await _database.moveItems(ids, folders[i].id);
+                            if (dialogContext.mounted)
+                              Navigator.pop(dialogContext);
+                            if (mounted) _endSel();
+                          } catch (error) {
+                            if (mounted) context.showSnackBar('移動失敗：$error');
+                          } finally {
+                            _mutationBusy = false;
+                          }
+                        }),
+                  )),
+            ));
+  }
+
+  void _endSel() {
+    _selModeNotifier.value = false;
+    _selIdsNotifier.value = {};
+  }
+
+  Future<void> _onReorder(String draggedId, String targetId) async {
+    if (_mutationBusy || _selModeNotifier.value) return;
+    final oldIndex = _items.indexWhere((item) => item.id == draggedId);
+    final newIndex = _items.indexWhere((item) => item.id == targetId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex == newIndex) return;
+    _mutationBusy = true;
+    final reordered = [..._items];
+    reordered.insert(newIndex, reordered.removeAt(oldIndex));
+    setState(() => _items = reordered);
+    try {
+      await _database.updateSortOrder(reordered.map((item) => item.id).toList(),
+          notify: false);
+    } catch (error) {
+      if (mounted) {
+        context.showSnackBar('排序失敗：$error');
+        await loadData(refresh: true);
+      }
+    } finally {
+      _mutationBusy = false;
+    }
+  }
+
+  Future<void> _mergeItems(String draggedId, String targetId) async {
+    if (_mutationBusy) return;
+    final dragged = _items.where((item) => item.id == draggedId).firstOrNull;
+    final target = _items.where((item) => item.id == targetId).firstOrNull;
+    if (dragged is! MangaBook || target == null || draggedId == targetId)
+      return;
+    _mutationBusy = true;
+    try {
+      if (target is MangaFolder) {
+        await _database.moveItems([draggedId], targetId);
+      } else {
+        final name = await SmoothInputDialog.show(context,
+            title: '建立新資料夾', initialText: '新資料夾');
+        if (!mounted || name == null || name.trim().isEmpty) return;
+        await _database.createFolder(
+            MangaFolder(
+                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                title: name.trim()),
+            itemIds: [draggedId, targetId]);
+      }
+      // Notifications own refresh. Never mutate a replacement list by old index.
+      if (mounted) context.showSnackBar('合併完成');
+    } catch (error) {
+      if (mounted) context.showSnackBar('合併失敗，請重新選取：$error');
+    } finally {
+      _mutationBusy = false;
+    }
+  }
+
+  void _tap(LibraryItem item, bool sel) {
+    if (_selModeNotifier.value) {
+      final current = Set<String>.from(_selIdsNotifier.value);
+      if (sel)
+        current.remove(item.id);
+      else
+        current.add(item.id);
+      _selIdsNotifier.value = current;
+    } else if (item is MangaBook) {
+      Navigator.push(
+          context,
+          AnimRoute(
+              page: CategoryDetailScreen(
+                  category: item, onUpdate: () => loadData(refresh: true)),
+              type: TransitionType.fade));
+    } else if (item is MangaFolder) {
+      Navigator.push(
+          context,
+          AnimRoute(
+              page: FolderDetailScreen(
+                  folder: item, onUpdate: () => loadData(refresh: true)),
+              type: TransitionType.fade));
+    }
+  }
+
+  void _handleLongPress(LibraryItem item) {
+    if (!_selModeNotifier.value) {
+      _selModeNotifier.value = true;
+      _selIdsNotifier.value = {item.id};
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final visibleItems = _visibleItems;
+    final recent = _recentBook;
+    final columns = context.select<SettingsProvider, int>(
+      (settings) => settings.bookshelfColumns,
+    );
+    final cropCovers = context.select<SettingsProvider, bool>(
+      (settings) => settings.cropBookCovers,
+    );
+
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(
+        title: ValueListenableBuilder<Set<String>>(
+            valueListenable: _selIdsNotifier,
+            builder: (context, selIds, _) {
+              return ValueListenableBuilder<bool>(
+                  valueListenable: _selModeNotifier,
+                  builder: (context, selMode, _) {
+                    return AnimatedSwitcher(
+                        duration: AppConstants.animDurationNormal,
+                        child: selMode
+                            ? Text(
+                                "${selIds.length} ${AppStrings.get('selected')}",
+                                key: const ValueKey('sel'),
+                                style: const TextStyle(fontSize: 18))
+                            : const Text("GunBook",
+                                key: ValueKey('title'),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 30)));
+                  });
+            }),
+        actions: [
+          ValueListenableBuilder<bool>(
+              valueListenable: _selModeNotifier,
+              builder: (context, selMode, _) {
+                if (!selMode) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: () => showSearch(
+                              context: context,
+                              delegate:
+                                  SearchDel(() => loadData(refresh: true)))),
+                      const SizedBox(width: 16),
+                      IconButton(
+                          icon: const Icon(Icons.checklist),
+                          onPressed: () => _selModeNotifier.value = true)
+                    ],
+                  );
+                }
+                return ValueListenableBuilder<Set<String>>(
+                    valueListenable: _selIdsNotifier,
+                    builder: (context, selIds, _) {
+                      final allSelected = visibleItems.isNotEmpty &&
+                          visibleItems
+                              .every((item) => selIds.contains(item.id));
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                              icon: Icon(allSelected
+                                  ? Icons.deselect
+                                  : Icons.select_all),
+                              onPressed: () => _selIdsNotifier.value =
+                                  allSelected
+                                      ? {}
+                                      : visibleItems.map((e) => e.id).toSet()),
+                          if (selIds.length == 1)
+                            IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: _renameSel),
+                          IconButton(
+                              icon: const Icon(Icons.drive_file_move),
+                              onPressed: _moveSel),
+                          IconButton(
+                              icon: const Icon(Icons.create_new_folder),
+                              onPressed: _createFolder),
+                          IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: _deleteSel),
+                          IconButton(
+                              icon: const Icon(Icons.close), onPressed: _endSel)
+                        ],
+                      );
+                    });
+              })
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: showAdd,
+        icon: const Icon(Icons.add),
+        label: const Text("新增漫畫"),
+      ),
+      body: RefreshIndicator(
+          onRefresh: () => loadData(refresh: true),
+          child: CustomScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                  child: BookshelfHeader(
+                recent: recent,
+                selectedFilter: _filter,
+                onContinue:
+                    recent == null ? null : () => _continueReading(recent),
+                onFilter: (value) {
+                  _endSel();
+                  setState(() => _filter = value);
+                  if (value != 0 && _hasMore && !_isLoading) loadData();
+                },
+              )),
+              if (visibleItems.isEmpty && !_isLoading)
+                SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                        child: Text(
+                            _items.isEmpty ? '書架還沒有漫畫，點右下角新增吧' : '沒有符合條件的漫畫')))
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  sliver: SliverGrid.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        childAspectRatio: 0.52,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 24),
+                    itemCount: visibleItems.length + (_isLoading ? 1 : 0),
+                    itemBuilder: (ctx, i) {
+                      if (i == visibleItems.length)
+                        return const Center(child: CircularProgressIndicator());
+
+                      final item = visibleItems[i];
+
+                      return ValueListenableBuilder<bool>(
+                          valueListenable: _selModeNotifier,
+                          builder: (context, selMode, _) {
+                            return ValueListenableBuilder<Set<String>>(
+                                valueListenable: _selIdsNotifier,
+                                builder: (context, selIds, _) {
+                                  final sel = selIds.contains(item.id);
+
+                                  Widget buildItem({bool hover = false}) =>
+                                      item is MangaFolder
+                                          ? FolderCard(
+                                              folder: item,
+                                              isSelected: sel,
+                                              isHovered: hover,
+                                              onTap: () => _tap(item, sel),
+                                              onLongPress: () =>
+                                                  _handleLongPress(item))
+                                          : BookCard(
+                                              book: item as MangaBook,
+                                              cropCover: cropCovers,
+                                              isSelected: sel,
+                                              isHovered: hover,
+                                              onTap: () => _tap(item, sel),
+                                              onLongPress: () =>
+                                                  _handleLongPress(item));
+
+                                  if (selMode || _filter != 0)
+                                    return buildItem();
+
+                                  return LongPressDraggable<String>(
+                                      data: item.id,
+                                      delay: const Duration(milliseconds: 300),
+                                      onDragUpdate: (details) =>
+                                          _dragVelocityNotifier.value =
+                                              details.delta,
+                                      onDragEnd: (_) => _dragVelocityNotifier
+                                          .value = Offset.zero,
+                                      onDraggableCanceled: (_, __) =>
+                                          _dragVelocityNotifier.value =
+                                              Offset.zero,
+                                      feedback: Material(
+                                          color: Colors.transparent,
+                                          elevation: 0,
+                                          child: PhysicsDragFeedback(
+                                            velocityNotifier:
+                                                _dragVelocityNotifier,
+                                            child: SizedBox(
+                                                width: 110,
+                                                height: 160,
+                                                child: buildItem(hover: true)),
+                                          )),
+                                      childWhenDragging: Opacity(
+                                          opacity: 0.3, child: buildItem()),
+                                      child: DragTarget<String>(onWillAccept:
+                                          (d) {
+                                        if (d != null && d != item.id) {
+                                          _hoverTimer?.cancel();
+                                          _hoverIndexNotifier.value = i;
+                                          _isMergeModeNotifier.value = false;
+
+                                          if (_items.any((candidate) =>
+                                              candidate.id == d &&
+                                              candidate is MangaBook)) {
+                                            _hoverTimer = Timer(
+                                                const Duration(
+                                                    milliseconds: 500), () {
+                                              if (mounted &&
+                                                  _hoverIndexNotifier.value ==
+                                                      i) {
+                                                _isMergeModeNotifier.value =
+                                                    true;
+                                              }
+                                            });
+                                          }
+                                          return true;
+                                        }
+                                        return false;
+                                      }, onLeave: (d) {
+                                        if (_hoverIndexNotifier.value == i) {
+                                          _hoverTimer?.cancel();
+                                          _hoverIndexNotifier.value = null;
+                                          _isMergeModeNotifier.value = false;
+                                        }
+                                      }, onAccept: (dragIndex) {
+                                        _hoverTimer?.cancel();
+                                        final isMerge =
+                                            _isMergeModeNotifier.value;
+                                        _hoverIndexNotifier.value = null;
+                                        _isMergeModeNotifier.value = false;
+
+                                        if (isMerge) {
+                                          _mergeItems(dragIndex, item.id);
+                                        } else {
+                                          _onReorder(dragIndex, item.id);
+                                        }
+                                      }, builder:
+                                          (ctx, candidateData, rejectedData) {
+                                        final isHovering =
+                                            candidateData.isNotEmpty;
+                                        return ValueListenableBuilder<int?>(
+                                            valueListenable:
+                                                _hoverIndexNotifier,
+                                            builder: (context, hoverIdx, _) {
+                                              return ValueListenableBuilder<
+                                                      bool>(
+                                                  valueListenable:
+                                                      _isMergeModeNotifier,
+                                                  builder:
+                                                      (context, isMerge, _) {
+                                                    final isMergeGlow =
+                                                        isHovering &&
+                                                            isMerge &&
+                                                            hoverIdx == i;
+                                                    return AnimatedContainer(
+                                                      // 🌟 懸停動畫統一節奏
+                                                      duration: AppConstants
+                                                          .animDurationNormal,
+                                                      decoration: isMergeGlow
+                                                          ? BoxDecoration(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8),
+                                                              boxShadow: [
+                                                                  BoxShadow(
+                                                                      color: AppTheme
+                                                                          .accent
+                                                                          .withOpacity(
+                                                                              0.6),
+                                                                      blurRadius:
+                                                                          20,
+                                                                      spreadRadius:
+                                                                          4)
+                                                                ])
+                                                          : const BoxDecoration(),
+                                                      child: AnimatedScale(
+                                                        scale: isHovering
+                                                            ? (isMergeGlow
+                                                                ? 1.05
+                                                                : 0.95)
+                                                            : 1.0,
+                                                        // 🌟 縮放動畫統一節奏
+                                                        duration: AppConstants
+                                                            .animDurationNormal,
+                                                        child: buildItem(
+                                                            hover: isHovering ||
+                                                                isMergeGlow),
+                                                      ),
+                                                    );
+                                                  });
+                                            });
+                                      }));
+                                });
+                          });
+                    },
+                  ),
+                ),
+            ],
+          )),
+    );
+  }
+}
+
+class PhysicsDragFeedback extends StatelessWidget {
+  final Widget child;
+  final ValueNotifier<Offset> velocityNotifier;
+
+  const PhysicsDragFeedback(
+      {super.key, required this.child, required this.velocityNotifier});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Offset>(
+      valueListenable: velocityNotifier,
+      builder: (context, delta, _) {
+        return TweenAnimationBuilder<Offset>(
+          tween: Tween(begin: Offset.zero, end: delta),
+          duration: AppConstants.animDurationFast,
+          curve: AppConstants.animCurveStandard,
+          builder: (context, smoothDelta, childWidget) {
+            final tiltX = (smoothDelta.dy * 0.015).clamp(-0.25, 0.25);
+            final tiltY = (-smoothDelta.dx * 0.015).clamp(-0.25, 0.25);
+            final rotateZ = (smoothDelta.dx * 0.005).clamp(-0.1, 0.1);
+            return Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.002)
+                ..rotateX(tiltX)
+                ..rotateY(tiltY)
+                ..rotateZ(rotateZ)
+                ..scale(1.05),
+              child: Opacity(
+                opacity: 0.9,
+                child: childWidget,
+              ),
+            );
+          },
+          child: child,
+        );
+      },
+    );
+  }
+}

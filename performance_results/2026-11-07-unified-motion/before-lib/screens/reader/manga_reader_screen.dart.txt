@@ -1,0 +1,623 @@
+import '../../core/motion.dart';
+// lib/screens/reader/manga_reader_screen.dart
+import 'dart:io';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/constants.dart';
+import '../../core/perf_log.dart';
+import '../../core/theme.dart';
+import '../../core/utils.dart';
+import '../../core/settings_provider.dart';
+import '../../data/database_helper.dart';
+import '../../data/reading_progress.dart';
+import '../../data/latest_task.dart';
+import '../../data/reader_image.dart';
+import '../../models/library_item.dart';
+import '../../widgets/glass_box.dart';
+import '../../widgets/reader_controls_transition.dart';
+import 'reader_zoom.dart';
+
+class MangaReaderScreen extends StatefulWidget {
+  final MangaBook book;
+  final int initialPage;
+  final DatabaseHelper? database;
+
+  const MangaReaderScreen(
+      {super.key,
+      required this.book,
+      required this.initialPage,
+      this.database});
+
+  @override
+  State<MangaReaderScreen> createState() => _MangaReaderScreenState();
+}
+
+class _MangaReaderScreenState extends State<MangaReaderScreen>
+    with WidgetsBindingObserver {
+  late PageController _pc;
+  late final PerfFrames _frames;
+  final Stopwatch _pageWatch = Stopwatch();
+  bool _firstVisible = true;
+
+  final ValueNotifier<bool> _uiNotifier = ValueNotifier(false);
+  final ValueNotifier<int> _pageNotifier = ValueNotifier(0);
+  final ValueNotifier<double> _dragNotifier = ValueNotifier(0.0);
+  final ValueNotifier<bool> _isDraggingNotifier = ValueNotifier(false);
+
+  final ValueNotifier<bool> _isZoomedNotifier = ValueNotifier(false);
+  final Set<int> _pointers = {};
+  late ReadingProgress _progress;
+  late LatestTask<int> _prefetch;
+  final Set<int> _readyPages = {};
+  int _direction = 1;
+  bool _active = true;
+  bool _leaving = false;
+  bool _allowPop = false;
+  bool _restoreDarkMode = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _restoreDarkMode = Theme.of(context).brightness == Brightness.dark;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _frames = PerfFrames('reader');
+    if (PerfLog.enabled) _pageWatch.start();
+    final initial = validPage(widget.initialPage, widget.book.filePaths.length);
+    _pageNotifier.value = initial;
+    _dragNotifier.value = initial.toDouble();
+    _pc = PageController(initialPage: initial);
+    _progress = ReadingProgress((page) =>
+        (widget.database ?? DatabaseHelper.instance)
+            .updateProgress(widget.book.id, page));
+    _progress.onError = (error) {
+      if (mounted) context.showSnackBar('閱讀進度尚未儲存，離開時會重試：$error');
+    };
+    if (widget.book.filePaths.isNotEmpty) _progress.update(initial);
+    _prefetch = LatestTask<int>((index) async {
+      if (!mounted ||
+          !_active ||
+          _pointers.isNotEmpty ||
+          _isZoomedNotifier.value ||
+          _isDraggingNotifier.value ||
+          !_readyPages.contains(_pageNotifier.value) ||
+          PaintingBinding.instance.imageCache.pendingImageCount > 0) return;
+      try {
+        await precacheImage(
+            ReaderFileImage(File(widget.book.filePaths[index])), context,
+            onError: (error, stack) => debugPrint('Prefetch skipped: $error'));
+        // precacheImage releases its listener at the end of the frame. Do not
+        // start the replacement task while that listener still pins the image.
+        await WidgetsBinding.instance.endOfFrame;
+      } catch (error) {
+        debugPrint('Prefetch failed: $error');
+      }
+    });
+    WidgetsBinding.instance.addObserver(this);
+
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _isZoomedNotifier.addListener(_onZoomChanged);
+  }
+
+  void _onZoomChanged() {
+    if (_isZoomedNotifier.value) {
+      _uiNotifier.value = false;
+      _prefetch.cancelPending();
+    } else {
+      _manageMemory(_pageNotifier.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _frames.dispose();
+    _isZoomedNotifier.removeListener(_onZoomChanged);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    AppTheme.setSystemStyle(_restoreDarkMode);
+
+    WidgetsBinding.instance.removeObserver(this);
+    _prefetch.dispose();
+    _pc.dispose();
+    unawaited(_progress.close().catchError((Object error) {
+      debugPrint('Final progress flush failed: $error');
+    }));
+    widget.book.lastReadPage = _pageNotifier.value;
+
+    _uiNotifier.dispose();
+    _pageNotifier.dispose();
+    _dragNotifier.dispose();
+    _isDraggingNotifier.dispose();
+    _isZoomedNotifier.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _active = state == AppLifecycleState.resumed;
+    if (!_active) {
+      _prefetch.cancelPending();
+      _pointers.clear();
+      unawaited(_progress.flush().catchError((Object error) {
+        debugPrint('Background progress flush failed: $error');
+      }));
+    } else {
+      _manageMemory(_pageNotifier.value);
+    }
+  }
+
+  Future<void> _requestClose() async {
+    if (_leaving) return;
+    _leaving = true;
+    try {
+      await _progress.flush();
+      if (!mounted) return;
+      setState(() => _allowPop = true);
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      _leaving = false;
+      if (mounted) context.showSnackBar('進度儲存失敗，請重試返回：$error');
+    }
+  }
+
+  void _onPageChanged(int i) {
+    if (PerfLog.enabled) _pageWatch.reset();
+    _direction = i < _pageNotifier.value ? -1 : 1;
+    _pageNotifier.value = i;
+    _isZoomedNotifier.value = false;
+    widget.book.lastReadPage = i;
+    _progress.update(i);
+    if (!_isDraggingNotifier.value) _dragNotifier.value = i.toDouble();
+    _prefetch.cancelPending();
+    _manageMemory(i);
+  }
+
+  void _onPageReady(int index) {
+    if (!mounted) return;
+    _readyPages.add(index);
+    if (index == _pageNotifier.value) {
+      PerfLog.event('reader_visible', {
+        'elapsed_ms': _pageWatch.elapsedMilliseconds,
+        'first': _firstVisible,
+        'index': index,
+        ...PerfLog.memory()
+      });
+      _firstVisible = false;
+      _manageMemory(index);
+    }
+  }
+
+  void _manageMemory(int index) {
+    if (!_active ||
+        _pointers.isNotEmpty ||
+        _isDraggingNotifier.value ||
+        _isZoomedNotifier.value ||
+        !_readyPages.contains(index)) return;
+    // reverse changes physical scrolling only. Forward reading remains i + 1.
+    final next = index + _direction;
+    if (next >= 0 && next < widget.book.filePaths.length)
+      _prefetch.schedule(next);
+  }
+
+  void _onInteractionStart(int pointer) {
+    _pointers.add(pointer);
+    _prefetch.cancelPending();
+  }
+
+  void _onInteractionEnd(int pointer) {
+    _pointers.remove(pointer);
+    if (_pointers.isEmpty) _manageMemory(_pageNotifier.value);
+  }
+
+  void _turnNext() {
+    if (_pageNotifier.value < widget.book.filePaths.length - 1) {
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _pc.jumpToPage(_pageNotifier.value + 1);
+        return;
+      }
+      _pc.nextPage(
+          duration: MotionScope.of(context).duration(),
+          curve: MotionScope.of(context).timingCurve);
+    }
+  }
+
+  void _turnPrev() {
+    if (_pageNotifier.value > 0) {
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _pc.jumpToPage(_pageNotifier.value - 1);
+        return;
+      }
+      _pc.previousPage(
+          duration: MotionScope.of(context).duration(),
+          curve: MotionScope.of(context).timingCurve);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.book.filePaths.length;
+    context.select<SettingsProvider, (bool, bool, double)>(
+        (s) => (s.isLoaded, s.rtlMode, s.zoomLevel));
+    final settings = context.read<SettingsProvider>();
+    final _rtl = settings.rtlMode;
+    final _z = settings.zoomLevel;
+
+    if (!settings.isLoaded)
+      return const Scaffold(backgroundColor: Colors.black);
+
+    if (total == 0) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('閱讀器')),
+          body: const Center(child: Text('這本漫畫還沒有圖片')));
+    }
+    return PopScope<void>(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_requestClose());
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          alignment: Alignment.center,
+          children: [
+            Listener(
+              onPointerDown: (event) => _onInteractionStart(event.pointer),
+              onPointerUp: (event) => _onInteractionEnd(event.pointer),
+              onPointerCancel: (event) => _onInteractionEnd(event.pointer),
+              child: GestureDetector(
+                onTap: () {
+                  if (!_isZoomedNotifier.value) {
+                    _uiNotifier.value = !_uiNotifier.value;
+                  }
+                },
+                child: ValueListenableBuilder<bool>(
+                    valueListenable: _isZoomedNotifier,
+                    builder: (context, isZoomed, child) {
+                      return PageView.builder(
+                        controller: _pc,
+                        itemCount: total,
+                        allowImplicitScrolling: false,
+                        physics: isZoomed
+                            ? const NeverScrollableScrollPhysics()
+                            : MotionScope.of(context).scrollPhysics,
+                        reverse: _rtl,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (_, i) {
+                          return _MangaPage(
+                            key: ValueKey(widget.book.filePaths[i]),
+                            path: widget.book.filePaths[i],
+                            currentPage: _pageNotifier,
+                            pageIndex: i,
+                            onImageReady: () => _onPageReady(i),
+                            zoomLevel: _z > 1.0 ? _z : 2.5,
+                            enableHero: i == widget.initialPage &&
+                                !MediaQuery.disableAnimationsOf(context),
+                            tag: widget.book.filePaths[i],
+                            isZoomedNotifier: _isZoomedNotifier,
+                            rtlMode: _rtl,
+                            onTurnNext: _turnNext,
+                            onTurnPrev: _turnPrev,
+                          );
+                        },
+                      );
+                    }),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _uiNotifier,
+              builder: (context, uiVisible, child) {
+                return Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: ReaderControlsTransition(
+                    visible: uiVisible,
+                    fromTop: true,
+                    child: child!,
+                  ),
+                );
+              },
+              child: GlassBox(
+                blur: 0,
+                color: Colors.black,
+                opacity: 0.8,
+                border: const Border(
+                    bottom: BorderSide(color: Colors.white12, width: 0.5)),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.arrow_back,
+                                color: Colors.white),
+                            onPressed: _requestClose),
+                        Expanded(
+                            child: Text(widget.book.title,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis)),
+                        if (_rtl)
+                          const Chip(
+                              label: Text("RTL",
+                                  style: TextStyle(
+                                      fontSize: 10, color: Colors.black)),
+                              backgroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact)
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _uiNotifier,
+              builder: (context, uiVisible, child) {
+                return Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: ReaderControlsTransition(
+                    visible: uiVisible,
+                    fromTop: false,
+                    child: child!,
+                  ),
+                );
+              },
+              child: GlassBox(
+                blur: 0,
+                color: Colors.black,
+                opacity: 0.8,
+                border: const Border(
+                    top: BorderSide(color: Colors.white12, width: 0.5)),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ValueListenableBuilder<int>(
+                                valueListenable: _pageNotifier,
+                                builder: (context, currentPage, _) {
+                                  return Text("Page ${currentPage + 1}",
+                                      style: const TextStyle(
+                                          color: Colors.white70));
+                                }),
+                            Text("$total",
+                                style: const TextStyle(color: Colors.white70)),
+                          ],
+                        ),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 4,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 8),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 16),
+                            activeTrackColor: AppTheme.accent,
+                            inactiveTrackColor: Colors.white24,
+                            thumbColor: Colors.white,
+                          ),
+                          child: ValueListenableBuilder<double>(
+                              valueListenable: _dragNotifier,
+                              builder: (context, dragValue, _) {
+                                return Slider(
+                                  value: dragValue.clamp(0.0,
+                                      total > 1 ? (total - 1).toDouble() : 1.0),
+                                  min: 0,
+                                  max: total > 1 ? (total - 1).toDouble() : 1.0,
+                                  divisions: total > 1 ? total - 1 : 1,
+                                  onChanged: (v) {
+                                    _dragNotifier.value = v;
+                                    // Scrubbing previews the number; decode only the final target.
+                                  },
+                                  onChangeStart: (_) {
+                                    _isDraggingNotifier.value = true;
+                                    _prefetch.cancelPending();
+                                  },
+                                  onChangeEnd: (value) {
+                                    _isDraggingNotifier.value = false;
+                                    _pc.jumpToPage(value.toInt());
+                                    _manageMemory(value.toInt());
+                                  },
+                                );
+                              }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isDraggingNotifier,
+              builder: (context, isDragging, child) {
+                if (!isDragging) return const SizedBox.shrink();
+                return IgnorePointer(
+                  ignoring: true,
+                  child: Center(
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: AppConstants.motionDuration(
+                          context, AppConstants.animDurationNormal),
+                      builder: (context, value, child) => Transform.scale(
+                        scale: value,
+                        child: Opacity(opacity: value, child: child),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.85),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24, width: 1),
+                        ),
+                        child: ValueListenableBuilder<double>(
+                            valueListenable: _dragNotifier,
+                            builder: (context, dragValue, _) {
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "${dragValue.toInt() + 1}",
+                                    style: const TextStyle(
+                                        color: AppTheme.accent,
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.0),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text("/ $total",
+                                      style: const TextStyle(
+                                          color: Colors.white70, fontSize: 14)),
+                                ],
+                              );
+                            }),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MangaPage extends StatefulWidget {
+  final String path;
+  final ValueListenable<int> currentPage;
+  final int pageIndex;
+  final VoidCallback onImageReady;
+  final double zoomLevel;
+  final bool enableHero;
+  final String tag;
+  final ValueListenable<bool> isZoomedNotifier;
+  final VoidCallback onTurnNext;
+  final VoidCallback onTurnPrev;
+  final bool rtlMode;
+
+  const _MangaPage({
+    super.key,
+    required this.path,
+    required this.currentPage,
+    required this.pageIndex,
+    required this.onImageReady,
+    required this.zoomLevel,
+    this.enableHero = false,
+    required this.tag,
+    required this.isZoomedNotifier,
+    required this.onTurnNext,
+    required this.onTurnPrev,
+    required this.rtlMode,
+  });
+
+  @override
+  State<_MangaPage> createState() => _MangaPageState();
+}
+
+class _MangaPageState extends State<_MangaPage> {
+  bool _reportedReady = false;
+  final ValueNotifier<Size?> _imageSize = ValueNotifier(null);
+  ImageStream? _sizeStream;
+  late final ImageStreamListener _sizeListener = ImageStreamListener((info, _) {
+    final size =
+        Size(info.image.width.toDouble(), info.image.height.toDouble());
+    info.dispose();
+    if (mounted) _imageSize.value = size;
+  }, onError: (Object error, StackTrace? stackTrace) {});
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _resolveSize();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MangaPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) _resolveSize();
+  }
+
+  void _resolveSize() {
+    final stream = ReaderFileImage(File(widget.path))
+        .resolve(createLocalImageConfiguration(context));
+    if (stream.key == _sizeStream?.key) return;
+    _sizeStream?.removeListener(_sizeListener);
+    _imageSize.value = null;
+    _sizeStream = stream;
+    stream.addListener(_sizeListener);
+  }
+
+  @override
+  void dispose() {
+    _sizeStream?.removeListener(_sizeListener);
+    _imageSize.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget imageWidget = Image(
+      image: ReaderFileImage(File(widget.path)),
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (context, error, stackTrace) => const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.broken_image, color: Colors.white24, size: 48),
+            SizedBox(height: 8),
+            Text('圖片無法顯示',
+                style: TextStyle(color: Colors.white24, fontSize: 12)),
+          ],
+        ),
+      ),
+      frameBuilder: (context, child, frame, wasSync) {
+        if ((wasSync || frame != null) && !_reportedReady) {
+          _reportedReady = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) widget.onImageReady();
+          });
+        }
+        return child;
+      },
+    );
+
+    if (widget.enableHero) {
+      imageWidget = Hero(
+        tag: widget.tag,
+        transitionOnUserGestures: true,
+        child: imageWidget,
+      );
+    }
+
+    return ReaderZoom(
+      doubleTapScale: widget.zoomLevel,
+      currentPage: widget.currentPage,
+      pageIndex: widget.pageIndex,
+      imageSize: _imageSize,
+      isZoomed: widget.isZoomedNotifier as ValueNotifier<bool>,
+      child: Center(child: imageWidget),
+    );
+  }
+}

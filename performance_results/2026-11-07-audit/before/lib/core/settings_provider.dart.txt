@@ -1,0 +1,69 @@
+// lib/core/settings_provider.dart
+import 'package:flutter/material.dart';
+import 'config.dart';
+import 'utils.dart';
+
+class SettingsProvider extends ChangeNotifier {
+  double _zoomLevel = AppConfig.zoomMin;
+  bool _rtlMode = false;
+  bool _darkMode = false;
+  int _bookshelfColumns = 4;
+  bool _cropBookCovers = true;
+  bool _isLoaded = false;
+
+  bool get isLoaded => _isLoaded;
+  double get zoomLevel => _zoomLevel;
+  bool get rtlMode => _rtlMode;
+  bool get darkMode => _darkMode;
+  int get bookshelfColumns => _bookshelfColumns;
+  bool get cropBookCovers => _cropBookCovers;
+
+  SettingsProvider() {
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    _zoomLevel = (await AppSettings.getDouble('z_level', 2.5))
+        .clamp(AppConfig.zoomMin, AppConfig.zoomMax);
+    _rtlMode = (await AppSettings.getInt('read_rtl', 0)) == 1;
+    _darkMode = (await AppSettings.getInt('dark_mode', 0)) == 1;
+    _bookshelfColumns =
+        (await AppSettings.getInt('shelf_columns', 4)).clamp(3, 5).toInt();
+    _cropBookCovers = (await AppSettings.getInt('cover_crop', 1)) == 1;
+    _isLoaded = true;
+    notifyListeners();
+  }
+
+  void setZoomLevel(double value) {
+    _zoomLevel = value.clamp(AppConfig.zoomMin, AppConfig.zoomMax).toDouble();
+    AppSettings.setDouble('z_level', _zoomLevel);
+    notifyListeners();
+  }
+
+  void setBookshelfColumns(int value) {
+    final columns = value.clamp(3, 5).toInt();
+    if (_bookshelfColumns == columns) return;
+    _bookshelfColumns = columns;
+    AppSettings.setInt('shelf_columns', columns);
+    notifyListeners();
+  }
+
+  void setCropBookCovers(bool value) {
+    if (_cropBookCovers == value) return;
+    _cropBookCovers = value;
+    AppSettings.setInt('cover_crop', value ? 1 : 0);
+    notifyListeners();
+  }
+
+  void setRtlMode(bool value) {
+    _rtlMode = value;
+    AppSettings.setInt('read_rtl', value ? 1 : 0);
+    notifyListeners();
+  }
+
+  void setDarkMode(bool value) {
+    _darkMode = value;
+    AppSettings.setInt('dark_mode', value ? 1 : 0);
+    notifyListeners();
+  }
+}

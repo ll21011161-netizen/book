@@ -1,0 +1,95 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:gun_book/widgets/page_thumbnail.dart';
+import 'package:gun_book/data/database_helper.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/screens/details/category_detail_screen.dart';
+import 'support/sqlite_database.dart';
+
+class DetailDatabase extends DatabaseHelper {
+  DetailDatabase() : super.forTesting(SqliteDatabase(), 'unused');
+  final requests = <Completer<List<String>>>[];
+  @override
+  Future<List<String>> getBookPages(String id) {
+    final request = Completer<List<String>>();
+    requests.add(request);
+    return request.future;
+  }
+}
+
+void main() {
+  testWidgets(
+      'query failure exits shimmer, retries and distinguishes empty book',
+      (tester) async {
+    final db = DetailDatabase();
+    final book =
+        MangaBook(id: 'book', title: 'test', filePaths: [], totalPageCount: 20);
+    await tester.pumpWidget(MaterialApp(
+        home: CategoryDetailScreen(
+            category: book, database: db, onUpdate: () {})));
+    expect(find.byType(Shimmer), findsWidgets);
+    db.requests.single.completeError(StateError('sqlite failure'));
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.refresh));
+    await tester.pump();
+    expect(db.requests.length, 2);
+    db.requests.last.complete([]);
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byIcon(Icons.refresh), findsNothing);
+    expect(book.totalPageCount, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await (await db.database).close();
+  });
+  testWidgets('quick departure ignores query completion and errors',
+      (tester) async {
+    final db = DetailDatabase();
+    for (final fail in [false, true]) {
+      await tester.pumpWidget(MaterialApp(
+          home: CategoryDetailScreen(
+              category: MangaBook(
+                  id: 'book', title: 'test', filePaths: [], totalPageCount: 2),
+              database: db,
+              onUpdate: () {})));
+      await tester.pumpWidget(const SizedBox());
+      if (fail) {
+        db.requests.last.completeError(StateError('sqlite'));
+      } else {
+        db.requests.last.complete(['missing.png']);
+      }
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    }
+    await (await db.database).close();
+  });
+
+  testWidgets(
+      'existing pages stay visible during refresh and large grid remains lazy',
+      (tester) async {
+    final db = DetailDatabase();
+    final pages = List.generate(1000, (i) => 'missing-fixture-$i.png');
+    final book = MangaBook(id: 'book', title: 'test', filePaths: pages);
+    await tester.pumpWidget(MaterialApp(
+        home: CategoryDetailScreen(
+            category: book, database: db, onUpdate: () {})));
+    expect(find.byType(Shimmer), findsNothing);
+    final built = find.byType(PageThumbnail).evaluate().length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(1000));
+    db.requests.single.completeError(StateError('sqlite'));
+    await tester.pump();
+    expect(find.byType(Shimmer), findsNothing);
+    expect(find.byType(PageThumbnail), findsWidgets);
+    expect(find.byIcon(Icons.refresh), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    expect(tester.takeException(), isNull);
+    await (await db.database).close();
+  });
+}

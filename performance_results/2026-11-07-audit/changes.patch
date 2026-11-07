@@ -1,0 +1,938 @@
+--- before/lib\core\settings_provider.dart
++++ after/lib\core\settings_provider.dart
+@@ -1,5 +1,6 @@
+ // lib/core/settings_provider.dart
+ import 'package:flutter/material.dart';
++import 'package:shared_preferences/shared_preferences.dart';
+ import 'config.dart';
+ import 'utils.dart';
+ 
+@@ -10,6 +11,8 @@
+   int _bookshelfColumns = 4;
+   bool _cropBookCovers = true;
+   bool _isLoaded = false;
++  bool _disposed = false;
++  final Set<String> _edited = {};
+ 
+   bool get isLoaded => _isLoaded;
+   double get zoomLevel => _zoomLevel;
+@@ -23,45 +26,74 @@
+   }
+ 
+   Future<void> _loadSettings() async {
+-    _zoomLevel = (await AppSettings.getDouble('z_level', 2.5))
+-        .clamp(AppConfig.zoomMin, AppConfig.zoomMax);
+-    _rtlMode = (await AppSettings.getInt('read_rtl', 0)) == 1;
+-    _darkMode = (await AppSettings.getInt('dark_mode', 0)) == 1;
+-    _bookshelfColumns =
+-        (await AppSettings.getInt('shelf_columns', 4)).clamp(3, 5).toInt();
+-    _cropBookCovers = (await AppSettings.getInt('cover_crop', 1)) == 1;
+-    _isLoaded = true;
+-    notifyListeners();
++    try {
++      final prefs = await SharedPreferences.getInstance();
++      if (_disposed) return;
++      if (!_edited.contains('z_level')) {
++        _zoomLevel = (prefs.getDouble('z_level') ?? 2.5)
++            .clamp(AppConfig.zoomMin, AppConfig.zoomMax);
++      }
++      if (!_edited.contains('read_rtl')) {
++        _rtlMode = prefs.getInt('read_rtl') == 1;
++      }
++      if (!_edited.contains('dark_mode')) {
++        _darkMode = prefs.getInt('dark_mode') == 1;
++      }
++      if (!_edited.contains('shelf_columns')) {
++        _bookshelfColumns = (prefs.getInt('shelf_columns') ?? 4).clamp(3, 5);
++      }
++      if (!_edited.contains('cover_crop')) {
++        _cropBookCovers = (prefs.getInt('cover_crop') ?? 1) == 1;
++      }
++    } catch (error) {
++      debugPrint('Settings load failed: $error');
++    } finally {
++      if (!_disposed) {
++        _isLoaded = true;
++        notifyListeners();
++      }
++    }
++  }
++
++  @override
++  void dispose() {
++    _disposed = true;
++    super.dispose();
+   }
+ 
+   void setZoomLevel(double value) {
++    _edited.add('z_level');
+     _zoomLevel = value.clamp(AppConfig.zoomMin, AppConfig.zoomMax).toDouble();
+     AppSettings.setDouble('z_level', _zoomLevel);
+     notifyListeners();
+   }
+ 
+   void setBookshelfColumns(int value) {
++    _edited.add('shelf_columns');
+     final columns = value.clamp(3, 5).toInt();
+-    if (_bookshelfColumns == columns) return;
++    if (_isLoaded && _bookshelfColumns == columns) return;
+     _bookshelfColumns = columns;
+     AppSettings.setInt('shelf_columns', columns);
+     notifyListeners();
+   }
+ 
+   void setCropBookCovers(bool value) {
+-    if (_cropBookCovers == value) return;
++    _edited.add('cover_crop');
++    if (_isLoaded && _cropBookCovers == value) return;
+     _cropBookCovers = value;
+     AppSettings.setInt('cover_crop', value ? 1 : 0);
+     notifyListeners();
+   }
+ 
+   void setRtlMode(bool value) {
++    _edited.add('read_rtl');
+     _rtlMode = value;
+     AppSettings.setInt('read_rtl', value ? 1 : 0);
+     notifyListeners();
+   }
+ 
+   void setDarkMode(bool value) {
++    _edited.add('dark_mode');
+     _darkMode = value;
+     AppSettings.setInt('dark_mode', value ? 1 : 0);
+     notifyListeners();
+--- before/lib\data\file_scanner.dart
++++ after/lib\data\file_scanner.dart
+@@ -10,13 +10,28 @@
+   static int compareNatural(String a, String b) {
+     final mA = _naturalReg.allMatches(a.toLowerCase()).iterator;
+     final mB = _naturalReg.allMatches(b.toLowerCase()).iterator;
+-    while (mA.moveNext() && mB.moveNext()) {
++    while (true) {
++      final hasA = mA.moveNext(), hasB = mB.moveNext();
++      if (!hasA || !hasB) {
++        if (hasA) return 1;
++        if (hasB) return -1;
++        return a.toLowerCase().compareTo(b.toLowerCase());
++      }
+       final pA = mA.current.group(0)!, pB = mB.current.group(0)!;
+-      final nA = int.tryParse(pA), nB = int.tryParse(pB);
+-      final cmp = (nA != null && nB != null) ? nA.compareTo(nB) : pA.compareTo(pB);
++      final digitsA = mA.current.group(1) != null;
++      final digitsB = mB.current.group(1) != null;
++      int cmp;
++      if (digitsA && digitsB) {
++        // Compare magnitude without integer overflow on long filenames.
++        final nA = pA.replaceFirst(RegExp(r'^0+'), '');
++        final nB = pB.replaceFirst(RegExp(r'^0+'), '');
++        cmp = nA.length.compareTo(nB.length);
++        if (cmp == 0) cmp = nA.compareTo(nB);
++      } else {
++        cmp = pA.compareTo(pB);
++      }
+       if (cmp != 0) return cmp;
+     }
+-    return mA.moveNext() ? 1 : (mB.moveNext() ? -1 : 0);
+   }
+ 
+   // [極致防護] 放棄 await for，改用 .listen 並設定 cancelOnError: false
+@@ -24,7 +39,7 @@
+     final List<String> paths = [];
+     try {
+       final completer = Completer<void>();
+-      
++
+       dir.list(recursive: false, followLinks: true).listen(
+         (entity) {
+           if (entity is File) {
+@@ -43,12 +58,12 @@
+         onDone: () => completer.complete(),
+         cancelOnError: false, // [核心關鍵] 遇到錯誤繼續執行！
+       );
+-      
++
+       await completer.future;
+       paths.sort(compareNatural);
+-    } catch (e) { 
++    } catch (e) {
+       debugPrint("ScanImages 錯誤: $e");
+     }
+     return paths;
+   }
+-}+}
+--- before/lib\screens\bookshelf\bookshelf_screen.dart
++++ after/lib\screens\bookshelf\bookshelf_screen.dart
+@@ -101,7 +101,11 @@
+     _openingReader = true;
+     try {
+       final full = await _database.getBookFull(book.id);
+-      if (!mounted || full.filePaths.isEmpty) return;
++      if (!mounted) return;
++      if (full.filePaths.isEmpty) {
++        context.showSnackBar('漫畫沒有可閱讀的頁面');
++        return;
++      }
+       await _database.incrementReadCount(book.id);
+       if (!mounted) return;
+       await Navigator.push(
+@@ -112,6 +116,8 @@
+       if (mounted) loadData(refresh: true);
+     } catch (_) {
+       if (mounted) context.showSnackBar('無法開啟漫畫，請稍後重試');
++    } finally {
++      _openingReader = false;
+     }
+   }
+ 
+--- before/lib\screens\details\folder_detail_screen.dart
++++ after/lib\screens\details\folder_detail_screen.dart
+@@ -4,7 +4,6 @@
+ 
+ import '../../core/anim_route.dart';
+ import '../../core/settings_provider.dart';
+-import '../../core/constants.dart';
+ import '../../core/strings.dart';
+ import '../../core/utils.dart';
+ import '../../data/database_helper.dart';
+@@ -16,19 +15,24 @@
+ class FolderDetailScreen extends StatefulWidget {
+   final MangaFolder folder;
+   final VoidCallback onUpdate;
++  final DatabaseHelper? database;
+ 
+   const FolderDetailScreen(
+-      {super.key, required this.folder, required this.onUpdate});
++      {super.key, required this.folder, required this.onUpdate, this.database});
+ 
+   @override
+   State<FolderDetailScreen> createState() => _FolderDetailScreenState();
+ }
+ 
+ class _FolderDetailScreenState extends State<FolderDetailScreen> {
++  DatabaseHelper get _database => widget.database ?? DatabaseHelper.instance;
+   List<MangaBook> _items = [];
+   bool _isLoading = true;
+   bool _hasMore = true;
+   int _offset = 0;
++  int _loadGeneration = 0;
++  bool _mutationBusy = false;
++  Object? _loadError;
+   final int _limit = 50;
+ 
+   final ScrollController _scrollController = ScrollController();
+@@ -66,77 +70,107 @@
+   }
+ 
+   Future<void> _loadItems({bool refresh = false}) async {
+-    if (_isLoading && !refresh) return;
+-
+-    if (refresh) {
+-      _offset = 0;
+-      _hasMore = true;
+-      if (_items.isEmpty) setState(() => _isLoading = true);
+-    } else {
+-      setState(() => _isLoading = true);
++    if (!mounted || _mutationBusy || (_isLoading && !refresh)) return;
++    final generation = ++_loadGeneration;
++    final offset = refresh ? 0 : _offset;
++    final limit = refresh && _offset > _limit ? _offset : _limit;
++    setState(() {
++      _isLoading = true;
++      _loadError = null;
++    });
++    try {
++      final items = await _database.fetchFolderBooks(
++          folderId: widget.folder.id, limit: limit, offset: offset);
++      if (!mounted || generation != _loadGeneration) return;
++      setState(() {
++        final byId = {
++          for (final item in refresh ? <MangaBook>[] : _items) item.id: item
++        };
++        for (final item in items) {
++          byId[item.id] = item;
++        }
++        _items = byId.values.toList();
++        _offset = offset + items.length;
++        _hasMore = items.length == limit;
++      });
++    } catch (error) {
++      if (!mounted || generation != _loadGeneration) return;
++      setState(() => _loadError = error);
++      context.showSnackBar('資料夾載入失敗，請重試');
++    } finally {
++      if (mounted && generation == _loadGeneration) {
++        setState(() => _isLoading = false);
++      }
+     }
+-
+-    final items = await DatabaseHelper.instance.fetchFolderBooks(
+-        folderId: widget.folder.id, limit: _limit, offset: _offset);
+-
+-    if (mounted) {
++  }
++
++  Future<void> _mutate(Future<void> Function() action) async {
++    if (!mounted || _mutationBusy) return;
++    _mutationBusy = true;
++    ++_loadGeneration; // Pending reads must not overwrite a completed edit.
++    setState(() => _isLoading = false);
++    try {
++      await action();
++    } catch (error) {
++      if (mounted) context.showSnackBar('操作失敗，請重試：$error');
++    } finally {
++      _mutationBusy = false;
++      if (mounted) await _loadItems(refresh: true);
++    }
++  }
++
++  Future<void> _moveOut() async {
++    if (_selIdsNotifier.value.isEmpty) return;
++    final ids = Set<String>.of(_selIdsNotifier.value);
++    await _mutate(() async {
++      await _database.moveItems(ids.toList(), null);
++      if (!mounted) return;
+       setState(() {
+-        if (items.length < _limit) _hasMore = false;
+-        if (refresh) {
+-          _items = items;
+-        } else {
+-          _items.addAll(items);
+-        }
+-        _offset = refresh ? items.length : _offset + items.length;
+-        _isLoading = false;
+-      });
+-    }
+-  }
+-
+-  void _moveOut() async {
+-    if (_selIdsNotifier.value.isEmpty) return;
+-    await DatabaseHelper.instance
+-        .moveItems(_selIdsNotifier.value.toList(), null);
+-
+-    setState(() {
+-      _items.removeWhere((e) => _selIdsNotifier.value.contains(e.id));
+-      widget.folder.itemCount = _items.length;
+-    });
+-
+-    _selModeNotifier.value = false;
+-    _selIdsNotifier.value = {};
+-    widget.onUpdate();
+-  }
+-
+-  void _reorder(int oldIndex, int newIndex) {
+-    if (oldIndex == newIndex) return;
+-    if (oldIndex < newIndex) newIndex--;
+-
+-    setState(() {
+-      final item = _items.removeAt(oldIndex);
+-      _items.insert(newIndex, item);
+-    });
+-
+-    DatabaseHelper.instance.updateSortOrder(_items.map((e) => e.id).toList());
+-    widget.onUpdate();
+-  }
+-
+-  void _renameSel() async {
+-    if (_selIdsNotifier.value.length != 1) return;
+-    final id = _selIdsNotifier.value.first;
+-    final item = _items.firstWhere((e) => e.id == id);
+-    final newName = await DialogUtils.showInput(context,
+-        title: AppStrings.get('rename'), initial: item.title);
+-
+-    if (newName.isValid) {
+-      await DatabaseHelper.instance.updateTitle(id, newName!);
+-      setState(() {
+-        item.title = newName!;
++        _items.removeWhere((e) => ids.contains(e.id));
++        widget.folder.itemCount =
++            (widget.folder.itemCount - ids.length).clamp(0, 1 << 31);
+       });
+       _selModeNotifier.value = false;
+       _selIdsNotifier.value = {};
+       widget.onUpdate();
+-    }
++    });
++  }
++
++  Future<void> _reorder(int oldIndex, int newIndex) async {
++    if (_mutationBusy ||
++        oldIndex == newIndex ||
++        oldIndex < 0 ||
++        oldIndex >= _items.length ||
++        newIndex < 0 ||
++        newIndex > _items.length) return;
++    if (oldIndex < newIndex) newIndex--;
++    final reordered = List<MangaBook>.of(_items);
++    reordered.insert(newIndex, reordered.removeAt(oldIndex));
++    await _mutate(() async {
++      // Publish only after the atomic DB batch has succeeded.
++      await _database.updateSortOrder(reordered.map((e) => e.id).toList());
++      if (!mounted) return;
++      setState(() => _items = reordered);
++      widget.onUpdate();
++    });
++  }
++
++  Future<void> _renameSel() async {
++    if (_selIdsNotifier.value.length != 1) return;
++    final id = _selIdsNotifier.value.first;
++    final item = _items.where((e) => e.id == id).firstOrNull;
++    if (item == null) return;
++    await _mutate(() async {
++      final newName = await DialogUtils.showInput(context,
++          title: AppStrings.get('rename'), initial: item.title);
++      if (!mounted || !newName.isValid) return;
++      await _database.updateTitle(id, newName!);
++      if (!mounted) return;
++      setState(() => item.title = newName);
++      _selModeNotifier.value = false;
++      _selIdsNotifier.value = {};
++      widget.onUpdate();
++    });
+   }
+ 
+   void _handleLongPress(String id) {
+@@ -169,19 +203,17 @@
+     _pickedCoverIdsNotifier.value = current;
+   }
+ 
+-  void _saveCovers() async {
++  Future<void> _saveCovers() async {
+     final newCovers = _pickedCoverIdsNotifier.value.toList();
+-    await DatabaseHelper.instance
+-        .updateFolderCovers(widget.folder.id, newCovers);
+-
+-    if (mounted) {
+-      setState(() {
+-        widget.folder.coverBookIds = newCovers;
+-      });
++    await _mutate(() async {
++      await _database.updateFolderCovers(widget.folder.id, newCovers);
++      if (!mounted) return;
++      setState(() => widget.folder.coverBookIds = newCovers);
+       _pickCoverModeNotifier.value = false;
+       _pickedCoverIdsNotifier.value = {};
+-      context.showSnackBar("封面已更新");
+-    }
++      widget.onUpdate();
++      context.showSnackBar('封面已更新');
++    });
+   }
+ 
+   @override
+@@ -312,6 +344,13 @@
+                           });
+                     });
+               }),
++          if (_loadError != null)
++            SliverToBoxAdapter(
++                child: Center(
++                    child: TextButton.icon(
++                        onPressed: () => _loadItems(refresh: true),
++                        icon: const Icon(Icons.refresh),
++                        label: const Text('重新載入')))),
+           if (_items.isEmpty && !_isLoading)
+             SliverFillRemaining(
+                 child: Center(
+@@ -444,7 +483,7 @@
+                                     });
+                               });
+                         });
+-                  }, childCount: _items.length + (_hasMore ? 1 : 0)),
++                  }, childCount: _items.length + (_isLoading ? 1 : 0)),
+                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                       crossAxisCount: columns,
+                       childAspectRatio: 0.52,
+--- before/test\file_scanner_test.dart
++++ after/test\file_scanner_test.dart
+@@ -0,0 +1,56 @@
++import 'package:flutter_test/flutter_test.dart';
++import 'package:gun_book/data/file_scanner.dart';
++
++void main() {
++  final compare = FileScanner.compareNatural;
++  test('natural order handles numbers, suffixes and long numeric chunks', () {
++    for (final pair in [
++      ['1.jpg', '2.jpg'],
++      ['2.jpg', '10.jpg'],
++      ['page1', 'page1a'],
++      ['chapter2.jpg', 'chapter10.jpg'],
++      ['c2p9.jpg', 'c2p10.jpg'],
++      ['prefix', 'prefix-more'],
++      ['99999999999999999999.jpg', '100000000000000000000.jpg'],
++    ]) {
++      expect(compare(pair[0], pair[1]), lessThan(0), reason: '$pair');
++      expect(compare(pair[1], pair[0]), greaterThan(0), reason: '$pair');
++    }
++    expect((['10.jpg', '2.jpg', '1.jpg']..sort(compare)),
++        ['1.jpg', '2.jpg', '10.jpg']);
++    expect(compare('page1.jpg', 'page1a.jpg'), lessThan(0));
++  });
++  test('comparator is reflexive, antisymmetric and transitive', () {
++    final names = [
++      '',
++      'a',
++      'a1',
++      'a01',
++      'a001',
++      'a1a',
++      'a1a2',
++      'a1a10',
++      'a2',
++      'a10',
++      'A10',
++      'page1.jpg',
++      'page1a.jpg',
++      '0',
++      '00',
++      '1',
++      '99999999999999999999',
++      '100000000000000000000'
++    ];
++    for (final a in names) {
++      expect(compare(a, a), 0);
++      for (final b in names) {
++        expect(compare(a, b).sign, -compare(b, a).sign, reason: '$a / $b');
++        for (final c in names) {
++          if (compare(a, b) <= 0 && compare(b, c) <= 0) {
++            expect(compare(a, c), lessThanOrEqualTo(0), reason: '$a / $b / $c');
++          }
++        }
++      }
++    }
++  });
++}
+--- before/test\folder_safety_test.dart
++++ after/test\folder_safety_test.dart
+@@ -0,0 +1,225 @@
++import 'dart:async';
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/screens/details/folder_detail_screen.dart';
++import 'package:gun_book/screens/details/category_detail_screen.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'support/sqlite_database.dart';
++
++class FolderDatabase extends DatabaseHelper {
++  FolderDatabase() : super.forTesting(SqliteDatabase(), 'unused');
++  final requests = <Completer<List<MangaBook>>>[];
++  final offsets = <int>[];
++  final limits = <int>[];
++  final writes = <Completer<void>>[];
++  List<String>? moved;
++  @override
++  Future<List<MangaBook>> fetchFolderBooks(
++      {required String folderId, int limit = 50, int offset = 0}) {
++    offsets.add(offset);
++    limits.add(limit);
++    final request = Completer<List<MangaBook>>();
++    requests.add(request);
++    return request.future;
++  }
++
++  Future<void> write() {
++    final request = Completer<void>();
++    writes.add(request);
++    return request.future;
++  }
++
++  @override
++  Future<void> moveItems(List<String> ids, String? folderId,
++      {bool notify = true}) {
++    moved = ids;
++    return write();
++  }
++
++  @override
++  Future<void> updateSortOrder(List<String> ids, {bool notify = true}) =>
++      write();
++  @override
++  Future<void> updateTitle(String id, String title) => write();
++  @override
++  Future<void> updateFolderCovers(String id, List<String> covers) => write();
++}
++
++void main() {
++  SharedPreferences.setMockInitialValues({});
++  List<MangaBook> books(int count) => List.generate(
++      count, (i) => MangaBook(id: '$i', title: 'book $i', filePaths: []));
++  Future<void> open(WidgetTester tester, FolderDatabase db) async {
++    await tester.pumpWidget(MaterialApp(
++        home: ChangeNotifierProvider(
++            create: (_) => SettingsProvider(),
++            child: FolderDetailScreen(
++                folder:
++                    MangaFolder(id: 'folder', title: 'folder', itemCount: 100),
++                database: db,
++                onUpdate: () {}))));
++  }
++
++  Future<void> close(WidgetTester tester, FolderDatabase db) async {
++    await tester.pumpWidget(const SizedBox());
++    await (await db.database).close();
++  }
++
++  testWidgets('failed load stops spinner and retry recovers', (tester) async {
++    final db = FolderDatabase();
++    await open(tester, db);
++    db.requests.single.completeError(StateError('database unavailable'));
++    await tester.pump();
++    expect(find.byType(CircularProgressIndicator), findsNothing);
++    await tester.tap(find.byIcon(Icons.refresh));
++    await tester.pump();
++    db.requests.last.complete(books(2));
++    await tester.pump();
++    expect(find.byType(BookCard), findsNWidgets(2));
++    expect(tester.takeException(), isNull);
++    await close(tester, db);
++  });
++  testWidgets('stale refresh cannot replace a newer folder result',
++      (tester) async {
++    final db = FolderDatabase();
++    await open(tester, db);
++    db.requests.single.complete(books(1));
++    await tester.pump();
++    final card = tester.widget<BookCard>(find.byType(BookCard));
++    card.onTap();
++    await tester.pumpAndSettle();
++    final detail =
++        tester.widget<CategoryDetailScreen>(find.byType(CategoryDetailScreen));
++    detail.onUpdate();
++    detail.onUpdate();
++    db.requests.last
++        .complete([MangaBook(id: 'new', title: 'new', filePaths: [])]);
++    await tester.pump();
++    db.requests[1].complete(books(1));
++    await tester.pump();
++    Navigator.of(tester.element(find.byType(CategoryDetailScreen))).pop();
++    await tester.pumpAndSettle();
++    expect(tester.widget<BookCard>(find.byType(BookCard)).book.id, 'new');
++    await close(tester, db);
++  });
++  testWidgets('query completion after dispose is harmless', (tester) async {
++    for (final fail in [false, true]) {
++      final db = FolderDatabase();
++      await open(tester, db);
++      await tester.pumpWidget(const SizedBox());
++      if (fail) {
++        db.requests.single.completeError(StateError('offline'));
++      } else {
++        db.requests.single.complete(books(1));
++      }
++      await tester.pump();
++      expect(tester.takeException(), isNull);
++      await (await db.database).close();
++    }
++  });
++  testWidgets(
++      'pagination deduplicates loads and edit refresh preserves loaded window',
++      (tester) async {
++    final db = FolderDatabase();
++    await open(tester, db);
++    db.requests.single.complete(books(50));
++    await tester.pump();
++    final controller = tester
++        .widget<CustomScrollView>(find.byType(CustomScrollView))
++        .controller!;
++    controller.jumpTo(controller.position.maxScrollExtent);
++    controller.jumpTo(controller.position.maxScrollExtent);
++    await tester.pump();
++    expect(db.requests, hasLength(2));
++    expect(db.offsets.last, 50);
++    db.requests.last.complete(List.generate(
++        50,
++        (i) => MangaBook(
++            id: '${i + 50}', title: 'book ${i + 50}', filePaths: [])));
++    await tester.pump();
++    controller.jumpTo(0);
++    await tester.pump();
++    final target =
++        tester.widgetList<DragTarget<int>>(find.byType(DragTarget<int>)).first;
++    // ignore: deprecated_member_use
++    target.onAccept!(1);
++    db.writes.single.complete();
++    await tester.pump();
++    expect(db.limits.last, 100);
++    expect(db.offsets.last, 0);
++    db.requests.last.complete(books(100));
++    await tester.pump();
++    expect(tester.takeException(), isNull);
++    await close(tester, db);
++  });
++  testWidgets('failed reorder preserves order and ignores repeated writes',
++      (tester) async {
++    final db = FolderDatabase();
++    await open(tester, db);
++    db.requests.single.complete(books(3));
++    await tester.pump();
++    final target =
++        tester.widgetList<DragTarget<int>>(find.byType(DragTarget<int>)).first;
++    // Exercise the callback used by the existing drag UI.
++    // ignore: deprecated_member_use
++    target.onAccept!(2);
++    // ignore: deprecated_member_use
++    target.onAccept!(1);
++    await tester.pump();
++    expect(db.writes, hasLength(1));
++    expect(
++        tester
++            .widgetList<BookCard>(find.byType(BookCard))
++            .map((c) => c.book.id),
++        ['0', '1', '2']);
++    db.writes.single.completeError(StateError('disk full'));
++    await tester.pump();
++    db.requests.last.complete(books(3));
++    await tester.pump();
++    expect(
++        tester
++            .widgetList<BookCard>(find.byType(BookCard))
++            .map((c) => c.book.id),
++        ['0', '1', '2']);
++    expect(tester.takeException(), isNull);
++    await close(tester, db);
++  });
++  for (final operation in ['move', 'rename', 'covers']) {
++    testWidgets('$operation completion after departure is safe',
++        (tester) async {
++      final db = FolderDatabase();
++      await open(tester, db);
++      db.requests.single.complete(books(2));
++      await tester.pump();
++      if (operation == 'covers') {
++        await tester.tap(find.byTooltip('設定封面'));
++        await tester.pump();
++        await tester.tap(find.byTooltip('儲存封面'));
++        await tester.pump();
++      } else {
++        tester.widget<BookCard>(find.byType(BookCard).first).onLongPress();
++        await tester.pump();
++        if (operation == 'move') {
++          await tester.tap(find.byTooltip('移出資料夾'));
++          await tester.pump();
++        } else {
++          await tester.tap(find.byIcon(Icons.edit));
++          await tester.pumpAndSettle();
++          await tester.testTextInput.receiveAction(TextInputAction.done);
++          await tester.pumpAndSettle();
++        }
++      }
++      expect(db.writes, hasLength(1));
++      await tester.pumpWidget(const SizedBox());
++      db.writes.single.complete();
++      await tester.pump();
++      expect(tester.takeException(), isNull);
++      await (await db.database).close();
++    });
++  }
++}
+--- before/test\reader_image_test.dart
++++ after/test\reader_image_test.dart
+@@ -8,6 +8,50 @@
+ 
+ void main() {
+   TestWidgetsFlutterBinding.ensureInitialized();
++  test('missing, empty and corrupt pages fail without blocking the next decode',
++      () async {
++    final directory =
++        await Directory.systemTemp.createTemp('gunbook-reader-errors-');
++    try {
++      final files = [
++        File('${directory.path}/missing.png'),
++        await File('${directory.path}/empty.png').writeAsBytes([]),
++        await File('${directory.path}/corrupt.png').writeAsBytes([1, 2, 3, 4]),
++      ];
++      for (final file in files) {
++        final provider = ReaderFileImage(file);
++        final stream = provider.resolve(ImageConfiguration.empty);
++        final result = Completer<void>();
++        final listener = ImageStreamListener((info, _) {
++          info.dispose();
++          if (!result.isCompleted) result.complete();
++        }, onError: (Object error, StackTrace? stack) {
++          if (!result.isCompleted) result.completeError(error, stack);
++        });
++        final failure = expectLater(result.future, throwsA(anything));
++        stream.addListener(listener);
++        await failure;
++        stream.removeListener(listener);
++        await provider.evict();
++      }
++      final good = await writeTestImage('${directory.path}/valid.png',
++          width: 40, height: 60);
++      final provider = ReaderFileImage(good);
++      final stream = provider.resolve(ImageConfiguration.empty);
++      final ready = Completer<void>();
++      final listener = ImageStreamListener((info, _) {
++        expect(info.image.width, 40);
++        info.dispose();
++        if (!ready.isCompleted) ready.complete();
++      }, onError: ready.completeError);
++      stream.addListener(listener);
++      await ready.future;
++      stream.removeListener(listener);
++      await provider.evict();
++    } finally {
++      await directory.delete(recursive: true);
++    }
++  });
+   test('high resolution reader pages retain all original pixels', () async {
+     final directory =
+         await Directory.systemTemp.createTemp('gunbook-reader-full-');
+--- before/test\recent_reading_test.dart
++++ after/test\recent_reading_test.dart
+@@ -0,0 +1,104 @@
++import 'dart:async';
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:provider/provider.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/screens/bookshelf/bookshelf_screen.dart';
++import 'package:gun_book/widgets/bookshelf_header.dart';
++import 'support/sqlite_database.dart';
++
++class RecentDatabase extends DatabaseHelper {
++  RecentDatabase() : super.forTesting(SqliteDatabase(), 'unused');
++  final book = MangaBook(id: 'recent', title: 'recent', filePaths: []);
++  final requests = <Completer<MangaBook>>[];
++  bool failCount = false;
++  @override
++  Future<List<LibraryItem>> fetchItems(
++          {String? parentId, int limit = 50, int offset = 0}) async =>
++      [book];
++  @override
++  Future<MangaBook> getBookFull(String id) {
++    final request = Completer<MangaBook>();
++    requests.add(request);
++    return request.future;
++  }
++
++  @override
++  Future<void> incrementReadCount(String id) async {
++    if (failCount) throw StateError('sqlite failure');
++  }
++}
++
++// Return a real Navigator route without starting a reader against real storage.
++class ReturnObserver extends NavigatorObserver {
++  int readers = 0;
++  @override
++  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
++    if (previousRoute != null) {
++      readers++;
++      scheduleMicrotask(() => navigator!.removeRoute(route));
++    }
++  }
++}
++
++void main() {
++  for (final outcome in ['empty', 'missing', 'count failure', 'return']) {
++    testWidgets('recent reader unlocks after $outcome', (tester) async {
++      SharedPreferences.setMockInitialValues({
++        'recent_read_book_ids': ['recent']
++      });
++      final db = RecentDatabase();
++      final observer = ReturnObserver();
++      await tester.pumpWidget(ChangeNotifierProvider(
++          create: (_) => SettingsProvider(),
++          child: MaterialApp(
++              navigatorObservers: [observer],
++              home: BookshelfScreen(database: db))));
++      await tester.pumpAndSettle();
++      void open() => tester
++          .widget<BookshelfHeader>(find.byType(BookshelfHeader))
++          .onContinue!();
++      open();
++      open();
++      expect(db.requests, hasLength(1));
++      if (outcome == 'missing') {
++        db.requests.first.completeError(StateError('book removed'));
++      } else {
++        db.failCount = outcome == 'count failure';
++        db.requests.first.complete(MangaBook(
++            id: 'recent',
++            title: 'recent',
++            filePaths: outcome == 'empty' ? [] : ['synthetic.png']));
++      }
++      await tester.pumpAndSettle();
++      open();
++      expect(db.requests, hasLength(2));
++      db.requests.last.complete(db.book);
++      await tester.pumpAndSettle();
++      if (outcome == 'return') expect(observer.readers, 1);
++      expect(tester.takeException(), isNull);
++      await tester.pumpWidget(const SizedBox());
++      await (await db.database).close();
++    });
++  }
++  testWidgets('recent request failure after disposal is handled',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({
++      'recent_read_book_ids': ['recent']
++    });
++    final db = RecentDatabase();
++    await tester.pumpWidget(ChangeNotifierProvider(
++        create: (_) => SettingsProvider(),
++        child: MaterialApp(home: BookshelfScreen(database: db))));
++    await tester.pumpAndSettle();
++    tester.widget<BookshelfHeader>(find.byType(BookshelfHeader)).onContinue!();
++    await tester.pumpWidget(const SizedBox());
++    db.requests.single.completeError(StateError('offline'));
++    await tester.pump();
++    expect(tester.takeException(), isNull);
++    await (await db.database).close();
++  });
++}
+--- before/test\settings_lifecycle_test.dart
++++ after/test\settings_lifecycle_test.dart
+@@ -0,0 +1,41 @@
++import 'package:flutter_test/flutter_test.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++import 'package:gun_book/core/settings_provider.dart';
++
++void main() {
++  testWidgets('settings loading after disposal does not notify',
++      (tester) async {
++    SharedPreferences.setMockInitialValues({});
++    final settings = SettingsProvider();
++    settings.dispose();
++    await tester.pump();
++    expect(tester.takeException(), isNull);
++  });
++  testWidgets('an immediate user edit wins over initial preferences',
++      (tester) async {
++    SharedPreferences.setMockInitialValues(
++        {'dark_mode': 0, 'shelf_columns': 5});
++    final settings = SettingsProvider();
++    settings.setDarkMode(true);
++    await tester.pump();
++    expect(settings.isLoaded, isTrue);
++    expect(settings.darkMode, isTrue);
++    expect(settings.bookshelfColumns, 5);
++    settings.dispose();
++  });
++  testWidgets('explicit defaults before load are also persisted',
++      (tester) async {
++    SharedPreferences.setMockInitialValues(
++        {'shelf_columns': 5, 'cover_crop': 0});
++    final settings = SettingsProvider();
++    settings.setBookshelfColumns(4);
++    settings.setCropBookCovers(true);
++    await tester.pump();
++    expect(settings.bookshelfColumns, 4);
++    expect(settings.cropBookCovers, isTrue);
++    final prefs = await SharedPreferences.getInstance();
++    expect(prefs.getInt('shelf_columns'), 4);
++    expect(prefs.getInt('cover_crop'), 1);
++    settings.dispose();
++  });
++}

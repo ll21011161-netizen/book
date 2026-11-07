@@ -1,0 +1,279 @@
+import '../core/anim_route.dart';
+import 'cover_hero.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/motion.dart';
+import '../core/settings_provider.dart';
+import 'spring_press.dart';
+
+class MotionSettingsPanel extends StatelessWidget {
+  const MotionSettingsPanel({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final value =
+        context.select<SettingsProvider, MotionSettings>((s) => s.motion);
+    final settings = context.read<SettingsProvider>();
+    Widget choices<T>(String title, String help, List<T> options,
+            List<String> labels, T selected, ValueChanged<T> change) =>
+        Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              Text(help, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 4, children: [
+                for (var i = 0; i < options.length; i++)
+                  ChoiceChip(
+                      label: Text(labels[i]),
+                      selected: selected == options[i],
+                      onSelected: (_) => change(options[i]))
+              ])
+            ]));
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('動畫與動態效果', style: Theme.of(context).textTheme.titleLarge),
+      const Text('立即套用並自動儲存；系統減少動畫時優先停用動態效果。'),
+      SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('開啟動畫'),
+          subtitle: const Text('關閉後立即切換，保留操作與選取提示'),
+          value: value.enabled,
+          onChanged: (v) => settings.setMotion(value.copyWith(enabled: v))),
+      choices(
+          '動畫曲線',
+          '線性等速、平滑加減速、快速開始，或輕柔彈性。',
+          MotionCurve.values,
+          ['線性 Linear', '平滑 Ease In Out', '減速 Ease Out', '彈性 Spring'],
+          value.curve,
+          (v) => settings.setMotion(value.copyWith(curve: v))),
+      choices(
+          '頁面切換',
+          '套用首頁、設定、詳情與閱讀器進出；縮放幅度保持輕微。',
+          PageMotion.values,
+          [
+            '無 None',
+            '淡入淡出 Fade',
+            '滑動 Slide',
+            '輕縮放 Scale',
+            '淡入＋滑動 Fade + Slide',
+            '縮放＋淡入 Zoom + Fade'
+          ],
+          value.page,
+          (v) => settings.setMotion(value.copyWith(page: v))),
+      choices(
+          '詳情頁切換動畫',
+          '有來源封面時展開為詳情頁；其他入口沿用頁面設定。',
+          DetailMotion.values,
+          ['沿用頁面切換', '封面彈出／縮回（Container Transform）'],
+          value.detail,
+          (v) => settings.setMotion(value.copyWith(detail: v))),
+      if (value.detail == DetailMotion.containerTransform)
+        const CoverTransformPreview(),
+      choices(
+          '點擊反饋',
+          '漫畫封面、資料夾與主要操作按鈕；點擊不等待動畫。',
+          PressMotion.values,
+          ['無', '輕微縮放', 'Q 彈縮放'],
+          value.press,
+          (v) => settings.setMotion(value.copyWith(press: v))),
+      SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('彈性回彈'),
+          subtitle: const Text('關閉使用無回彈捲動；不改變翻頁方向及縮放手勢'),
+          value: value.bounce,
+          onChanged: (v) => settings.setMotion(value.copyWith(bounce: v))),
+      choices(
+          '動畫速度',
+          '按壓使用較短比例；手勢與滑動慣性維持原生行為。',
+          [150, 250, 400, -1],
+          ['快速 150ms', '標準 250ms', '慢速 400ms', '自訂'],
+          [150, 250, 400].contains(value.milliseconds)
+              ? value.milliseconds
+              : -1,
+          (v) => settings
+              .setMotion(value.copyWith(milliseconds: v == -1 ? 300 : v))),
+      Text('自訂時間：${value.milliseconds}ms'),
+      Slider(
+          value: value.milliseconds.toDouble(),
+          min: 100,
+          max: 600,
+          divisions: 50,
+          label: '${value.milliseconds}ms',
+          onChanged: (v) =>
+              settings.setMotion(value.copyWith(milliseconds: v.round()))),
+      const MotionPreview(),
+      TextButton.icon(
+          onPressed: settings.resetMotion,
+          icon: const Icon(Icons.restart_alt),
+          label: const Text('恢復預設動畫設定')),
+    ]);
+  }
+}
+
+/// Lightweight preview uses the exact same transition and press widgets as app.
+class MotionPreview extends StatefulWidget {
+  const MotionPreview({super.key});
+  @override
+  State<MotionPreview> createState() => _MotionPreviewState();
+}
+
+class _MotionPreviewState extends State<MotionPreview>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller =
+      AnimationController(vsync: this, value: 1);
+  MotionSettings? _last;
+  bool _repeat = false;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final motion = MotionScope.of(context);
+    if (_last != motion || !TickerMode.of(context)) {
+      _controller.stop();
+      _controller.value = 1;
+      _last = motion;
+      _repeat = false;
+    }
+  }
+
+  void _play() {
+    final motion = MotionScope.of(context);
+    _controller.stop();
+    _controller.duration = motion.duration();
+    if (!motion.enabled) {
+      _controller.value = 1;
+      return;
+    }
+    if (_repeat) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = MotionScope.of(context);
+    return Column(children: [
+      const Divider(height: 28),
+      SizedBox(
+          height: 130,
+          width: double.infinity,
+          child: ClipRect(
+              child: ColoredBox(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  child: Center(
+                      child: MotionTransition(
+                          animation: _controller,
+                          settings: motion,
+                          child: Card(
+                              child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text('頁面轉場預覽'),
+                                        const SizedBox(height: 8),
+                                        ScaleTransition(
+                                            scale: motion.enabled &&
+                                                    motion.press !=
+                                                        PressMotion.none
+                                                ? _controller
+                                                    .drive(CurveTween(
+                                                        curve: motion.press == PressMotion.spring
+                                                            ? const GentleSpring()
+                                                            : motion
+                                                                .timingCurve))
+                                                    .drive(Tween(
+                                                        begin:
+                                                            motion.press == PressMotion.spring
+                                                                ? .95
+                                                                : .97,
+                                                        end: 1.0))
+                                                : const AlwaysStoppedAnimation(
+                                                    1.0),
+                                            child: SpringPress(
+                                                onTap: () {},
+                                                child: const Padding(
+                                                    padding: EdgeInsets.all(8),
+                                                    child: Text('點我體驗按壓反饋'))))
+                                      ])))))))),
+      Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+        FilledButton.tonalIcon(
+            onPressed: _play,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('預覽動畫')),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          Checkbox(
+              value: _repeat,
+              onChanged: (v) {
+                setState(() => _repeat = v ?? false);
+                if (_repeat) {
+                  _play();
+                } else {
+                  _controller.stop();
+                  _controller.value = 1;
+                }
+              }),
+          const Text('反覆播放')
+        ])
+      ]),
+    ]);
+  }
+}
+
+/// A real route preview with a painted, image-free source. No additional ticker.
+class CoverTransformPreview extends StatefulWidget {
+  const CoverTransformPreview({super.key});
+  @override
+  State<CoverTransformPreview> createState() => _CoverTransformPreviewState();
+}
+
+class _CoverTransformPreviewState extends State<CoverTransformPreview> {
+  final _cover = GlobalKey<CoverHeroState>();
+  void _open() {
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    Navigator.of(context).push(DetailRoute<void>(
+        context: context,
+        source: _cover.currentState?.origin,
+        page: Scaffold(
+            appBar: AppBar(title: const Text('詳情頁動畫預覽')),
+            body: GridView.count(
+                crossAxisCount: 3,
+                padding: const EdgeInsets.all(20),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                children: [
+                  for (var i = 0; i < 9; i++)
+                    const Card(
+                        child: Center(child: Icon(Icons.auto_stories_outlined)))
+                ]))));
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(children: [
+        SizedBox(
+            width: 68,
+            height: 92,
+            child: GestureDetector(
+                onTap: _open,
+                child: CoverHero(
+                    key: _cover,
+                    tag: 'container_preview',
+                    identity: 'preview',
+                    builder: (_) => Material(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        child: const Center(
+                            child: Icon(Icons.menu_book_rounded, size: 32)))))),
+        const SizedBox(width: 12),
+        const Expanded(child: Text('點擊示意封面預覽展開；返回時縮回。\n不載入漫畫圖片。')),
+      ]));
+}

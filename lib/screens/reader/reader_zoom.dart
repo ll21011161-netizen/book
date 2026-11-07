@@ -1,0 +1,178 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import '../../core/constants.dart';
+import '../../core/motion.dart';
+
+/// Zooms a single reader page without rebuilding the image on matrix changes.
+class ReaderZoom extends StatefulWidget {
+  const ReaderZoom(
+      {super.key,
+      required this.child,
+      required this.isZoomed,
+      this.doubleTapScale = 2.5,
+      this.currentPage,
+      this.pageIndex,
+      this.imageSize});
+  final Widget child;
+  final ValueNotifier<bool> isZoomed;
+  final double doubleTapScale;
+  final ValueListenable<int>? currentPage;
+  final int? pageIndex;
+  final ValueListenable<Size?>? imageSize;
+
+  @override
+  State<ReaderZoom> createState() => _ReaderZoomState();
+}
+
+class _ReaderZoomState extends State<ReaderZoom>
+    with SingleTickerProviderStateMixin {
+  final TransformationController _transform = TransformationController();
+  late final AnimationController _animation;
+  Animation<Matrix4>? _tween;
+  Offset _tap = Offset.zero;
+  Size _viewport = Size.zero;
+  bool _correctingBounds = false;
+  bool _zoomingIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transform.addListener(_reportScale);
+    widget.currentPage?.addListener(_resetForPageChange);
+    _animation =
+        AnimationController(vsync: this, duration: AppConstants.zoomDuration)
+          ..addListener(() {
+            if (_tween != null) _transform.value = _tween!.value;
+          })
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              _zoomingIn = false;
+              _reportScale();
+            }
+          });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!MotionScope.of(context).enabled && _animation.isAnimating) {
+      _animation.stop();
+      _zoomingIn = false;
+      if (_tween != null) _transform.value = _tween!.value;
+      _reportScale();
+    }
+  }
+
+  void _resetForPageChange() {
+    _animation.stop();
+    _zoomingIn = false;
+    _tween = null;
+    _transform.value = Matrix4.identity();
+  }
+
+  @override
+  void didUpdateWidget(covariant ReaderZoom oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPage != widget.currentPage) {
+      oldWidget.currentPage?.removeListener(_resetForPageChange);
+      widget.currentPage?.addListener(_resetForPageChange);
+      _resetForPageChange();
+    }
+  }
+
+  void _reportScale() {
+    if (_correctingBounds) return;
+    final imageSize = widget.imageSize?.value;
+    if (imageSize != null && !imageSize.isEmpty && !_viewport.isEmpty) {
+      final fitted =
+          applyBoxFit(BoxFit.contain, imageSize, _viewport).destination;
+      final rect = Alignment.center.inscribe(fitted, Offset.zero & _viewport);
+      final matrix = _transform.value;
+      final scale = matrix.getMaxScaleOnAxis();
+      final translation = matrix.getTranslation();
+      double bound(double value, double start, double end, double extent) {
+        if ((end - start) * scale <= extent) {
+          return (extent - (start + end) * scale) / 2;
+        }
+        return value.clamp(extent - end * scale, -start * scale);
+      }
+
+      final x = bound(translation.x, rect.left, rect.right, _viewport.width);
+      final y = bound(translation.y, rect.top, rect.bottom, _viewport.height);
+      if ((x - translation.x).abs() > .001 ||
+          (y - translation.y).abs() > .001) {
+        _correctingBounds = true;
+        _transform.value = Matrix4.copy(matrix)..setTranslationRaw(x, y, 0);
+        _correctingBounds = false;
+      }
+    }
+    if (widget.currentPage != null &&
+        widget.currentPage!.value != widget.pageIndex) {
+      return;
+    }
+    final zoomed = _zoomingIn || _transform.value.getMaxScaleOnAxis() > 1.001;
+    if (widget.isZoomed.value != zoomed) widget.isZoomed.value = zoomed;
+  }
+
+  void _doubleTap() {
+    _animation.stop();
+    final current = _transform.value;
+    final scale = current.getMaxScaleOnAxis();
+    final targetScale = widget.doubleTapScale.clamp(1.0, 4.0);
+    Matrix4 target;
+    _zoomingIn = scale <= 1.001 && targetScale > 1.001;
+    if (scale > 1.001) {
+      target = Matrix4.identity();
+    } else {
+      final x = (_tap.dx * (1 - targetScale))
+          .clamp(_viewport.width * (1 - targetScale), 0.0);
+      final y = (_tap.dy * (1 - targetScale))
+          .clamp(_viewport.height * (1 - targetScale), 0.0);
+      target = Matrix4.diagonal3Values(targetScale, targetScale, 1)
+        ..setTranslationRaw(x, y, 0);
+      if (_zoomingIn) widget.isZoomed.value = true;
+    }
+    if (!MotionScope.of(context).enabled) {
+      _zoomingIn = false;
+      _tween = null;
+      _transform.value = target;
+      _reportScale();
+      return;
+    }
+    _tween = Matrix4Tween(begin: Matrix4.copy(current), end: target).animate(
+        CurveTween(curve: AppConstants.animCurveStandard).animate(_animation));
+    _animation.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    widget.currentPage?.removeListener(_resetForPageChange);
+    _transform.removeListener(_reportScale);
+    _animation.dispose();
+    _transform.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (context, constraints) {
+        _viewport = constraints.biggest;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onDoubleTapDown: (details) => _tap = details.localPosition,
+          onDoubleTap: _doubleTap,
+          child: InteractiveViewer(
+            transformationController: _transform,
+            minScale: 1,
+            maxScale: 4,
+            boundaryMargin: EdgeInsets.zero,
+            onInteractionStart: (_) {
+              _animation.stop();
+              _zoomingIn = false;
+              _reportScale();
+            },
+            child: widget.child,
+          ),
+        );
+      });
+}

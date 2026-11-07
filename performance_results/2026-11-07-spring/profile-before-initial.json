@@ -1,0 +1,35 @@
+{
+  "source": "Metric records captured in tool output before Android log buffer rotation; remaining raw records are in profile-before.log.",
+  "records": [
+    {
+      "event": "frames",
+      "screen": "spring_before_normal_book_20",
+      "frames": 371,
+      "over_8ms": 4,
+      "over_16ms": 0,
+      "max_build_us": 3876,
+      "max_raster_us": 11441,
+      "total_build_us": 506608,
+      "total_raster_us": 1280816,
+      "rss_bytes": 259686400,
+      "image_cache_bytes": 135000,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    {
+      "event": "frames",
+      "screen": "spring_before_normal_folder_20",
+      "frames": 372,
+      "over_8ms": 12,
+      "over_16ms": 0,
+      "max_build_us": 4739,
+      "max_raster_us": 12651,
+      "total_build_us": 585364,
+      "total_raster_us": 1413130,
+      "rss_bytes": 262176768,
+      "image_cache_bytes": 173400,
+      "live_images": 1,
+      "pending_images": 0
+    }
+  ]
+}

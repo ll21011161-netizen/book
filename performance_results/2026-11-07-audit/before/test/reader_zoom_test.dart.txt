@@ -1,0 +1,275 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gun_book/screens/reader/reader_zoom.dart';
+
+void main() {
+  testWidgets('double tap zooms around the tap and returns smoothly',
+      (tester) async {
+    final zoomed = ValueNotifier(false);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: Center(
+                child: SizedBox(
+                    width: 300,
+                    height: 400,
+                    child: ReaderZoom(
+                        isZoomed: zoomed,
+                        child: const ColoredBox(color: Colors.blue)))))));
+    final box = find.byType(InteractiveViewer);
+    final point = tester.getTopLeft(box) + const Offset(120, 180);
+    Future<void> doubleTap() async {
+      await tester.tapAt(point);
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.tapAt(point);
+      await tester.pump();
+    }
+
+    await doubleTap();
+    await tester.pump(const Duration(milliseconds: 100));
+    final controller =
+        tester.widget<InteractiveViewer>(box).transformationController!;
+    expect(controller.value.getMaxScaleOnAxis(), greaterThan(1));
+    expect(controller.value.getMaxScaleOnAxis(), lessThan(2.5));
+    await tester.pumpAndSettle();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(2.5, .001));
+    final translation = controller.value.getTranslation();
+    expect(translation.x + 120 * 2.5, closeTo(120, .01));
+    expect(translation.y + 180 * 2.5, closeTo(180, .01));
+    expect(zoomed.value, isTrue);
+    await doubleTap();
+    await tester.pumpAndSettle();
+    expect(controller.value.getMaxScaleOnAxis(), closeTo(1, .001));
+    expect(zoomed.value, isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+    zoomed.dispose();
+  });
+  testWidgets('page swipe works at one and zoomed drag stays on page',
+      (tester) async {
+    final zoomed = ValueNotifier(false);
+    final page = PageController();
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: ValueListenableBuilder<bool>(
+                valueListenable: zoomed,
+                builder: (context, locked, _) => PageView.builder(
+                      controller: page,
+                      physics: locked
+                          ? const NeverScrollableScrollPhysics()
+                          : const ClampingScrollPhysics(),
+                      itemCount: 2,
+                      itemBuilder: (_, index) => ReaderZoom(
+                          isZoomed: zoomed,
+                          child: ColoredBox(
+                              color: index == 0 ? Colors.red : Colors.blue)),
+                    )))));
+    final point = tester.getCenter(find.byType(PageView));
+    await tester.dragFrom(point, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    expect(page.page, closeTo(1, .01));
+    page.jumpToPage(0);
+    await tester.pumpAndSettle();
+    await tester.tapAt(point);
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tapAt(point);
+    await tester.pumpAndSettle();
+    expect(zoomed.value, isTrue);
+    final controller = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer).first)
+        .transformationController!;
+    final before = controller.value.getTranslation().x;
+    await tester.dragFrom(point, const Offset(-100, 0));
+    await tester.pumpAndSettle();
+    expect(page.page, closeTo(0, .01));
+    expect(controller.value.getTranslation().x, lessThan(before));
+    await tester.pumpWidget(const SizedBox.shrink());
+    page.dispose();
+    zoomed.dispose();
+  });
+
+  testWidgets('pinch scales to the supported range and locks paging',
+      (tester) async {
+    final zoomed = ValueNotifier(false);
+    final page = PageController();
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: ValueListenableBuilder<bool>(
+                valueListenable: zoomed,
+                builder: (_, locked, __) => PageView(
+                      controller: page,
+                      physics: locked
+                          ? const NeverScrollableScrollPhysics()
+                          : const ClampingScrollPhysics(),
+                      children: [
+                        ReaderZoom(
+                            isZoomed: zoomed,
+                            child: const ColoredBox(color: Colors.red)),
+                        const ColoredBox(color: Colors.blue)
+                      ],
+                    )))));
+    final center = tester.getCenter(find.byType(InteractiveViewer));
+    final first =
+        await tester.startGesture(center + const Offset(-30, 0), pointer: 1);
+    final second =
+        await tester.startGesture(center + const Offset(30, 0), pointer: 2);
+    await first.moveTo(center + const Offset(-130, 0));
+    await second.moveTo(center + const Offset(130, 0));
+    await tester.pump();
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+    final scale = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!
+        .value
+        .getMaxScaleOnAxis();
+    expect(scale, greaterThan(1));
+    expect(scale, lessThanOrEqualTo(4));
+    expect(zoomed.value, isTrue);
+    await tester.dragFrom(center, const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(page.page, closeTo(0, .01));
+    await tester.pumpWidget(const SizedBox.shrink());
+    page.dispose();
+    zoomed.dispose();
+  });
+
+  for (final rtl in [false, true]) {
+    testWidgets('page changes reset zoom and retain direction rtl=$rtl',
+        (tester) async {
+      final zoomed = ValueNotifier(false);
+      final current = ValueNotifier(0);
+      final page = PageController();
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: ValueListenableBuilder<bool>(
+                  valueListenable: zoomed,
+                  builder: (_, locked, __) => PageView.builder(
+                        reverse: rtl,
+                        controller: page,
+                        itemCount: 2,
+                        physics: locked
+                            ? const NeverScrollableScrollPhysics()
+                            : const ClampingScrollPhysics(),
+                        onPageChanged: (index) {
+                          current.value = index;
+                          zoomed.value = false;
+                        },
+                        itemBuilder: (_, index) => ReaderZoom(
+                            isZoomed: zoomed,
+                            currentPage: current,
+                            pageIndex: index,
+                            child: ColoredBox(
+                                color: index == 0 ? Colors.red : Colors.blue)),
+                      )))));
+      final center = tester.getCenter(find.byType(PageView));
+      await tester.tapAt(center);
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.tapAt(center);
+      await tester.pump(const Duration(milliseconds: 70));
+      page.jumpToPage(1);
+      await tester.pumpAndSettle();
+      expect(current.value, 1);
+      expect(zoomed.value, isFalse);
+      expect(
+          tester
+              .widget<InteractiveViewer>(find.byType(InteractiveViewer).last)
+              .transformationController!
+              .value
+              .getMaxScaleOnAxis(),
+          closeTo(1, .001));
+      await tester.dragFrom(center, Offset(rtl ? -500 : 500, 0));
+      await tester.pumpAndSettle();
+      expect(current.value, 0);
+      final controller = tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer).first)
+          .transformationController!;
+      expect(controller.value.getMaxScaleOnAxis(), closeTo(1, .001));
+      expect(controller.value.getTranslation().x, closeTo(0, .001));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      current.dispose();
+      page.dispose();
+      zoomed.dispose();
+    });
+  }
+  testWidgets('panning is clamped to the viewport', (tester) async {
+    final zoomed = ValueNotifier(false);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: Center(
+                child: SizedBox(
+                    width: 300,
+                    height: 400,
+                    child: ReaderZoom(
+                        isZoomed: zoomed,
+                        child: const ColoredBox(color: Colors.blue)))))));
+    final viewer = find.byType(InteractiveViewer);
+    final point = tester.getCenter(viewer);
+    await tester.tapAt(point);
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tapAt(point);
+    await tester.pumpAndSettle();
+    await tester.dragFrom(point, const Offset(2000, 2000));
+    await tester.pumpAndSettle();
+    final translation = tester
+        .widget<InteractiveViewer>(viewer)
+        .transformationController!
+        .value
+        .getTranslation();
+    expect(translation.x, lessThanOrEqualTo(.01));
+    expect(translation.y, lessThanOrEqualTo(.01));
+    await tester.pumpWidget(const SizedBox.shrink());
+    zoomed.dispose();
+  });
+
+  testWidgets(
+      'letterboxed image remains centered when zoomed image is narrower than viewport',
+      (tester) async {
+    final zoomed = ValueNotifier(false);
+    final size = ValueNotifier<Size?>(const Size(100, 1000));
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: Center(
+                child: SizedBox(
+                    width: 300,
+                    height: 400,
+                    child: ReaderZoom(
+                        isZoomed: zoomed,
+                        imageSize: size,
+                        child: const ColoredBox(color: Colors.blue)))))));
+    final viewer = find.byType(InteractiveViewer);
+    final point = tester.getCenter(viewer);
+    await tester.tapAt(point);
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tapAt(point);
+    await tester.pumpAndSettle();
+    await tester.dragFrom(point, const Offset(-100, -100));
+    await tester.pumpAndSettle();
+    final transform = tester
+        .widget<InteractiveViewer>(viewer)
+        .transformationController!
+        .value;
+    expect(transform.getMaxScaleOnAxis(), closeTo(2.5, .01));
+    // Contained image is 40 px wide; at 2.5x its center stays at x=150.
+    expect(transform.getTranslation().x, closeTo(-225, .1));
+    await tester.pumpWidget(const SizedBox.shrink());
+    zoomed.dispose();
+    size.dispose();
+  });
+  testWidgets('rapid taps and disposal during animation are safe', (tester) async {
+    final zoomed = ValueNotifier(false);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: ReaderZoom(isZoomed: zoomed, child: const ColoredBox(color: Colors.blue)))));
+    final center = tester.getCenter(find.byType(InteractiveViewer));
+    for (var n = 0; n < 3; n++) {
+      await tester.tapAt(center);
+      await tester.pump(const Duration(milliseconds: 30));
+      await tester.tapAt(center);
+      await tester.pump(const Duration(milliseconds: 45));
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull);
+    zoomed.dispose();
+  });
+
+}

@@ -1,0 +1,55 @@
+{
+  "source": "Initial logcat capture in this session's tool output, before the device log buffer rolled over",
+  "events": [
+    {
+      "event": "spring_environment",
+      "system_reduced": false,
+      "refresh_hz": 90
+    },
+    {
+      "event": "frames",
+      "screen": "spring_press_repair_normal_book_20",
+      "frames": 367,
+      "over_8ms": 17,
+      "over_16ms": 0,
+      "max_build_us": 7673,
+      "max_raster_us": 11385,
+      "total_build_us": 424299,
+      "total_raster_us": 1369721,
+      "rss_bytes": 260825088,
+      "image_cache_bytes": 135000,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    {
+      "event": "frames",
+      "screen": "spring_press_repair_normal_folder_20",
+      "frames": 366,
+      "over_8ms": 5,
+      "over_16ms": 0,
+      "max_build_us": 2799,
+      "max_raster_us": 12261,
+      "total_build_us": 372743,
+      "total_raster_us": 1339754,
+      "rss_bytes": 262488064,
+      "image_cache_bytes": 173400,
+      "live_images": 1,
+      "pending_images": 0
+    },
+    {
+      "event": "frames",
+      "screen": "spring_press_repair_normal_button_20",
+      "frames": 364,
+      "over_8ms": 0,
+      "over_16ms": 0,
+      "max_build_us": 3019,
+      "max_raster_us": 6740,
+      "total_build_us": 417388,
+      "total_raster_us": 1064923,
+      "rss_bytes": 261636096,
+      "image_cache_bytes": 173400,
+      "live_images": 0,
+      "pending_images": 0
+    }
+  ]
+}

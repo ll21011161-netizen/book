@@ -1,0 +1,1716 @@
+--- before/lib/core/anim_route.dart
++++ after/lib/core/anim_route.dart
+@@ -1,5 +1,7 @@
+ // lib/core/anim_route.dart
+ import 'package:flutter/material.dart';
++import 'package:flutter/services.dart' show PredictiveBackEvent;
++import 'perf_log.dart';
+ import 'constants.dart'; // 🌟 第一步：溫柔地把我們的魔法工具箱引入進來！
+ 
+ enum TransitionType { zoomFade, slideUp, fade } // 🌟 新增了 fade 模式喔！
+@@ -63,3 +65,134 @@
+           },
+         );
+ }
++
++/// Detail-only route: regular navigation fades without moving the whole page.
++/// Android predictive events use the framework route gesture lifecycle.
++class DetailRoute<T> extends MaterialPageRoute<T> {
++  DetailRoute({required BuildContext context, required Widget page})
++      : _reduced = MediaQuery.disableAnimationsOf(context),
++        super(
++            builder: (_) => page,
++            allowSnapshotting: false,
++            settings: const RouteSettings(name: 'library_detail')) {
++    if (PerfLog.enabled) _watch.start();
++  }
++  final bool _reduced;
++  final Stopwatch _watch = Stopwatch();
++  bool _firstFrameScheduled = false;
++  static final _fade = CurveTween(curve: AppConstants.detailCurve);
++
++  @override
++  Duration get transitionDuration =>
++      _reduced ? Duration.zero : AppConstants.detailEnterDuration;
++  @override
++  Duration get reverseTransitionDuration =>
++      _reduced ? Duration.zero : AppConstants.detailExitDuration;
++  @override
++  bool canTransitionFrom(TransitionRoute<dynamic> previousRoute) => false;
++  @override
++  DelegatedTransitionBuilder? get delegatedTransition => null;
++
++  @override
++  Widget buildPage(BuildContext context, Animation<double> animation,
++      Animation<double> secondaryAnimation) {
++    if (PerfLog.enabled && !_firstFrameScheduled) {
++      _firstFrameScheduled = true;
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (navigator != null) {
++          PerfLog.event('detail_route_first_frame',
++              {'elapsed_us': _watch.elapsedMicroseconds});
++        }
++      });
++    }
++    return super.buildPage(context, animation, secondaryAnimation);
++  }
++
++  @override
++  Widget buildTransitions(BuildContext context, Animation<double> animation,
++          Animation<double> secondaryAnimation, Widget child) =>
++      _DetailBackFade(
++          route: this,
++          animation: animation,
++          reduced: MediaQuery.disableAnimationsOf(context),
++          android: Theme.of(context).platform == TargetPlatform.android,
++          child: child);
++}
++
++/// Bridge Android's predictive events to the framework's public route gesture
++/// lifecycle. No snapshot, full-page scale, extra controller or native fallback
++/// transition is needed for this fade-only route.
++class _DetailBackFade extends StatefulWidget {
++  const _DetailBackFade(
++      {required this.route,
++      required this.animation,
++      required this.reduced,
++      required this.android,
++      required this.child});
++  final PageRoute<dynamic> route;
++  final Animation<double> animation;
++  final bool reduced, android;
++  final Widget child;
++  @override
++  State<_DetailBackFade> createState() => _DetailBackFadeState();
++}
++
++class _DetailBackFadeState extends State<_DetailBackFade>
++    with WidgetsBindingObserver {
++  late final Animation<double> _normal =
++      widget.animation.drive(DetailRoute._fade);
++  Animation<double>? _commit;
++  @override
++  void initState() {
++    super.initState();
++    WidgetsBinding.instance.addObserver(this);
++  }
++
++  @override
++  void dispose() {
++    WidgetsBinding.instance.removeObserver(this);
++    super.dispose();
++  }
++
++  @override
++  bool handleStartBackGesture(PredictiveBackEvent event) {
++    if (!widget.android ||
++        widget.reduced ||
++        event.isButtonEvent ||
++        !widget.route.isCurrent ||
++        !widget.route.popGestureEnabled) {
++      return false;
++    }
++    _commit = null;
++    widget.route.handleStartBackGesture(progress: 1 - event.progress);
++    return true;
++  }
++
++  @override
++  void handleUpdateBackGestureProgress(PredictiveBackEvent event) =>
++      widget.route
++          .handleUpdateBackGestureProgress(progress: 1 - event.progress);
++  @override
++  void handleCancelBackGesture() {
++    _commit = null;
++    widget.route.handleCancelBackGesture();
++  }
++
++  @override
++  void handleCommitBackGesture() {
++    // The framework restarts the route's exit controller at 1 on commit. Map
++    // that value to the gesture's current opacity to avoid a one-frame flash.
++    _commit = widget.animation
++        .drive(Tween<double>(begin: 0, end: widget.animation.value));
++    widget.route.handleCommitBackGesture();
++  }
++
++  @override
++  Widget build(BuildContext context) => widget.reduced
++      ? widget.child
++      : FadeTransition(
++          opacity: widget.route.popGestureInProgress
++              ? (_commit ?? widget.animation)
++              : _normal,
++          child: widget.child);
++}
+--- before/lib/core/config.dart
++++ after/lib/core/config.dart
+@@ -11,7 +11,12 @@
+   // 效能與快取設定 (Performance & Caching)
+   // ============================================
+   static const int pageSize = 50;
++  static const int diskThumbnailWidth = 200;
++  static const int detailThumbnailMinWidth = 120;
++  static const int detailThumbnailMaxWidth = 150;
++  static const int detailCoverWidth = 600;
++  static const int thumbnailCacheVersion = 2;
+   static const int thumbnailCacheWidth = 150;
+   static const int microThumbnailCacheWidth = 80;
+   static const int memoryEvictDistance = 3;
+-}+}
+--- before/lib/core/constants.dart
++++ after/lib/core/constants.dart
+@@ -16,6 +16,9 @@
+   static const Curve pressCurve = Curves.easeOutCubic;
+   // Limited overshoot: a 0.95 -> 1 release peaks at about 1.002.
+   static const Curve springCurve = Cubic(0.2, 0.85, 0.35, 1.15);
++  static const Duration detailEnterDuration = Duration(milliseconds: 380);
++  static const Duration detailExitDuration = Duration(milliseconds: 320);
++  static const Curve detailCurve = Curves.easeInOutCubic;
+   static const Duration navigationDuration = Duration(milliseconds: 260);
+   static const Duration controlsDuration = Duration(milliseconds: 200);
+   static const Duration zoomDuration = Duration(milliseconds: 200);
+--- before/lib/data/thumbnail_cache.dart
++++ after/lib/data/thumbnail_cache.dart
+@@ -6,6 +6,7 @@
+ import 'package:path/path.dart' as p;
+ import 'package:path_provider/path_provider.dart';
+ import '../core/perf_log.dart';
++import '../core/config.dart';
+ import 'thumbnail_scheduler.dart';
+ 
+ /// Disposable, app-cache-only thumbnails. Originals are never modified.
+@@ -19,6 +20,8 @@
+   static final instance = ThumbnailCache(
+       maxConcurrent:
+           const int.fromEnvironment('GUNBOOK_THUMB_WORKERS', defaultValue: 1));
++  // Keep one LRU directory across key versions so obsolete thumbnails still
++  // count toward the quota. The version/width in each key prevents stale hits.
+   static Future<Directory> _defaultDirectory() async => Directory(
+       p.join((await getTemporaryDirectory()).path, 'gunbook_thumbnails_v1'));
+   final Future<Directory> Function() _directory;
+@@ -76,7 +79,10 @@
+     final watch = Stopwatch()..start();
+     try {
+       final entry = await _locate(source);
+-      return entry == null ? null : await _hit(entry.target, watch);
++      if (entry == null) return null;
++      final result = await _hit(entry.target, watch, kind: 'lookup');
++      if (result == null) PerfLog.event('thumbnail_miss', {'kind': 'lookup'});
++      return result;
+     } catch (_) {
+       return null;
+     } finally {
+@@ -93,7 +99,7 @@
+     if (stat.type != FileSystemEntityType.file || stat.size <= 0) return null;
+     final key = sha256
+         .convert(utf8.encode(
+-            '$source\u0000${stat.size}\u0000${stat.modified.microsecondsSinceEpoch}'))
++            'v${AppConfig.thumbnailCacheVersion}:${AppConfig.diskThumbnailWidth}:$source\u0000${stat.size}\u0000${stat.modified.microsecondsSinceEpoch}'))
+         .toString();
+     final directory = await _cacheDirectory();
+     final target = File(p.join(directory.path, '$key.png'));
+@@ -101,13 +107,15 @@
+     return (stat: stat, directory: directory, target: target);
+   }
+ 
+-  Future<String?> _hit(File target, Stopwatch watch) async {
++  Future<String?> _hit(File target, Stopwatch watch,
++      {required String kind}) async {
+     final stat = await _valid(target);
+     if (stat == null) return null;
+     if (DateTime.now().difference(stat.modified).inHours >= 1) {
+       await target.setLastModified(DateTime.now());
+     }
+-    PerfLog.event('thumbnail_hit', {'elapsed_us': watch.elapsedMicroseconds});
++    PerfLog.event('thumbnail_hit',
++        {'elapsed_us': watch.elapsedMicroseconds, 'kind': kind});
+     return target.path;
+   }
+ 
+@@ -117,8 +125,9 @@
+       final entry = await _locate(source);
+       if (entry == null) return null;
+       final (:stat, :directory, :target) = entry;
+-      final hit = await _hit(target, watch);
++      final hit = await _hit(target, watch, kind: 'generate');
+       if (hit != null) return hit;
++      PerfLog.event('thumbnail_miss', {'kind': 'generate'});
+       return await _scheduler.run(
+           () async {
+             final queueUs = watch.elapsedMicroseconds;
+@@ -209,12 +218,18 @@
+     ui.Image? image;
+     File? temporary;
+     try {
++      final stage = Stopwatch();
++      if (PerfLog.enabled) stage.start();
+       final buffer = await ui.ImmutableBuffer.fromFilePath(source);
+       codec = await ui.instantiateImageCodecFromBuffer(buffer,
+-          targetWidth: 300, allowUpscaling: false);
++          targetWidth: AppConfig.diskThumbnailWidth, allowUpscaling: false);
+       image = (await codec.getNextFrame()).image;
++      final decodeUs = stage.elapsedMicroseconds;
++      stage.reset();
+       final data = await image.toByteData(format: ui.ImageByteFormat.png);
+       if (data == null) return null;
++      final encodeUs = stage.elapsedMicroseconds;
++      stage.reset();
+       final now = await File(source).stat();
+       if (now.type != FileSystemEntityType.file ||
+           now.size != stat.size ||
+@@ -227,6 +242,16 @@
+           data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+       await temporary.rename(target.path);
+       _remember(target.path, await target.stat());
++      if (PerfLog.enabled) {
++        PerfLog.event('thumbnail_stages', {
++          'decode_us': decodeUs,
++          'encode_us': encodeUs,
++          'write_validate_us': stage.elapsedMicroseconds,
++          'bytes': data.lengthInBytes,
++          'width': image.width,
++          'height': image.height
++        });
++      }
+       return target.path;
+     } finally {
+       image?.dispose();
+--- before/lib/screens/bookshelf/bookshelf_screen.dart
++++ after/lib/screens/bookshelf/bookshelf_screen.dart
+@@ -449,17 +449,21 @@
+     } else if (item is MangaBook) {
+       Navigator.push(
+           context,
+-          AnimRoute(
++          DetailRoute(
++              context: context,
+               page: CategoryDetailScreen(
+-                  category: item, onUpdate: () => loadData(refresh: true)),
+-              type: TransitionType.fade));
++                  category: item,
++                  coverFit: context.read<SettingsProvider>().cropBookCovers
++                      ? BoxFit.cover
++                      : BoxFit.contain,
++                  onUpdate: () => loadData(refresh: true))));
+     } else if (item is MangaFolder) {
+       Navigator.push(
+           context,
+-          AnimRoute(
++          DetailRoute(
++              context: context,
+               page: FolderDetailScreen(
+-                  folder: item, onUpdate: () => loadData(refresh: true)),
+-              type: TransitionType.fade));
++                  folder: item, onUpdate: () => loadData(refresh: true))));
+     }
+   }
+ 
+--- before/lib/screens/details/category_detail_screen.dart
++++ after/lib/screens/details/category_detail_screen.dart
+@@ -1,9 +1,7 @@
+ import 'package:shared_preferences/shared_preferences.dart';
+ // lib/screens/details/category_detail_screen.dart
+ import 'dart:async';
+-import 'dart:io';
+ import 'package:flutter/material.dart';
+-import 'package:path/path.dart' as p;
+ import 'package:shimmer/shimmer.dart';
+ import '../../core/strings.dart';
+ import '../../core/utils.dart';
+@@ -12,7 +10,9 @@
+ import '../../data/database_helper.dart';
+ import '../../data/reading_progress.dart';
+ import '../../models/library_item.dart';
+-import '../../widgets/app_image.dart';
++import '../../widgets/cover_hero.dart';
++import '../../widgets/detail_cover.dart';
++import '../../core/config.dart';
+ import '../../widgets/page_thumbnail.dart';
+ import '../reader/manga_reader_screen.dart';
+ 
+@@ -20,12 +20,14 @@
+   final MangaBook category;
+   final VoidCallback onUpdate;
+   final DatabaseHelper? database;
++  final BoxFit coverFit;
+ 
+   const CategoryDetailScreen(
+       {super.key,
+       required this.category,
+       required this.onUpdate,
+-      this.database});
++      this.database,
++      this.coverFit = BoxFit.cover});
+ 
+   @override
+   State<CategoryDetailScreen> createState() => _CategoryDetailScreenState();
+@@ -45,15 +47,18 @@
+   late final PerfFrames _frames;
+   static final Set<String> _openedBooks = {};
+   final Stopwatch _openWatch = Stopwatch();
+-  final Set<int> _readyThumbs = {};
++  final Map<int, String> _readyThumbs = {};
+   bool _firstThumbLogged = false;
+   bool _firstRowLogged = false;
+   late bool _repeatOpen;
+ 
+   void _thumbReady(int index) {
+-    if (!mounted || !PerfLog.enabled || index >= 4) return;
+-    if (!_readyThumbs.add(index)) return;
+-    if (!_firstThumbLogged) {
++    if (!mounted || index >= 4) return;
++    if (index >= widget.category.filePaths.length) return;
++    final path = widget.category.filePaths[index];
++    if (_readyThumbs[index] == path) return;
++    _readyThumbs[index] = path;
++    if (PerfLog.enabled && !_firstThumbLogged) {
+       _firstThumbLogged = true;
+       PerfLog.event('detail_first_thumbnail', {
+         'elapsed_ms': _openWatch.elapsedMilliseconds,
+@@ -61,7 +66,9 @@
+       });
+     }
+     final expected = widget.category.filePaths.length.clamp(0, 4);
+-    if (!_firstRowLogged && expected > 0 && _readyThumbs.length >= expected) {
++    if (expected > 0 && _readyThumbs.length >= expected) {
++      if (_transitionReady) setState(() {});
++      if (!PerfLog.enabled || _firstRowLogged) return;
+       _firstRowLogged = true;
+       PerfLog.event('detail_first_row', {
+         'elapsed_ms': _openWatch.elapsedMilliseconds,
+@@ -71,9 +78,40 @@
+     }
+   }
+ 
+-  List<String> _optimizedPaths = [];
+   String _optimizedCover = '';
+-  List<String> _fileNames = [];
++  Animation<double>? _routeAnimation;
++  Animation<double>? _secondaryAnimation;
++  bool _transitionReady = false;
++  bool _routeVisible = true;
++
++  bool get _canGenerate =>
++      _routeVisible &&
++      _routeAnimation?.status == AnimationStatus.completed &&
++      (_secondaryAnimation == null ||
++          _secondaryAnimation!.status == AnimationStatus.dismissed);
++
++  void _transitionChanged(AnimationStatus status) {
++    if (!mounted) return;
++    final ready = _canGenerate;
++    if (ready != _transitionReady) setState(() => _transitionReady = ready);
++  }
++
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++    final route = ModalRoute.of(context);
++    _routeVisible = TickerMode.of(context) && (route?.isCurrent ?? true);
++    if (_routeAnimation != route?.animation ||
++        _secondaryAnimation != route?.secondaryAnimation) {
++      _routeAnimation?.removeStatusListener(_transitionChanged);
++      _secondaryAnimation?.removeStatusListener(_transitionChanged);
++      _routeAnimation = route?.animation;
++      _secondaryAnimation = route?.secondaryAnimation;
++      _routeAnimation?.addStatusListener(_transitionChanged);
++      _secondaryAnimation?.addStatusListener(_transitionChanged);
++    }
++    _transitionReady = _canGenerate;
++  }
+ 
+   @override
+   void initState() {
+@@ -95,10 +133,6 @@
+         (widget.category.filePaths.isNotEmpty
+             ? widget.category.filePaths.first
+             : '');
+-    _optimizedPaths = List.from(widget.category.filePaths);
+-
+-    _fileNames =
+-        widget.category.filePaths.map((path) => p.basename(path)).toList();
+ 
+     _changes = _database.onDatabaseChanged.listen((_) => _checkPages());
+     if (widget.category.totalPageCount > 0) {
+@@ -112,6 +146,8 @@
+   void dispose() {
+     _loadGeneration++;
+     _changes?.cancel();
++    _routeAnimation?.removeStatusListener(_transitionChanged);
++    _secondaryAnimation?.removeStatusListener(_transitionChanged);
+     _frames.dispose();
+     _selModeNotifier.dispose();
+     _selIdxsNotifier.dispose();
+@@ -119,43 +155,16 @@
+   }
+ 
+   Future<void> _optimizePaths(List<String> pages) async {
+-    if (pages.isEmpty) {
+-      if (mounted) {
+-        setState(() {
+-          _optimizedPaths = [];
+-          _optimizedCover = '';
+-          _fileNames = [];
+-          widget.category.filePaths = [];
+-          widget.category.totalPageCount = 0;
+-          _loading = false;
+-        });
+-      }
+-      return;
+-    }
+-
+-    // Each page falls back to its original; legacy .thumbs can be incomplete.
+-    final optimized = List<String>.from(pages);
+-
+-    String coverResult =
+-        widget.category.coverPath ?? (pages.isNotEmpty ? pages.first : '');
+-    if (coverResult.isNotEmpty) {
+-      final cDir = p.join(p.dirname(coverResult), '.thumbs');
+-      final cPath = p.join(cDir, p.basename(coverResult));
+-      try {
+-        if (await File(cPath).exists()) coverResult = cPath;
+-      } catch (_) {}
+-    }
+-
+-    if (mounted) {
+-      setState(() {
+-        _optimizedPaths = optimized;
+-        _optimizedCover = coverResult;
+-        widget.category.filePaths = pages;
+-        widget.category.totalPageCount = pages.length;
+-        _fileNames = pages.map((path) => p.basename(path)).toList();
+-        _loading = false;
+-      });
+-    }
++    if (!mounted) return;
++    setState(() {
++      widget.category.filePaths = pages;
++      widget.category.totalPageCount = pages.length;
++      _optimizedCover =
++          widget.category.coverPath ?? (pages.isEmpty ? '' : pages.first);
++      _readyThumbs.removeWhere(
++          (index, path) => index >= pages.length || pages[index] != path);
++      _loading = false;
++    });
+   }
+ 
+   Future<void> _checkPages() async {
+@@ -175,12 +184,12 @@
+       });
+       // Publish data before any legacy-cover filesystem lookup.
+       setState(() {
++        _readyThumbs.removeWhere(
++            (index, path) => index >= pages.length || pages[index] != path);
+         widget.category.filePaths = pages;
+         widget.category.totalPageCount = pages.length;
+-        _optimizedPaths = pages;
+         _optimizedCover =
+             widget.category.coverPath ?? (pages.isEmpty ? '' : pages.first);
+-        _fileNames = pages.map(p.basename).toList();
+         _loading = false;
+       });
+     } catch (error) {
+@@ -299,7 +308,7 @@
+       body: CustomScrollView(
+           physics: const AlwaysScrollableScrollPhysics(),
+           // 🌟 極致優化：明確給予 400 的預載距離 (約 1~2 排)，讓圖片能提前一點點載入，又不會卡死 IO！
+-          cacheExtent: 400,
++          cacheExtent: 200,
+           slivers: [
+             ValueListenableBuilder<bool>(
+                 valueListenable: _selModeNotifier,
+@@ -356,10 +365,7 @@
+                                 ],
+                           flexibleSpace: FlexibleSpaceBar(
+                               collapseMode: CollapseMode.parallax,
+-                              stretchModes: const [
+-                                StretchMode.zoomBackground,
+-                                StretchMode.blurBackground
+-                              ],
++                              stretchModes: const [StretchMode.zoomBackground],
+                               title: Text(widget.category.title,
+                                   style: const TextStyle(
+                                       color: Colors.white,
+@@ -375,15 +381,29 @@
+                                     if (!selMode)
+                                       _openReader(widget.category.lastReadPage);
+                                   },
+-                                  child: Hero(
+-                                    tag: 'book_cover_${widget.category.id}',
+-                                    transitionOnUserGestures: true,
+-                                    child: displayCover.isNotEmpty
+-                                        ? AppImage(
+-                                            path: displayCover,
+-                                            fit: BoxFit.cover,
+-                                            cacheWidth: 800)
+-                                        : Container(color: Colors.grey),
++                                  child: HeroMode(
++                                    enabled: !MediaQuery.disableAnimationsOf(
++                                        context),
++                                    child: CoverHero(
++                                      tag: 'book_cover_${widget.category.id}',
++                                      identity: displayCover,
++                                      builder: (report) => displayCover
++                                              .isNotEmpty
++                                          ? DetailCover(
++                                              path: displayCover,
++                                              onImageProvider: (provider) =>
++                                                  report(0, provider,
++                                                      widget.coverFit),
++                                              fit: widget.coverFit,
++                                              upgrade: _transitionReady &&
++                                                  (widget.category.filePaths
++                                                          .isEmpty ||
++                                                      _readyThumbs.length >=
++                                                          widget.category
++                                                              .filePaths.length
++                                                              .clamp(0, 4)))
++                                          : Container(color: Colors.grey),
++                                    ),
+                                   ),
+                                 ),
+                                 Container(
+@@ -416,7 +436,8 @@
+                 sliver: SliverGrid(
+                   delegate: SliverChildBuilderDelegate(
+                     (_, i) => Shimmer.fromColors(
+-                        enabled: !MediaQuery.disableAnimationsOf(context),
++                        enabled: _transitionReady &&
++                            !MediaQuery.disableAnimationsOf(context),
+                         baseColor:
+                             isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                         highlightColor:
+@@ -445,19 +466,13 @@
+                   sliver: SliverGrid(
+                       delegate: SliverChildBuilderDelegate(
+                         (_, i) {
+-                          final path = _optimizedPaths.isNotEmpty &&
+-                                  i < _optimizedPaths.length
+-                              ? _optimizedPaths[i]
+-                              : widget.category.filePaths[i];
+-                          final fileName =
+-                              i < _fileNames.length ? _fileNames[i] : "";
++                          final path = widget.category.filePaths[i];
+ 
+                           return _BookPageGridItem(
+                             index: i,
+-                            onImageReady:
+-                                PerfLog.enabled ? () => _thumbReady(i) : null,
++                            onImageReady: i < 4 ? () => _thumbReady(i) : null,
++                            generationEnabled: _transitionReady,
+                             path: path,
+-                            fileName: fileName,
+                             isDark: isDark,
+                             selIdxsNotifier: _selIdxsNotifier,
+                             selModeNotifier: _selModeNotifier,
+@@ -515,7 +530,7 @@
+ class _BookPageGridItem extends StatelessWidget {
+   final int index;
+   final String path;
+-  final String fileName;
++  final bool generationEnabled;
+   final VoidCallback? onImageReady;
+   final bool isDark;
+   final ValueNotifier<Set<int>> selIdxsNotifier;
+@@ -528,7 +543,7 @@
+     required this.index,
+     this.onImageReady,
+     required this.path,
+-    required this.fileName,
++    required this.generationEnabled,
+     required this.isDark,
+     required this.selIdxsNotifier,
+     required this.selModeNotifier,
+@@ -540,54 +555,64 @@
+   Widget build(BuildContext context) {
+     // 🌟 極致優化：強制讓每個網格獨立重繪！
+     // 這樣 1MB 圖片在背景解碼完成「碰」出來的那瞬間，只會重繪這個小方塊，完全不影響旁邊正在滑動的元件！
+-    return RepaintBoundary(
+-      child: GestureDetector(
+-        onTap: onTap,
+-        onLongPress: onLongPress,
+-        child: Container(
+-          decoration: BoxDecoration(
+-            borderRadius: BorderRadius.circular(12),
+-            color: isDark ? const Color(0xFF212121) : const Color(0xFFE0E0E0),
++    return GestureDetector(
++      onTap: onTap,
++      onLongPress: onLongPress,
++      child: Container(
++        decoration: BoxDecoration(
++          borderRadius: BorderRadius.circular(12),
++          color: isDark ? const Color(0xFF212121) : const Color(0xFFE0E0E0),
++        ),
++        child: Stack(fit: StackFit.expand, children: [
++          LayoutBuilder(builder: (context, constraints) {
++            final pixels =
++                (constraints.maxWidth * MediaQuery.devicePixelRatioOf(context))
++                    .ceil();
++            return PageThumbnail(
++                path: path,
++                onImageReady: onImageReady,
++                cacheWidth: pixels.clamp(AppConfig.detailThumbnailMinWidth,
++                    AppConfig.detailThumbnailMaxWidth),
++                generationEnabled: generationEnabled,
++                previewOnMiss: index < 4,
++                priority: index < 4 ? 0 : 1);
++          }),
++          Positioned(
++            bottom: 0,
++            left: 0,
++            right: 0,
++            child: _GridItemLabel(index: index),
+           ),
+-          child: Stack(fit: StackFit.expand, children: [
+-            PageThumbnail(path: path, onImageReady: onImageReady),
+-            Positioned(
+-              bottom: 0,
+-              left: 0,
+-              right: 0,
+-              child: _GridItemLabel(fileName: fileName),
+-            ),
+-            ValueListenableBuilder<Set<int>>(
+-                valueListenable: selIdxsNotifier,
+-                builder: (context, selIdxs, _) {
+-                  if (selIdxs.contains(index)) {
+-                    return Container(
+-                        decoration: BoxDecoration(
+-                          color: Colors.black54,
+-                          borderRadius: BorderRadius.circular(12),
+-                        ),
+-                        child: const Icon(Icons.check_circle,
+-                            color: Colors.blueAccent, size: 32));
+-                  }
+-                  return const SizedBox.shrink();
+-                })
+-          ]),
+-        ),
++          ValueListenableBuilder<Set<int>>(
++              valueListenable: selIdxsNotifier,
++              builder: (context, selIdxs, _) {
++                if (selIdxs.contains(index)) {
++                  return Container(
++                      decoration: BoxDecoration(
++                        color: Colors.black54,
++                        borderRadius: BorderRadius.circular(12),
++                      ),
++                      child: const Icon(Icons.check_circle,
++                          color: Colors.blueAccent, size: 32));
++                }
++                return const SizedBox.shrink();
++              })
++        ]),
+       ),
+     );
+   }
+ }
+ 
+ class _GridItemLabel extends StatelessWidget {
+-  final String fileName;
+-  const _GridItemLabel({Key? key, required this.fileName}) : super(key: key);
++  final int index;
++  const _GridItemLabel({Key? key, required this.index}) : super(key: key);
+ 
+   @override
+   Widget build(BuildContext context) {
+     return Padding(
+       padding: const EdgeInsets.all(6.0),
+       child: Text(
+-        fileName,
++        '第 ${index + 1} 張',
+         style: const TextStyle(
+           color: Colors.white,
+           fontSize: 11,
+--- before/lib/screens/details/folder_detail_screen.dart
++++ after/lib/screens/details/folder_detail_screen.dart
+@@ -8,7 +8,7 @@
+ import '../../core/utils.dart';
+ import '../../data/database_helper.dart';
+ import '../../models/library_item.dart';
+-import '../../widgets/app_image.dart';
++import '../../widgets/cover_hero.dart';
+ import '../../widgets/book_card.dart';
+ import 'category_detail_screen.dart';
+ 
+@@ -226,9 +226,6 @@
+     final cropCovers = context.select<SettingsProvider, bool>(
+       (settings) => settings.cropBookCovers,
+     );
+-    String? bgCover;
+-    if (widget.folder.thumbnails.isNotEmpty)
+-      bgCover = widget.folder.thumbnails.first;
+ 
+     return Scaffold(
+       resizeToAvoidBottomInset: false,
+@@ -330,18 +327,22 @@
+                                               .textTheme
+                                               .titleLarge
+                                               ?.color)),
+-                                  background: bgCover != null
+-                                      ? Hero(
+-                                          tag:
+-                                              'folder_cover_${widget.folder.id}',
+-                                          child: Opacity(
+-                                              opacity: 0.3,
+-                                              child: AppImage(
+-                                                  path: bgCover,
+-                                                  fit: BoxFit.cover,
+-                                                  cacheWidth: 800)),
+-                                        )
+-                                      : null),
++                                  background: HeroMode(
++                                    enabled: !MediaQuery.disableAnimationsOf(
++                                        context),
++                                    child: CoverHero(
++                                      tag: 'folder_cover_${widget.folder.id}',
++                                      identity: Object.hashAll(
++                                          widget.folder.thumbnails),
++                                      builder: (report) => Opacity(
++                                          opacity: 0.3,
++                                          child: FolderCoverPreview(
++                                              paths: widget.folder.thumbnails,
++                                              onImageProvider: (i, provider) =>
++                                                  report(i, provider,
++                                                      BoxFit.cover))),
++                                    ),
++                                  )),
+                             );
+                           });
+                     });
+@@ -410,20 +411,24 @@
+                                                   } else {
+                                                     Navigator.push(
+                                                         context,
+-                                                        AnimRoute(
+-                                                            page:
+-                                                                CategoryDetailScreen(
+-                                                                    category: b,
+-                                                                    onUpdate:
+-                                                                        () {
+-                                                                      _loadItems(
+-                                                                          refresh:
+-                                                                              true);
+-                                                                      widget
+-                                                                          .onUpdate();
+-                                                                    }),
+-                                                            type: TransitionType
+-                                                                .fade));
++                                                        DetailRoute(
++                                                          context: context,
++                                                          page:
++                                                              CategoryDetailScreen(
++                                                                  category: b,
++                                                                  coverFit: cropCovers
++                                                                      ? BoxFit
++                                                                          .cover
++                                                                      : BoxFit
++                                                                          .contain,
++                                                                  onUpdate: () {
++                                                                    _loadItems(
++                                                                        refresh:
++                                                                            true);
++                                                                    widget
++                                                                        .onUpdate();
++                                                                  }),
++                                                        ));
+                                                   }
+                                                 },
+                                                 onLongPress: () =>
+--- before/lib/widgets/app_image.dart
++++ after/lib/widgets/app_image.dart
+@@ -11,6 +11,8 @@
+   final int? cacheWidth;
+   final VoidCallback? onImageReady;
+   final VoidCallback? onImageError;
++  final Widget? errorPlaceholder;
++  final ValueChanged<ImageProvider>? onImageProvider;
+ 
+   const AppImage({
+     super.key,
+@@ -22,6 +24,8 @@
+     this.cacheWidth,
+     this.onImageReady,
+     this.onImageError,
++    this.errorPlaceholder,
++    this.onImageProvider,
+   });
+ 
+   @override
+@@ -32,6 +36,7 @@
+   bool _ready = false;
+   bool _error = false;
+   int _generation = 0;
++  ImageProvider? _provider;
+ 
+   @override
+   void didUpdateWidget(covariant AppImage oldWidget) {
+@@ -41,6 +46,13 @@
+       _generation++;
+       _ready = false;
+       _error = false;
++    } else if (_ready && oldWidget.onImageProvider != widget.onImageProvider) {
++      final generation = _generation;
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (mounted && generation == _generation && _provider != null) {
++          widget.onImageProvider?.call(_provider!);
++        }
++      });
+     }
+   }
+ 
+@@ -55,6 +67,7 @@
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       if (!mounted || generation != _generation) return;
+       if (success) {
++        if (_provider != null) widget.onImageProvider?.call(_provider!);
+         widget.onImageReady?.call();
+       } else {
+         widget.onImageError?.call();
+@@ -72,15 +85,17 @@
+       return ClipRRect(borderRadius: radius, child: _buildError());
+     }
+ 
++    final provider = ResizeImage.resizeIfNeeded(
++        optimizedCacheWidth, null, FileImage(File(widget.path!)));
++    _provider = provider;
+     return ClipRRect(
+       borderRadius: radius,
+-      child: Image.file(
+-        File(widget.path!),
++      child: Image(
++        image: provider,
+         width: widget.width,
+         height: widget.height,
+         fit: widget.fit,
+         gaplessPlayback: true,
+-        cacheWidth: optimizedCacheWidth,
+         // Keep the existing thumbnail sampling policy.
+         filterQuality: FilterQuality.low,
+         // [優化] 如果不需要 AnimatedOpacity，可以直接回傳 child 減少 GPU 負擔
+@@ -97,11 +112,12 @@
+   }
+ 
+   Widget _buildError() {
+-    return Container(
+-      width: widget.width,
+-      height: widget.height,
+-      color: Colors.grey[800],
+-      child: const Icon(Icons.broken_image, color: Colors.white24),
+-    );
++    return widget.errorPlaceholder ??
++        Container(
++          width: widget.width,
++          height: widget.height,
++          color: Colors.grey[800],
++          child: const Icon(Icons.broken_image, color: Colors.white24),
++        );
+   }
+ }
+--- before/lib/widgets/book_card.dart
++++ after/lib/widgets/book_card.dart
+@@ -4,6 +4,7 @@
+ import 'page_thumbnail.dart';
+ import '../core/theme.dart';
+ import '../core/config.dart';
++import 'cover_hero.dart';
+ import 'spring_press.dart';
+ 
+ class BookCard extends StatelessWidget {
+@@ -45,10 +46,10 @@
+                   child: Stack(
+                     fit: StackFit.expand,
+                     children: [
+-                      Hero(
++                      CoverHero(
+                         tag: 'book_cover_${book.id}',
+-                        transitionOnUserGestures: true,
+-                        child: ClipRRect(
++                        identity: book.coverPath,
++                        builder: (report) => ClipRRect(
+                           borderRadius:
+                               BorderRadius.circular(AppTheme.cornerRadius),
+                           child: Material(
+@@ -57,6 +58,8 @@
+                                 .surfaceContainerHigh,
+                             child: PageThumbnail(
+                               path: book.coverPath ?? '',
++                              onImageProvider: (provider) => report(0, provider,
++                                  cropCover ? BoxFit.cover : BoxFit.contain),
+                               fit: cropCover ? BoxFit.cover : BoxFit.contain,
+                               cacheWidth: AppConfig.thumbnailCacheWidth,
+                               borderRadius: BorderRadius.zero,
+--- before/lib/widgets/folder_card.dart
++++ after/lib/widgets/folder_card.dart
+@@ -1,9 +1,8 @@
+ // lib/widgets/folder_card.dart
+ import 'package:flutter/material.dart';
+ import '../models/library_item.dart';
+-import 'page_thumbnail.dart';
+ import '../core/theme.dart';
+-import '../core/config.dart';
++import 'cover_hero.dart';
+ import 'spring_press.dart'; // 🌟 引入動畫常數
+ 
+ class FolderCard extends StatelessWidget {
+@@ -36,10 +35,10 @@
+               crossAxisAlignment: CrossAxisAlignment.start,
+               children: [
+                 Expanded(
+-                  child: Hero(
++                  child: CoverHero(
+                     tag: 'folder_cover_${folder.id}',
+-                    transitionOnUserGestures: true,
+-                    child: Material(
++                    identity: Object.hashAll(thumbs),
++                    builder: (report) => Material(
+                       color: Colors.transparent,
+                       child: Container(
+                         decoration: BoxDecoration(
+@@ -59,28 +58,10 @@
+                           child: Stack(
+                             fit: StackFit.expand,
+                             children: [
+-                              if (thumbs.isEmpty)
+-                                const Center(
+-                                    child: Icon(Icons.folder_open,
+-                                        color: Colors.grey))
+-                              else
+-                                Column(
+-                                  children: [
+-                                    Expanded(
+-                                        child: Row(children: [
+-                                      _buildTile(thumbs, 0),
+-                                      const SizedBox(width: 1),
+-                                      _buildTile(thumbs, 1)
+-                                    ])),
+-                                    const SizedBox(height: 1),
+-                                    Expanded(
+-                                        child: Row(children: [
+-                                      _buildTile(thumbs, 2),
+-                                      const SizedBox(width: 1),
+-                                      _buildTile(thumbs, 3)
+-                                    ])),
+-                                  ],
+-                                ),
++                              FolderCoverPreview(
++                                  paths: thumbs,
++                                  onImageProvider: (i, provider) =>
++                                      report(i, provider, BoxFit.cover)),
+                               Positioned(
+                                 top: 6,
+                                 right: 6,
+@@ -150,19 +131,4 @@
+           ),
+         ));
+   }
+-
+-  Widget _buildTile(List<String> paths, int index) {
+-    if (index >= paths.length)
+-      return Expanded(child: Container(color: Colors.grey[300]));
+-    return Expanded(
+-      child: PageThumbnail(
+-        path: paths[index],
+-        fit: BoxFit.cover,
+-        cacheWidth: AppConfig.microThumbnailCacheWidth,
+-        borderRadius: BorderRadius.zero,
+-        preserveAnimation: true,
+-        deferGenerationUntilReady: true,
+-      ),
+-    );
+-  }
+ }
+--- before/lib/widgets/page_thumbnail.dart
++++ after/lib/widgets/page_thumbnail.dart
+@@ -11,14 +11,19 @@
+       {super.key,
+       required this.path,
+       this.onImageReady,
++      this.onImageProvider,
+       this.cache,
+       this.fit = BoxFit.cover,
+       this.cacheWidth = 150,
+       this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+       this.preserveAnimation = false,
+-      this.deferGenerationUntilReady = false});
++      this.deferGenerationUntilReady = false,
++      this.generationEnabled = true,
++      this.previewOnMiss = false,
++      this.priority = 0});
+   final String path;
+   final VoidCallback? onImageReady;
++  final ValueChanged<ImageProvider>? onImageProvider;
+   final ThumbnailCache? cache;
+   final BoxFit fit;
+   final int cacheWidth;
+@@ -27,6 +32,11 @@
+   // their original provider; static WebP is conservatively included here.
+   final bool preserveAnimation;
+   final bool deferGenerationUntilReady;
++  // Cache hits remain available while a route is entering. Only the first row
++  // may decode bounded originals; other misses wait for transition completion.
++  final bool generationEnabled;
++  final bool previewOnMiss;
++  final int priority;
+   @override
+   State<PageThumbnail> createState() => _PageThumbnailState();
+ }
+@@ -59,6 +69,13 @@
+       _reported = false;
+       _needsWarmup = false;
+       _load();
++    } else if (!oldWidget.generationEnabled && widget.generationEnabled) {
++      if (_resolved == null) {
++        _load();
++      } else if (_needsWarmup && _reported) {
++        _needsWarmup = false;
++        unawaited(_warmup());
++      }
+     }
+   }
+ 
+@@ -70,8 +87,9 @@
+     if (box is! RenderBox || !box.hasSize || !box.attached) return 2;
+     final rect = box.localToGlobal(Offset.zero) & box.size;
+     final viewport = Offset.zero & MediaQuery.sizeOf(context);
+-    if (rect.overlaps(viewport)) return 0;
+-    return rect.overlaps(viewport.inflate(box.size.height)) ? 1 : 2;
++    if (rect.overlaps(viewport)) return widget.priority;
++    return (rect.overlaps(viewport.inflate(box.size.height)) ? 2 : 3) +
++        widget.priority;
+   }
+ 
+   Future<void> _load() async {
+@@ -82,14 +100,36 @@
+       _resolved = source;
+       return;
+     }
+-    final result = widget.deferGenerationUntilReady
+-        ? await _cache.getExisting(source)
+-        : await _cache.get(source,
+-            isNeeded: () => mounted && generation == _generation,
+-            priority: _priority);
+-    if (mounted && generation == _generation) {
+-      _needsWarmup = widget.deferGenerationUntilReady && result == null;
+-      setState(() => _resolved = result ?? source);
++    final preview = widget.deferGenerationUntilReady || widget.previewOnMiss;
++    if (!preview && widget.generationEnabled) {
++      final result = await _cache.get(source,
++          isNeeded: () =>
++              mounted && generation == _generation && widget.generationEnabled,
++          priority: _priority);
++      if (mounted && generation == _generation && widget.generationEnabled) {
++        setState(() => _resolved = result ?? source);
++      }
++      return;
++    }
++    final cached = await _cache.getExisting(source);
++    if (!mounted || generation != _generation) return;
++    if (cached != null) {
++      setState(() => _resolved = cached);
++      return;
++    }
++    if (preview) {
++      setState(() {
++        _needsWarmup = true;
++        _resolved = source;
++      });
++    } else if (widget.generationEnabled) {
++      final result = await _cache.get(source,
++          isNeeded: () =>
++              mounted && generation == _generation && widget.generationEnabled,
++          priority: _priority);
++      if (mounted && generation == _generation && widget.generationEnabled) {
++        setState(() => _resolved = result ?? source);
++      }
+     }
+   }
+ 
+@@ -102,9 +142,11 @@
+     await Future<void>.delayed(Duration.zero);
+     if (!mounted || generation != _generation) return;
+     await cache.get(source,
+-        isNeeded: () => mounted && generation == _generation,
++        isNeeded: () =>
++            mounted && generation == _generation && widget.generationEnabled,
+         // Visible detail thumbnails take precedence over cover maintenance.
+-        priority: () => _priority() + 1);
++        priority: () =>
++            _priority() + (widget.deferGenerationUntilReady ? 1 : 0));
+     // Keep the displayed original. Swapping here would cause another decode
+     // and could change an image during a Hero transition; use it next visit.
+   }
+@@ -138,8 +180,9 @@
+     }
+     return AppImage(
+       path: _resolved,
++      onImageProvider: widget.onImageProvider,
+       onImageReady: () {
+-        if (_needsWarmup) {
++        if (_needsWarmup && widget.generationEnabled) {
+           _needsWarmup = false;
+           unawaited(_warmup());
+         }
+--- /dev/null
++++ after/lib/widgets/cover_hero.dart
+@@ -0,0 +1,119 @@
++import 'package:flutter/material.dart';
++import '../core/config.dart';
++import '../core/theme.dart';
++import 'page_thumbnail.dart';
++
++typedef CoverImageReporter = void Function(
++    int index, ImageProvider provider, BoxFit fit);
++
++/// Providers are reported after their first painted frame, never discovered by
++/// walking Elements while the Hero overlay is building. State lives with its
++/// cover and is released with it; no global provider registry is needed.
++class CoverHero extends StatefulWidget {
++  const CoverHero(
++      {super.key,
++      required this.tag,
++      required this.identity,
++      required this.builder});
++  final String tag;
++  final Object? identity;
++  final Widget Function(CoverImageReporter report) builder;
++  @override
++  State<CoverHero> createState() => _CoverHeroState();
++}
++
++class _CoverHeroState extends State<CoverHero> {
++  final Map<int, ({ImageProvider provider, BoxFit fit})> images = {};
++  void report(int index, ImageProvider provider, BoxFit fit) {
++    if (mounted) images[index] = (provider: provider, fit: fit);
++  }
++
++  @override
++  void didUpdateWidget(CoverHero oldWidget) {
++    super.didUpdateWidget(oldWidget);
++    if (oldWidget.identity != widget.identity) images.clear();
++  }
++
++  @override
++  Widget build(BuildContext context) => Hero(
++      tag: widget.tag,
++      transitionOnUserGestures: true,
++      flightShuttleBuilder: coverFlight,
++      child: widget.builder(report));
++}
++
++Widget coverFlight(BuildContext context, Animation<double> animation,
++    HeroFlightDirection direction, BuildContext from, BuildContext to) {
++  final shelf = direction == HeroFlightDirection.push ? from : to;
++  final hero = shelf.widget as Hero;
++  final snapshots = shelf.findAncestorStateOfType<_CoverHeroState>()?.images;
++  if (snapshots == null || snapshots.isEmpty) return hero.child;
++  // Copy once per flight, so a late source decode cannot switch its image.
++  final images = Map.of(snapshots);
++  final folder = hero.tag.toString().startsWith('folder_cover_');
++  Widget imageAt(int index) {
++    final entry = images[index];
++    return entry == null
++        ? const ColoredBox(color: Color(0xffdddddd))
++        : Image(
++            image: entry.provider,
++            fit: entry.fit,
++            gaplessPlayback: true,
++            filterQuality: FilterQuality.low,
++            errorBuilder: (_, __, ___) => const SizedBox.expand());
++  }
++
++  final content = folder ? _FourTiles(tile: imageAt) : imageAt(0);
++  return AnimatedBuilder(
++      animation: animation,
++      child: content,
++      builder: (context, child) => ClipRRect(
++          borderRadius: BorderRadius.circular(
++              AppTheme.cornerRadius * (1 - animation.value)),
++          child: Opacity(
++              opacity: folder ? 1 - 0.7 * animation.value : 1, child: child)));
++}
++
++/// The same four-tile image composition at both ends of a folder Hero.
++class FolderCoverPreview extends StatelessWidget {
++  const FolderCoverPreview(
++      {super.key, required this.paths, this.onImageProvider});
++  final List<String> paths;
++  final void Function(int, ImageProvider)? onImageProvider;
++  @override
++  Widget build(BuildContext context) => paths.isEmpty
++      ? const Center(child: Icon(Icons.folder_open, color: Colors.grey))
++      : _FourTiles(
++          tile: (i) => i < paths.length
++              ? PageThumbnail(
++                  path: paths[i],
++                  fit: BoxFit.cover,
++                  cacheWidth: AppConfig.microThumbnailCacheWidth,
++                  borderRadius: BorderRadius.zero,
++                  preserveAnimation: true,
++                  deferGenerationUntilReady: true,
++                  onImageProvider: (provider) =>
++                      onImageProvider?.call(i, provider))
++              : const ColoredBox(color: Color(0xffdddddd)));
++}
++
++class _FourTiles extends StatelessWidget {
++  const _FourTiles({required this.tile});
++  final Widget Function(int) tile;
++  @override
++  Widget build(BuildContext context) => Column(children: [
++        Expanded(
++            child: Row(children: [
++          Expanded(child: tile(0)),
++          const SizedBox(width: 1),
++          Expanded(child: tile(1))
++        ])),
++        const SizedBox(height: 1),
++        Expanded(
++            child: Row(children: [
++          Expanded(child: tile(2)),
++          const SizedBox(width: 1),
++          Expanded(child: tile(3))
++        ])),
++      ]);
++}
+--- /dev/null
++++ after/lib/widgets/detail_cover.dart
+@@ -0,0 +1,59 @@
++import 'package:flutter/material.dart';
++import 'package:path/path.dart' as p;
++import '../core/config.dart';
++import 'app_image.dart';
++import 'page_thumbnail.dart';
++
++/// Keep a shelf-sized preview mounted underneath a later high-resolution image.
++/// A decode miss/error cannot replace it with a blank/error frame.
++class DetailCover extends StatefulWidget {
++  const DetailCover(
++      {super.key,
++      required this.path,
++      required this.upgrade,
++      this.fit = BoxFit.cover,
++      this.onImageProvider});
++  final String path;
++  final bool upgrade;
++  final BoxFit fit;
++  final ValueChanged<ImageProvider>? onImageProvider;
++  @override
++  State<DetailCover> createState() => _DetailCoverState();
++}
++
++class _DetailCoverState extends State<DetailCover> {
++  bool _highReady = false;
++  @override
++  void didUpdateWidget(DetailCover oldWidget) {
++    super.didUpdateWidget(oldWidget);
++    if (oldWidget.path != widget.path) _highReady = false;
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    final canUpgrade = !const {'.gif', '.webp'}
++        .contains(p.extension(widget.path).toLowerCase());
++    return Stack(fit: StackFit.expand, children: [
++      Offstage(
++          offstage: _highReady,
++          child: PageThumbnail(
++              path: widget.path,
++              fit: widget.fit,
++              cacheWidth: AppConfig.thumbnailCacheWidth,
++              borderRadius: BorderRadius.zero,
++              preserveAnimation: true,
++              deferGenerationUntilReady: true,
++              generationEnabled: false,
++              onImageProvider: widget.onImageProvider)),
++      if (canUpgrade && (widget.upgrade || _highReady))
++        AppImage(
++            path: widget.path,
++            fit: widget.fit,
++            cacheWidth: AppConfig.detailCoverWidth,
++            onImageReady: () {
++              if (mounted && !_highReady) setState(() => _highReady = true);
++            },
++            errorPlaceholder: const SizedBox.expand()),
++    ]);
++  }
++}
+--- /dev/null
++++ after/test/detail_transition_test.dart
+@@ -0,0 +1,169 @@
++import 'dart:async';
++import 'package:flutter/material.dart';
++import 'package:flutter/services.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:gun_book/core/anim_route.dart';
++import 'package:gun_book/widgets/page_thumbnail.dart';
++import 'package:gun_book/widgets/app_image.dart';
++import 'package:gun_book/data/thumbnail_cache.dart';
++
++class GateCache extends ThumbnailCache {
++  int generated = 0;
++  bool hit = false;
++  @override
++  Future<String?> getExisting(String path) async => hit ? 'cached.png' : null;
++  @override
++  Future<String?> get(String path,
++      {bool Function()? isNeeded, int Function()? priority}) async {
++    if (isNeeded?.call() ?? true) generated++;
++    return 'cached.png';
++  }
++}
++
++void main() {
++  testWidgets(
++      'detail route uses 380/320ms, and predictive back cancels and commits',
++      (tester) async {
++    final nav = GlobalKey<NavigatorState>();
++    late BuildContext home;
++    await tester.pumpWidget(MaterialApp(
++        navigatorKey: nav,
++        theme: ThemeData(platform: TargetPlatform.android),
++        home: Builder(builder: (context) {
++          home = context;
++          return const Scaffold(body: Text('Home'));
++        })));
++    final route = DetailRoute<void>(
++        context: home, page: const Scaffold(body: Text('Detail')));
++    nav.currentState!.push(route);
++    await tester.pumpAndSettle();
++    expect(route.transitionDuration, const Duration(milliseconds: 380));
++    expect(route.reverseTransitionDuration, const Duration(milliseconds: 320));
++    Future<dynamic> event(String name, [double? progress]) async {
++      final result = Completer<dynamic>();
++      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
++          SystemChannels.backGesture.name,
++          SystemChannels.backGesture.codec.encodeMethodCall(MethodCall(
++              name,
++              progress == null
++                  ? null
++                  : {
++                      'progress': progress,
++                      'touchOffset': [8.0, 250.0],
++                      'swipeEdge': 0
++                    })),
++          (reply) => result.complete(
++              SystemChannels.backGesture.codec.decodeEnvelope(reply!)));
++      return result.future;
++    }
++
++    expect(await event('startBackGesture', 0), isTrue);
++    await tester.pump();
++    await event('updateBackGestureProgress', .35);
++    await tester.pump();
++    expect(route.popGestureInProgress, isTrue);
++    expect(route.animation!.value, closeTo(.65, .001));
++    final fade = find
++        .ancestor(
++            of: find.text('Detail'), matching: find.byType(FadeTransition))
++        .first;
++    expect(
++        tester.widget<FadeTransition>(fade).opacity.value, closeTo(.65, .001));
++    await event('cancelBackGesture');
++    await tester.pumpAndSettle();
++    expect(route.isCurrent, isTrue);
++    expect(route.animation!.value, 1);
++    expect(await event('startBackGesture', 0), isTrue);
++    await tester.pump();
++    await event('updateBackGestureProgress', .7);
++    await tester.pump();
++    await event('commitBackGesture');
++    await tester.pump();
++    expect(tester.widget<FadeTransition>(fade).opacity.value,
++        lessThanOrEqualTo(.301));
++    await tester.pumpAndSettle();
++    expect(find.text('Detail'), findsNothing);
++    expect(find.text('Home'), findsOneWidget);
++    expect(tester.takeException(), isNull);
++  });
++  testWidgets('ten detail returns retain the source scroll position',
++      (tester) async {
++    final controller = ScrollController();
++    final nav = GlobalKey<NavigatorState>();
++    late BuildContext home;
++    await tester.pumpWidget(MaterialApp(
++        navigatorKey: nav,
++        home: Builder(builder: (context) {
++          home = context;
++          return ListView(
++              controller: controller, children: const [SizedBox(height: 2000)]);
++        })));
++    controller.jumpTo(180);
++    await tester.pump();
++    for (var i = 0; i < 10; i++) {
++      nav.currentState!.push(DetailRoute<void>(
++          context: home, page: const Scaffold(body: Text('Detail'))));
++      await tester.pumpAndSettle();
++      nav.currentState!.pop();
++      await tester.pumpAndSettle();
++      expect(controller.offset, 180);
++    }
++    await tester.pumpWidget(const SizedBox());
++    controller.dispose();
++    expect(tester.takeException(), isNull);
++  });
++
++  testWidgets('reduced motion has zero detail route durations', (tester) async {
++    late BuildContext home;
++    await tester.pumpWidget(MaterialApp(
++        home: MediaQuery(
++            data: const MediaQueryData(disableAnimations: true),
++            child: Builder(builder: (context) {
++              home = context;
++              return const SizedBox();
++            }))));
++    final route = DetailRoute<void>(context: home, page: const SizedBox());
++    expect(route.transitionDuration, Duration.zero);
++    expect(route.reverseTransitionDuration, Duration.zero);
++  });
++  testWidgets(
++      'cache hits bypass transition gate; misses wait; first-row preview stays stable',
++      (tester) async {
++    final cache = GateCache();
++    Widget app(bool enabled, {bool preview = false}) => MaterialApp(
++        home: PageThumbnail(
++            path: 'source.png',
++            cache: cache,
++            generationEnabled: enabled,
++            previewOnMiss: preview,
++            cacheWidth: 120));
++    await tester.pumpWidget(app(false));
++    await tester.pump();
++    expect(find.byType(AppImage), findsNothing);
++    expect(cache.generated, 0);
++    await tester.pumpWidget(app(true));
++    await tester.pumpAndSettle();
++    expect(cache.generated, 1);
++    await tester.pumpWidget(const SizedBox());
++    cache.hit = true;
++    await tester.pumpWidget(app(false));
++    await tester.pumpAndSettle();
++    expect(tester.widget<AppImage>(find.byType(AppImage)).path, 'cached.png');
++    await tester.pumpWidget(const SizedBox());
++    cache.hit = false;
++    cache.generated = 0;
++    await tester.pumpWidget(app(false, preview: true));
++    await tester.pump();
++    final image = tester.widget<AppImage>(find.byType(AppImage));
++    expect(image.path, 'source.png');
++    expect(image.cacheWidth, 120);
++    image.onImageReady!();
++    await tester.pump(const Duration(milliseconds: 1));
++    expect(cache.generated, 0);
++    await tester.pumpWidget(app(true, preview: true));
++    await tester.pump(const Duration(milliseconds: 1));
++    expect(cache.generated, 1);
++    expect(tester.widget<AppImage>(find.byType(AppImage)).path, 'source.png');
++    expect(tester.takeException(), isNull);
++  });
++}
+--- /dev/null
++++ after/tool/detail_device_perf.dart
+@@ -0,0 +1,204 @@
++// Only run as isolated applicationId .detail20261107. Never uses user books.
++// ignore_for_file: invalid_use_of_visible_for_testing_member
++import 'dart:async';
++import 'dart:io';
++import 'dart:ui' as ui;
++import 'package:flutter/material.dart';
++import 'package:flutter/gestures.dart';
++import 'package:path_provider/path_provider.dart';
++import 'package:sqflite/sqflite.dart';
++import 'package:gun_book/core/anim_route.dart';
++import 'package:gun_book/core/perf_log.dart';
++import 'package:gun_book/data/database_helper.dart';
++import 'package:gun_book/models/library_item.dart';
++import 'package:gun_book/widgets/book_card.dart';
++import 'package:gun_book/screens/details/category_detail_screen.dart';
++
++const revision =
++    String.fromEnvironment('DETAIL_REVISION', defaultValue: 'before');
++void main() {
++  WidgetsFlutterBinding.ensureInitialized();
++  FlutterError.onError = (d) {
++    FlutterError.presentError(d);
++    PerfLog.event('detail_bench_error', {'error': d.exceptionAsString()});
++  };
++  runApp(const MaterialApp(home: DetailBench()));
++}
++
++class DetailBench extends StatefulWidget {
++  const DetailBench({super.key});
++  @override
++  State<DetailBench> createState() => _DetailBenchState();
++}
++
++class _DetailBenchState extends State<DetailBench> {
++  MangaBook? book;
++  DatabaseHelper? db;
++  BuildContext? homeContext;
++  final clock = Stopwatch()..start();
++  int pointer = 1;
++  final ScrollController homeScroll = ScrollController();
++  List<Element> elements(bool Function(Widget) matches) {
++    final out = <Element>[];
++    void visit(Element e) {
++      if (matches(e.widget)) out.add(e);
++      e.visitChildElements(visit);
++    }
++
++    Navigator.of(homeContext!).context.visitChildElements(visit);
++    return out;
++  }
++
++  Future<void> pause(int ms) =>
++      Future<void>.delayed(Duration(milliseconds: ms));
++  @override
++  void initState() {
++    super.initState();
++    unawaited(run());
++  }
++
++  Future<void> run() async {
++    try {
++      final tmp = await getTemporaryDirectory();
++      final root = Directory(
++          '${tmp.path}/detail-fixtures${const String.fromEnvironment('DETAIL_FIXTURE')}');
++      await root.create(recursive: true);
++      final paths = <String>[];
++      for (var i = 0; i < 104; i++) {
++        final f = File('${root.path}/page-$i.png');
++        if (!await f.exists()) {
++          final recorder = ui.PictureRecorder();
++          final canvas = Canvas(recorder);
++          canvas.drawColor(Color(0xffe0d0c0 + i * 17), BlendMode.src);
++          for (var j = 0; j < 180; j++) {
++            canvas.drawRect(
++                Rect.fromLTWH((j * 71 % 2048).toDouble(),
++                    (j * 97 % 3072).toDouble(), 120, 170),
++                Paint()
++                  ..color =
++                      Color(0xff000000 | ((j * 7919 + i * 31271) & 0xffffff)));
++          }
++          final picture = recorder.endRecording();
++          final image = await picture.toImage(2048, 3072);
++          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
++          await f.writeAsBytes(bytes!.buffer.asUint8List());
++          image.dispose();
++          picture.dispose();
++        }
++        paths.add(f.path);
++      }
++      final sql = await openDatabase(inMemoryDatabasePath);
++      await DatabaseHelper.initializeSchemaForTesting(sql);
++      await sql.insert('items', {
++        'id': 'fixture',
++        'title': 'Synthetic 104 pages',
++        'type': 'book',
++        'total_pages': 104,
++        'cover_path': paths.first
++      });
++      final batch = sql.batch();
++      for (var i = 0; i < paths.length; i++) {
++        batch.insert(
++            'pages', {'book_id': 'fixture', 'path': paths[i], 'page_order': i});
++      }
++      await batch.commit(noResult: true);
++      db = DatabaseHelper.forTesting(sql, '${root.path}/books');
++      setState(() => book = MangaBook(
++          id: 'fixture',
++          title: 'Synthetic 104 pages',
++          filePaths: [],
++          coverPath: paths.first,
++          totalPageCount: 104));
++      await pause(1200);
++      if (!mounted) return;
++      PerfLog.event('detail_bench_fixture', {
++        'revision': revision,
++        'pages': 104,
++        'width': 2048,
++        'height': 3072,
++        'refresh_hz': View.of(context).display.refreshRate
++      });
++      for (var i = 0; i < 11; i++) {
++        if (i == 1 || i == 10) {
++          PaintingBinding.instance.imageCache.clear();
++          PaintingBinding.instance.imageCache.clearLiveImages();
++          await pause(300);
++        }
++        final frames = PerfFrames('detail_${revision}_${i}_enter');
++        PerfLog.event('detail_bench_click',
++            {'revision': revision, 'run': i, ...PerfLog.memory()});
++        final element = elements((w) => w is BookCard).first;
++        final box = element.findRenderObject()! as RenderBox;
++        final at = box.localToGlobal(box.size.center(Offset.zero));
++        GestureBinding.instance.handlePointerEvent(PointerDownEvent(
++            pointer: pointer, position: at, timeStamp: clock.elapsed));
++        await pause(60);
++        GestureBinding.instance.handlePointerEvent(PointerUpEvent(
++            pointer: pointer, position: at, timeStamp: clock.elapsed));
++        pointer++;
++        await pause(i == 2 ? 70 : 550);
++        frames.dispose();
++        if (i != 2) await pause(1300);
++        if (i == 1) {
++          final scrolling = PerfFrames('detail_${revision}_scroll');
++          final scrollables = elements((w) => w is Scrollable);
++          final controller =
++              (scrollables.last as StatefulElement).state as ScrollableState;
++          for (var j = 0; j < 8; j++) {
++            await controller.position.animateTo(
++                j.isEven ? controller.position.maxScrollExtent : 0,
++                duration: const Duration(milliseconds: 230),
++                curve: Curves.linear);
++            await pause(100);
++          }
++          await pause(500);
++          scrolling.dispose();
++        }
++        final back = PerfFrames('detail_${revision}_${i}_return');
++        Navigator.of(homeContext!).pop();
++        await pause(650);
++        back.dispose();
++        PerfLog.event('detail_bench_returned', {
++          'revision': revision,
++          'run': i,
++          'home_scroll': homeScroll.offset,
++          ...PerfLog.memory()
++        });
++      }
++      await sql.close();
++      PerfLog.event('detail_bench_complete', {'revision': revision});
++    } catch (e, s) {
++      PerfLog.event('detail_bench_failure', {'error': '$e', 'stack': '$s'});
++    }
++  }
++
++  void open() {
++    Navigator.of(homeContext!).push(DetailRoute<void>(
++        context: homeContext!,
++        page: CategoryDetailScreen(
++            category: book!, database: db, onUpdate: () {})));
++  }
++
++  @override
++  Widget build(BuildContext context) =>
++      Scaffold(body: Builder(builder: (context) {
++        homeContext = context;
++        return book == null
++            ? const Center(child: Text('Preparing isolated 104-page fixture'))
++            : ListView(controller: homeScroll, children: [
++                const SizedBox(height: 80),
++                Center(
++                    child: SizedBox(
++                        width: 110,
++                        height: 210,
++                        child: BookCard(
++                            book: book!, onTap: open, onLongPress: () {}))),
++                const SizedBox(height: 1200)
++              ]);
++      }));
++  @override
++  void dispose() {
++    homeScroll.dispose();
++    super.dispose();
++  }
++}

@@ -1,0 +1,187 @@
+// lib/main.dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'core/theme.dart';
+import 'core/strings.dart';
+import 'core/settings_provider.dart';
+import 'core/constants.dart';
+import 'core/motion.dart';
+import 'widgets/retained_motion_tabs.dart';
+import 'screens/bookshelf/bookshelf_screen.dart';
+import 'screens/settings_screen.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+      ],
+      child: const GunBookApp(),
+    ),
+  );
+}
+
+class GunBookApp extends StatelessWidget {
+  const GunBookApp({super.key});
+
+  static final ThemeData _lightTheme = AppTheme.lightTheme;
+  static final ThemeData _darkTheme = AppTheme.darkTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    // 書架欄數、封面樣式及縮放改變時，不重新建立整個 MaterialApp。
+    return Selector<SettingsProvider, bool>(
+        selector: (_, settings) => settings.darkMode,
+        builder: (context, darkMode, child) {
+          AppTheme.setSystemStyle(darkMode);
+
+          return MaterialApp(
+            title: 'GunBook',
+            debugShowCheckedModeBanner: false,
+            theme: _lightTheme,
+            darkTheme: _darkTheme,
+            themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+            builder: (context, child) =>
+                Selector<SettingsProvider, MotionSettings>(
+                    selector: (_, s) => s.motion,
+                    child: child,
+                    builder: (context, motion, child) {
+                      final media = MediaQuery.of(context);
+                      return MotionScope(
+                          settings: motion,
+                          child: MediaQuery(
+                              data: media.copyWith(
+                                  disableAnimations: media.disableAnimations ||
+                                      !motion.enabled),
+                              child: ScrollConfiguration(
+                                  behavior: const MaterialScrollBehavior()
+                                      .copyWith(physics: motion.scrollPhysics),
+                                  child: child!)));
+                    }),
+            home: const MainScreen(),
+          );
+        });
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen(
+      {super.key,
+      this.pages = const [
+        BookshelfScreen(key: ValueKey('BookShelf')),
+        SettingsScreen(),
+      ]});
+  final List<Widget> pages;
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _idx = 0;
+
+  // 🌟 追蹤導覽列是不是應該要乖乖出現的狀態
+  final ValueNotifier<bool> _isNavVisibleNotifier = ValueNotifier(true);
+  double _scrollTravel = 0;
+
+  @override
+  void dispose() {
+    _isNavVisibleNotifier.dispose();
+    super.dispose();
+  }
+
+  void _onNavChange(int index) {
+    if (_idx == index) return;
+    setState(() => _idx = index);
+    _scrollTravel = 0;
+    _isNavVisibleNotifier.value = true;
+  }
+
+  // 🌟 偵測使用者的滑動，決定要不要把導覽列藏起來！
+  bool _handleScrollNotification(ScrollNotification notification) {
+    // 🌟 核心修正：只偵測「上下滑動（垂直）」，忽略切換頁面的「左右滑動（水平）」！
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    if (notification.metrics.pixels <=
+        notification.metrics.minScrollExtent + 1) {
+      _scrollTravel = 0;
+      _isNavVisibleNotifier.value = true;
+    } else if (notification is ScrollStartNotification ||
+        notification is ScrollEndNotification) {
+      _scrollTravel = 0;
+    } else if (notification is ScrollUpdateNotification &&
+        notification.dragDetails != null) {
+      final delta = notification.scrollDelta ?? 0;
+      if (delta == 0) return false;
+      if (_scrollTravel.sign != delta.sign) _scrollTravel = 0;
+      _scrollTravel += delta;
+      if (_scrollTravel >= 24) {
+        _isNavVisibleNotifier.value = false;
+        _scrollTravel = 0;
+      } else if (_scrollTravel <= -12) {
+        _isNavVisibleNotifier.value = true;
+        _scrollTravel = 0;
+      }
+    }
+    return false; // 讓滾動事件繼續傳遞喔
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    assert(widget.pages.length == 2);
+    return Scaffold(
+      extendBody: true,
+      body: Builder(builder: (context) {
+        final media = MediaQuery.of(context);
+        // extendBody includes the bar in padding.bottom. Nested SafeAreas
+        // should retain only the system inset, even while the bar is hidden.
+        return MediaQuery(
+          data: media.copyWith(
+              padding: media.padding.copyWith(
+                  bottom: media.viewInsets.bottom > 0
+                      ? 0
+                      : media.viewPadding.bottom)),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: RetainedMotionTabs(index: _idx, children: widget.pages),
+          ),
+        );
+      }),
+      bottomNavigationBar: ValueListenableBuilder<bool>(
+        valueListenable: _isNavVisibleNotifier,
+        builder: (context, visible, child) => IgnorePointer(
+          ignoring: !visible,
+          child: ExcludeSemantics(
+            excluding: !visible,
+            child: AnimatedSlide(
+              offset: visible ? Offset.zero : const Offset(0, 1),
+              duration: AppConstants.motionDuration(
+                  context, AppConstants.controlsDuration),
+              curve: MotionScope.of(context).timingCurve,
+              child: child,
+            ),
+          ),
+        ),
+        child: NavigationBar(
+          animationDuration: AppConstants.motionDuration(
+              context, AppConstants.animDurationNormal),
+          selectedIndex: _idx,
+          onDestinationSelected: _onNavChange,
+          destinations: [
+            NavigationDestination(
+                icon: const Icon(Icons.menu_book_outlined),
+                selectedIcon: const Icon(Icons.menu_book),
+                label: AppStrings.get('home')),
+            NavigationDestination(
+                icon: const Icon(Icons.settings_outlined),
+                selectedIcon: const Icon(Icons.settings),
+                label: AppStrings.get('settings')),
+          ],
+        ),
+      ),
+    );
+  }
+}

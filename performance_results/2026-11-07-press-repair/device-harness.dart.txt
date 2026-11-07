@@ -1,0 +1,299 @@
+// Run only with applicationId .pressrepair20261107; uses synthetic images/in-memory DB.
+// ignore_for_file: invalid_use_of_visible_for_testing_member
+import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:gun_book/core/perf_log.dart';
+import 'package:gun_book/core/settings_provider.dart';
+import 'package:gun_book/data/database_helper.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/widgets/book_card.dart';
+import 'package:gun_book/widgets/folder_card.dart';
+import 'package:gun_book/widgets/scale_button.dart';
+import 'package:gun_book/widgets/smooth_input_dialog.dart';
+import 'package:gun_book/screens/bookshelf/bookshelf_screen.dart';
+
+const revision =
+    String.fromEnvironment('SPRING_REVISION', defaultValue: 'after');
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    PerfLog.event('spring_error', {'error': details.exceptionAsString()});
+  };
+  runApp(ChangeNotifierProvider(
+      create: (_) => SettingsProvider(),
+      child: const MaterialApp(home: MotionBench())));
+}
+
+class FixtureLibrary extends DatabaseHelper {
+  FixtureLibrary(Database db, this.items) : super.forTesting(db, 'unused');
+  List<LibraryItem> items;
+  int sorts = 0, merges = 0;
+  @override
+  Future<List<LibraryItem>> fetchItems(
+          {String? parentId, int limit = 50, int offset = 0}) async =>
+      items.skip(offset).take(limit).toList();
+  @override
+  Future<void> updateSortOrder(List<String> ids, {bool notify = true}) async {
+    sorts++;
+  }
+
+  @override
+  Future<void> moveItems(List<String> ids, String? folderId,
+      {bool notify = true}) async {
+    merges++;
+  }
+}
+
+class MotionBench extends StatefulWidget {
+  const MotionBench({super.key});
+  @override
+  State<MotionBench> createState() => _MotionBenchState();
+}
+
+class _MotionBenchState extends State<MotionBench> {
+  Widget view = const SizedBox();
+  final shelfKey = GlobalKey();
+  int pointer = 1, epoch = 0;
+  bool reduced = false;
+  final clock = Stopwatch()..start();
+  List<Element> elements(bool Function(Widget) matches) {
+    final result = <Element>[];
+    void visit(Element element) {
+      if (matches(element.widget)) result.add(element);
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    return result;
+  }
+
+  Offset center(Element e) {
+    final box = e.findRenderObject()! as RenderBox;
+    return box.localToGlobal(box.size.center(Offset.zero));
+  }
+
+  Duration get stamp => Duration(microseconds: clock.elapsedMicroseconds);
+  void down(Offset at) => GestureBinding.instance.handlePointerEvent(
+      PointerDownEvent(pointer: pointer, position: at, timeStamp: stamp));
+  void move(Offset at, Offset delta) =>
+      GestureBinding.instance.handlePointerEvent(PointerMoveEvent(
+          pointer: pointer, position: at, delta: delta, timeStamp: stamp));
+  void up(Offset at) {
+    GestureBinding.instance.handlePointerEvent(
+        PointerUpEvent(pointer: pointer, position: at, timeStamp: stamp));
+    pointer++;
+  }
+
+  Future<void> pause(int ms) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+  Future<void> show(Widget child) async {
+    setState(() => view = KeyedSubtree(key: ValueKey(epoch++), child: child));
+    // Do not begin interaction windows while Android's keyguard hides the app.
+    while (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      await pause(100);
+      if (!mounted) return;
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    await pause(700);
+  }
+
+  Future<void> measure(String scenario, Future<void> Function() action) async {
+    await pause(300);
+    final frames = PerfFrames(
+        'spring_${revision}_${reduced ? 'reduced' : 'normal'}_$scenario');
+    final start = PerfLog.memory();
+    final elapsed = Stopwatch()..start();
+    await action();
+    await pause(
+        350); // include completion and delivery of the final timing batch
+    frames.dispose();
+    PerfLog.event('spring_window', {
+      'revision': revision,
+      'reduced': reduced,
+      'scenario': scenario,
+      'elapsed_ms': elapsed.elapsedMilliseconds,
+      'start_memory': start,
+      'end_memory': PerfLog.memory()
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(run());
+  }
+
+  Future<void> run() async {
+    try {
+      await pause(1000);
+      if (!mounted) return;
+      PerfLog.event('spring_environment', {
+        'system_reduced': MediaQuery.disableAnimationsOf(context),
+        'refresh_hz': View.of(context).display.refreshRate,
+      });
+      final root = await getTemporaryDirectory();
+      final imageFile = File('${root.path}/spring-fixture.png');
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.drawColor(Colors.teal, BlendMode.src);
+      for (var i = 0; i < 100; i++) {
+        canvas.drawCircle(
+            Offset((i * 37 % 256).toDouble(), (i * 53 % 384).toDouble()),
+            12,
+            Paint()..color = Color(0xff000000 | (i * 73219 & 0xffffff)));
+      }
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(256, 384);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      await imageFile.writeAsBytes(data!.buffer.asUint8List());
+      image.dispose();
+      picture.dispose();
+      final book = MangaBook(
+          id: 'press',
+          title: 'Synthetic cover',
+          coverPath: imageFile.path,
+          filePaths: []);
+      final folder = MangaFolder(
+          id: 'folder',
+          title: 'Synthetic folder',
+          thumbnails: List.filled(4, imageFile.path));
+      final db = FixtureLibrary(await openDatabase(inMemoryDatabasePath), [
+        for (var i = 0; i < 120; i++)
+          MangaBook(
+              id: 'book$i',
+              title: 'Synthetic $i',
+              coverPath: imageFile.path,
+              filePaths: []),
+        folder
+      ]);
+      for (final mode in [false, true]) {
+        setState(() => reduced = mode);
+        await show(Center(
+            child: SizedBox(
+                width: 110,
+                height: 210,
+                child:
+                    BookCard(book: book, onTap: () {}, onLongPress: () {}))));
+        await measure('book_20', () async {
+          final at = center(elements((w) => w is BookCard).first);
+          for (var i = 0; i < 20; i++) {
+            down(at);
+            await pause(140);
+            up(at);
+            await pause(70);
+          }
+        });
+        await show(Center(
+            child: SizedBox(
+                width: 110,
+                height: 210,
+                child: FolderCard(
+                    folder: folder, onTap: () {}, onLongPress: () {}))));
+        await measure('folder_20', () async {
+          final at = center(elements((w) => w is FolderCard).first);
+          for (var i = 0; i < 20; i++) {
+            down(at);
+            await pause(140);
+            up(at);
+            await pause(70);
+          }
+        });
+        await show(Center(child: SizedBox(width: 110, height: 60,
+            child: ScaleButton(onTap: () {}, child: const ColoredBox(color: Colors.teal)))));
+        await measure('button_20', () async {
+          final at = center(elements((w) => w is ScaleButton).first);
+          for (var i = 0; i < 20; i++) {
+            down(at);
+            await pause(140);
+            up(at);
+            await pause(70);
+          }
+        });
+        await show(const SizedBox());
+        await measure('dialog_10', () async {
+          for (var i = 0; i < 10; i++) {
+            final future = SmoothInputDialog.show(shelfKey.currentContext!,
+                title: 'Synthetic input');
+            await pause(600);
+            Navigator.of(shelfKey.currentContext!, rootNavigator: true).pop();
+            await future;
+            await pause(300);
+          }
+        });
+        // Place a folder in the first row for deterministic merge targeting.
+        db.items = [
+          db.items.first,
+          folder,
+          ...db.items.whereType<MangaBook>().skip(1)
+        ];
+        await show(BookshelfScreen(database: db));
+        await measure('reorder_10', () async {
+          for (var i = 0; i < 10; i++) {
+            final cards = elements((w) => w is BookCard);
+            final from = center(cards[0]), to = center(cards[1]);
+            down(from);
+            await pause(350);
+            for (var j = 1; j <= 8; j++) {
+              final at = Offset.lerp(from, to, j / 8)!;
+              move(at, (to - from) / 8);
+              await pause(16);
+            }
+            up(to);
+            await pause(260);
+          }
+        });
+        await measure('merge_folder', () async {
+          final from = center(elements((w) => w is BookCard).first);
+          final to = center(elements((w) => w is FolderCard).first);
+          down(from);
+          await pause(350);
+          for (var j = 1; j <= 8; j++) {
+            move(Offset.lerp(from, to, j / 8)!, (to - from) / 8);
+            await pause(16);
+          }
+          await pause(550);
+          up(to);
+          await pause(260);
+        });
+        await measure('scroll', () async {
+          final scroll = elements((w) => w is CustomScrollView).first.widget
+              as CustomScrollView;
+          final controller = scroll.controller!;
+          for (var i = 0; i < 10; i++) {
+            await controller.animateTo(
+                i.isEven ? controller.position.maxScrollExtent : 0,
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.linear);
+            await pause(60);
+          }
+        });
+        PerfLog.event('spring_actions', {
+          'revision': revision,
+          'reduced': mode,
+          'sorts': db.sorts,
+          'merges': db.merges
+        });
+      }
+      await show(const Text('Spring benchmark complete'));
+      await (await db.database).close();
+      PerfLog.event('spring_complete', {'revision': revision});
+    } catch (e, stack) {
+      PerfLog.event('spring_failure', {'error': '$e', 'stack': '$stack'});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+          disableAnimations:
+              reduced || MediaQuery.disableAnimationsOf(context)),
+      child:
+          Builder(key: shelfKey, builder: (context) => Scaffold(body: view)));
+}

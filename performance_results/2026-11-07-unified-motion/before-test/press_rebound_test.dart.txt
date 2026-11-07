@@ -1,0 +1,240 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gun_book/core/anim_route.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/widgets/book_card.dart';
+import 'package:gun_book/widgets/folder_card.dart';
+import 'package:gun_book/widgets/scale_button.dart';
+import 'package:gun_book/widgets/spring_press.dart';
+
+double scaleOf(WidgetTester tester, [Finder? press]) => tester
+    .widget<ScaleTransition>(find
+        .descendant(
+            of: press ?? find.byType(SpringPress),
+            matching: find.byType(ScaleTransition))
+        .first)
+    .scale
+    .value;
+
+Widget control(String kind, VoidCallback onTap) => SizedBox(
+    width: 110,
+    height: 210,
+    child: switch (kind) {
+      'book' => BookCard(
+          book: MangaBook(id: 'b', title: 'Book', filePaths: []),
+          onTap: onTap,
+          onLongPress: () {}),
+      'folder' => FolderCard(
+          folder: MangaFolder(id: 'f', title: 'Folder'),
+          onTap: onTap,
+          onLongPress: () {}),
+      _ =>
+        ScaleButton(onTap: onTap, child: const ColoredBox(color: Colors.blue)),
+    });
+
+void main() {
+  for (final kind in ['book', 'folder', 'button']) {
+    for (final frameMs in [16, 8]) {
+      testWidgets(
+          '$kind rendered compression and smooth release at ${frameMs}ms steps',
+          (tester) async {
+        var taps = 0;
+        await tester.pumpWidget(
+            MaterialApp(home: Center(child: control(kind, () => taps++))));
+        await tester.pumpAndSettle();
+        final gesture = await tester
+            .startGesture(tester.getCenter(find.byType(SpringPress)));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(scaleOf(tester), closeTo(.97, .0001));
+        await gesture.up();
+        await tester.pump();
+        expect(taps, 1);
+        expect(scaleOf(tester), closeTo(.97, .0001)); // no snap to rest
+        final samples = <double>[];
+        for (var elapsed = 0; elapsed < 280; elapsed += frameMs) {
+          await tester.pump(Duration(milliseconds: frameMs));
+          samples.add(scaleOf(tester));
+        }
+        final peak = samples.reduce((a, b) => a > b ? a : b);
+        expect(peak, closeTo(1, .0001));
+        final peakIndex = samples.indexOf(peak);
+        for (var i = peakIndex + 1; i < samples.length; i++) {
+          expect(samples[i], lessThanOrEqualTo(samples[i - 1] + .0001));
+        }
+        expect(scaleOf(tester), closeTo(1, .0001));
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  testWidgets(
+      'sub-frame tap navigates immediately and releases under the transition',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    var pushes = 0;
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        home: Builder(builder: (context) {
+          home = context;
+          return Scaffold(
+              body: Center(
+                  child: control('book', () {
+            pushes++;
+            nav.currentState!.push(DetailRoute<void>(
+                context: home, page: const Scaffold(body: Text('Detail'))));
+          })));
+        })));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BookCard)); // no intervening frames
+    expect(pushes, 1); // navigation never waits for compression/release
+    await tester.pump();
+    expect(find.text('Detail', skipOffstage: false), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 48));
+    expect(scaleOf(tester), lessThan(1));
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(scaleOf(tester), closeTo(1, .0001));
+    final sourceContext = tester.element(find.byType(SpringPress));
+    expect(TickerMode.of(sourceContext), isTrue);
+    final fade = tester.widget<FadeTransition>(find
+        .ancestor(
+            of: find.text('Detail'), matching: find.byType(FadeTransition))
+        .first);
+    expect(fade.opacity.value,
+        inInclusiveRange(0, 1)); // transition opacity remains valid
+    await tester.pumpAndSettle();
+    nav.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(scaleOf(tester), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('rapid taps and cancellation finish at rest', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+        MaterialApp(home: Center(child: control('button', () => taps++))));
+    for (var i = 0; i < 20; i++) {
+      await tester.tap(find.byType(SpringPress));
+      await tester.pump(const Duration(milliseconds: 8));
+    }
+    expect(taps, 20);
+    await tester.pumpAndSettle();
+    expect(scaleOf(tester), 1);
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.byType(SpringPress)));
+    await tester.pump(const Duration(milliseconds: 8));
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+    expect(scaleOf(tester), 1);
+    expect(taps, 20);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'muting or disabling motion clears held state and short-tap timer',
+      (tester) async {
+    Widget app(bool ticking, bool reduced) => MaterialApp(
+        home: TickerMode(
+            enabled: ticking,
+            child: MediaQuery(
+                data: MediaQueryData(disableAnimations: reduced),
+                child: Center(child: control('button', () {})))));
+    await tester.pumpWidget(app(true, false));
+    await tester.tap(find.byType(SpringPress));
+    await tester.pump();
+    await tester.pumpWidget(app(false, false));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpWidget(app(true, false));
+    expect(scaleOf(tester), 1);
+    final hold =
+        await tester.startGesture(tester.getCenter(find.byType(SpringPress)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpWidget(app(true, true));
+    expect(scaleOf(tester), 1);
+    await hold.up();
+    await tester.pumpWidget(app(true, false));
+    await tester.pumpAndSettle();
+    expect(scaleOf(tester), 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final shortTap in [true, false]) {
+    testWidgets(
+        'removal during ${shortTap ? 'minimum press' : 'rebound'} is safe',
+        (tester) async {
+      await tester.pumpWidget(
+          MaterialApp(home: Center(child: control('button', () {}))));
+      final gesture =
+          await tester.startGesture(tester.getCenter(find.byType(SpringPress)));
+      await tester.pump();
+      if (!shortTap) await tester.pump(const Duration(milliseconds: 100));
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 8));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('scroll wins the arena without bounce or navigation',
+      (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: ListView(children: [
+      control('book', () => taps++),
+      const SizedBox(height: 2000)
+    ])));
+    await tester.drag(find.byType(BookCard), const Offset(0, -160));
+    await tester.pumpAndSettle();
+    expect(taps, 0);
+    expect(scaleOf(tester), 1);
+  });
+
+  testWidgets('two pending cards cannot push two routes', (tester) async {
+    var pushes = 0;
+    final nav = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        home: Builder(
+            builder: (context) => Scaffold(
+                    body: Row(children: [
+                  for (final kind in ['book', 'folder'])
+                    control(kind, () {
+                      pushes++;
+                      nav.currentState!.push(DetailRoute<void>(
+                          context: context,
+                          page: const Scaffold(body: Text('Detail'))));
+                    })
+                ])))));
+    final first = await tester
+        .startGesture(tester.getCenter(find.byType(BookCard)), pointer: 1);
+    final second = await tester
+        .startGesture(tester.getCenter(find.byType(FolderCard)), pointer: 2);
+    await tester.pump(const Duration(milliseconds: 100));
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+    expect(pushes, 1);
+    expect(find.text('Detail'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reduced motion keeps scale one and still invokes taps',
+      (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: Center(child: control('button', () => taps++)))));
+    final hold =
+        await tester.startGesture(tester.getCenter(find.byType(SpringPress)));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(scaleOf(tester), 1);
+    await hold.up();
+    await tester.pumpAndSettle();
+    expect(taps, 1);
+    expect(scaleOf(tester), 1);
+  });
+}

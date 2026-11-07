@@ -1,0 +1,355 @@
+// Run only in the isolated benchmark application described in the report.
+// ignore_for_file: invalid_use_of_visible_for_testing_member
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:gun_book/core/perf_log.dart';
+import 'package:gun_book/core/settings_provider.dart';
+import 'package:gun_book/core/theme.dart';
+import 'package:gun_book/data/database_helper.dart';
+import 'package:gun_book/data/reader_image.dart';
+import 'package:gun_book/data/thumbnail_cache.dart';
+import 'package:gun_book/data/thumbnail_scheduler.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/screens/bookshelf/bookshelf_screen.dart';
+import 'package:gun_book/screens/details/category_detail_screen.dart';
+import 'package:gun_book/screens/reader/manga_reader_screen.dart';
+import 'package:gun_book/widgets/app_image.dart';
+import 'package:gun_book/widgets/page_thumbnail.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
+  runApp(ChangeNotifierProvider(
+      create: (_) => SettingsProvider(),
+      child:
+          MaterialApp(theme: AppTheme.lightTheme, home: const _Benchmark())));
+}
+
+class _Benchmark extends StatefulWidget {
+  const _Benchmark();
+  @override
+  State<_Benchmark> createState() => _BenchmarkState();
+}
+
+class _BenchmarkState extends State<_Benchmark> {
+  Widget _view = const Center(child: Text('Preparing isolated benchmark'));
+  final List<String> _paths = [];
+  final String _session = DateTime.now().microsecondsSinceEpoch.toString();
+  int _epoch = 0;
+  void _log(String name, Map<String, Object?> values) =>
+      PerfLog.event(name, values);
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(Future<void>.delayed(Duration.zero, _run));
+  }
+
+  Future<void> _show(Widget child) async {
+    setState(() => _view = KeyedSubtree(key: ValueKey(_epoch++), child: child));
+    await WidgetsBinding.instance.endOfFrame;
+  }
+
+  Future<void> _empty() async {
+    await _show(const SizedBox());
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+  }
+
+  PageView? _pageView() {
+    PageView? result;
+    void visit(Element element) {
+      if (element.widget is PageView) result = element.widget as PageView;
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    return result;
+  }
+
+  Future<void> _decode(String path, {bool fullSize = false}) async {
+    final codec = await ui.instantiateImageCodecFromBuffer(
+        await ui.ImmutableBuffer.fromFilePath(path),
+        targetWidth: fullSize ? null : 150,
+        allowUpscaling: false);
+    try {
+      final image = (await codec.getNextFrame()).image;
+      if (fullSize && (image.width != 2048 || image.height != 3072)) {
+        throw StateError('Original detail was lost');
+      }
+      image.dispose();
+    } finally {
+      codec.dispose();
+    }
+  }
+
+  Future<void> _components(Directory root) async {
+    for (var run = 0; run < 5; run++) {
+      for (final mode in run.isEven
+          ? ['original', 'cold', 'disk']
+          : ['cold', 'disk', 'original']) {
+        final cache = ThumbnailCache(
+            directory: () async =>
+                Directory('${root.path}/component-$_session-$run'));
+        final watch = Stopwatch()..start();
+        final targets = mode == 'original'
+            ? _paths.take(12).toList()
+            : (await Future.wait(_paths.take(12).map(cache.get)))
+                .cast<String>();
+        await Future.wait(targets.map(_decode));
+        _log('bench_cover_codec', {
+          'run': run,
+          'mode': mode,
+          'elapsed_us': watch.elapsedMicroseconds,
+          'count': 12,
+          ...PerfLog.memory()
+        });
+        await cache.trim();
+      }
+      // A miss probes the disk only, then displays the original. Generation
+      // is timed separately because production waits for its visible frame.
+      final cache = ThumbnailCache(
+          directory: () async =>
+              Directory('${root.path}/deferred-$_session-$run'));
+      final visible = Stopwatch()..start();
+      await Future.wait(_paths.take(12).map((path) async {
+        final cached = await cache.getExisting(path);
+        await _decode(cached ?? path);
+      }));
+      _log('bench_cover_deferred',
+          {'run': run, 'elapsed_us': visible.elapsedMicroseconds, 'count': 12});
+      await Future.wait(_paths.take(12).map(cache.get));
+      await cache.trim();
+      for (final workers in run.isEven ? [1, 2] : [2, 1]) {
+        final serial = SerialImageWork();
+        final parallel = ThumbnailScheduler(maxConcurrent: 2);
+        final waits = <int>[];
+        final watch = Stopwatch()..start();
+        await Future.wait(_paths.take(8).map((path) {
+          final queued = Stopwatch()..start();
+          Future<String?> operation() async {
+            waits.add(queued.elapsedMicroseconds);
+            await _decode(path, fullSize: true);
+            return path;
+          }
+
+          return workers == 1
+              ? serial.run(operation)
+              : parallel.run(operation,
+                  isNeeded: () => true, priority: () => 0);
+        }));
+        waits.sort();
+        _log('bench_reader_codec', {
+          'run': run,
+          'workers': workers,
+          'count': 8,
+          'elapsed_us': watch.elapsedMicroseconds,
+          'median_queue_us': waits[waits.length ~/ 2],
+          'max_queue_us': waits.last,
+          ...PerfLog.memory()
+        });
+      }
+    }
+  }
+
+  Future<void> _run() async {
+    try {
+      final temporary = await getTemporaryDirectory();
+      if (!temporary.path
+          .replaceAll('\\', '/')
+          .contains('/com.example.flutter_application_1manga.perf20261106/')) {
+        throw StateError('Use the isolated perf20261106 application ID');
+      }
+      final root = await Directory('${temporary.path}/gunbook-perf-fixture')
+          .create(recursive: true);
+      for (var i = 0; i < 16; i++) {
+        final file = File('${root.path}/page$i.png');
+        if (!await file.exists()) {
+          final recorder = ui.PictureRecorder();
+          final canvas = Canvas(recorder);
+          canvas.drawColor(Colors.white, BlendMode.src);
+          for (var j = 0; j < 1600; j++) {
+            final x = ((j * 193 + i * 71) % 2048).toDouble();
+            final y = ((j * 397 + i * 107) % 3072).toDouble();
+            canvas.drawRect(
+                Rect.fromLTWH(x, y, 20 + j % 150, 10 + j % 80),
+                Paint()
+                  ..color =
+                      Color(0xff000000 | ((j * 7919 + i * 31) & 0xffffff)));
+          }
+          final picture = recorder.endRecording();
+          final image = await picture.toImage(2048, 3072);
+          final data =
+              (await image.toByteData(format: ui.ImageByteFormat.png))!;
+          await file.writeAsBytes(
+              data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
+          image.dispose();
+          picture.dispose();
+        }
+        _paths.add(file.path);
+      }
+      _log('bench_fixture', {
+        'count': _paths.length,
+        'width': 2048,
+        'height': 3072,
+        'bytes': (await Future.wait(_paths.map((p) => File(p).length())))
+            .reduce((a, b) => a + b)
+      });
+      // All data and databases belong to this benchmark application's cache.
+      final sql = await openDatabase('${root.path}/library.db',
+          version: 1,
+          onCreate: (db, version) =>
+              DatabaseHelper.initializeSchemaForTesting(db));
+      final library = DatabaseHelper.forTesting(sql, '${root.path}/books');
+      if ((Sqflite.firstIntValue(
+                  await sql.rawQuery('SELECT COUNT(*) FROM items')) ??
+              0) ==
+          0) {
+        await sql.transaction((txn) async {
+          final batch = txn.batch();
+          for (var i = 0; i < 50; i++) {
+            batch.insert('items', {
+              'id': 'folder$i',
+              'title': 'Folder $i',
+              'type': 'folder',
+              'sort_order': i,
+              'folder_cover_ids':
+                  jsonEncode(List.generate(4, (j) => 'book${i * 100 + j}'))
+            });
+            for (var j = 0; j < 100; j++) {
+              batch.insert('items', {
+                'id': 'book${i * 100 + j}',
+                'title': 'Book $j',
+                'type': 'book',
+                'parent_id': 'folder$i',
+                'sort_order': j,
+                'total_pages': 16,
+                'cover_path': _paths[j % 16]
+              });
+            }
+          }
+          for (var i = 0; i < _paths.length; i++) {
+            batch.insert('pages',
+                {'book_id': 'book0', 'path': _paths[i], 'page_order': i});
+          }
+          await batch.commit(noResult: true);
+        });
+      }
+      for (var run = 0; run < 5; run++) {
+        final watch = Stopwatch()..start();
+        final rows = await library.fetchItems();
+        _log('bench_bookshelf_query', {
+          'run': run,
+          'elapsed_us': watch.elapsedMicroseconds,
+          'count': rows.length
+        });
+      }
+      await _components(root);
+      _log('bench_components_complete', PerfLog.memory());
+      await _show(BookshelfScreen(database: library));
+      await Future<void>.delayed(const Duration(seconds: 3));
+      await _empty();
+      // Compare decoded-memory-cold originals, first generation and disk hits.
+      for (var run = 0; run < 5; run++) {
+        for (final mode in run.isEven
+            ? ['original', 'cold', 'disk']
+            : ['cold', 'disk', 'original']) {
+          await _empty();
+          final cache = ThumbnailCache(
+              directory: () async =>
+                  Directory('${root.path}/covers-$_session-$run'));
+          final done = Completer<void>();
+          final seen = <int>{};
+          final watch = Stopwatch()..start();
+          final frames = PerfFrames('bench_cover_$mode');
+          void ready(int i) {
+            if (!seen.add(i)) return;
+            if (seen.length == 1) {
+              _log('bench_cover_first', {
+                'run': run,
+                'mode': mode,
+                'elapsed_us': watch.elapsedMicroseconds
+              });
+            }
+            if (seen.length == 12) done.complete();
+          }
+
+          await _show(GridView.count(
+              crossAxisCount: 4,
+              childAspectRatio: .65,
+              children: List.generate(
+                  12,
+                  (i) => mode == 'original'
+                      ? AppImage(
+                          path: _paths[i],
+                          cacheWidth: 150,
+                          onImageReady: () => ready(i))
+                      : PageThumbnail(
+                          path: _paths[i],
+                          cache: cache,
+                          onImageReady: () => ready(i)))));
+          await done.future.timeout(const Duration(seconds: 20));
+          _log('bench_cover_all', {
+            'run': run,
+            'mode': mode,
+            'count': seen.length,
+            'elapsed_us': watch.elapsedMicroseconds,
+            ...PerfLog.memory()
+          });
+          await _empty();
+          frames.dispose();
+          await cache.trim();
+        }
+      }
+      for (var run = 0; run < 2; run++) {
+        await _show(CategoryDetailScreen(
+            category: MangaBook(
+                id: 'book0',
+                title: 'Fixture',
+                filePaths: [],
+                totalPageCount: 16,
+                coverPath: _paths.first),
+            onUpdate: () {},
+            database: library));
+        await Future<void>.delayed(const Duration(seconds: 3));
+        await _empty();
+      }
+      for (var run = 0; run < 2; run++) {
+        _log('bench_reader_start', {'run': run});
+        await _show(MangaReaderScreen(
+            book: MangaBook(
+                id: 'benchmark-reader', title: 'Fixture', filePaths: _paths),
+            initialPage: 0));
+        await Future<void>.delayed(const Duration(seconds: 2));
+        for (var page = 1; page < 8; page++) {
+          await _pageView()!.controller!.animateToPage(page,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut);
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+        await _empty();
+      }
+      // End-to-end codec serialization data is logged by ReaderFileImage.
+      for (final path in _paths.take(4)) {
+        if (!mounted) return;
+        await precacheImage(ReaderFileImage(File(path)), context);
+      }
+      await _empty();
+      await sql.close();
+      await _show(const Center(child: Text('Benchmark complete')));
+      _log('bench_complete', PerfLog.memory());
+    } catch (error, stack) {
+      _log('bench_failed', {'error': '$error', 'stack': '$stack'});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: _view));
+}

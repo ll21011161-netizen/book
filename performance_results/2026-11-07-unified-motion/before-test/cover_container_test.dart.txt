@@ -1,0 +1,602 @@
+import 'dart:ui' as ui;
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gun_book/core/anim_route.dart';
+import 'package:gun_book/core/cover_origin.dart';
+import 'package:gun_book/core/motion.dart';
+import 'package:gun_book/core/settings_provider.dart';
+import 'package:gun_book/models/library_item.dart';
+import 'package:gun_book/widgets/book_card.dart';
+import 'package:gun_book/widgets/folder_card.dart';
+import 'package:gun_book/widgets/cover_hero.dart';
+import 'package:gun_book/widgets/cover_container_transition.dart';
+import 'package:gun_book/widgets/spring_press.dart';
+
+Rect frame(WidgetTester tester) {
+  final position = tester.widget<Positioned>(find
+      .descendant(
+          of: find.byType(CoverContainerTransition),
+          matching: find.byType(Positioned))
+      .first);
+  return Rect.fromLTWH(
+      position.left!, position.top!, position.width!, position.height!);
+}
+
+Finder flightOpacity() => find
+    .descendant(
+        of: find.byType(CoverContainerTransition),
+        matching: find.byType(Opacity))
+    .first;
+
+void main() {
+  test('detail preference persists, unknown and old values keep page behavior',
+      () async {
+    expect(MotionSettings.fromJson({}).detail, DetailMotion.followPage);
+    expect(MotionSettings.fromJson({'detail': 'future'}).detail,
+        DetailMotion.followPage);
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsProvider();
+    settings.setMotion(
+        const MotionSettings(detail: DetailMotion.containerTransform));
+    await settings.flushMotionSettings();
+    final next = SettingsProvider();
+    while (!next.isLoaded) {
+      await Future<void>.value();
+    }
+    expect(next.motion.detail, DetailMotion.containerTransform);
+    settings.dispose();
+    next.dispose();
+  });
+
+  for (final folder in [false, true]) {
+    for (final position in [const Offset(24, 30), const Offset(460, 290)]) {
+      for (final fit in [BoxFit.cover, BoxFit.contain]) {
+        testWidgets('real anchor $folder $position $fit expands and returns',
+            (tester) async {
+          final nav = GlobalKey<NavigatorState>();
+          late BuildContext home;
+          CoverOrigin? source;
+          DetailRoute<void>? route;
+          var builds = 0;
+          final card = folder
+              ? FolderCard(
+                  folder: MangaFolder(id: 'folder', title: 'Folder'),
+                  onTap: () {},
+                  onLongPress: () {},
+                  onOpen: (s) {
+                    source = s;
+                  })
+              : BookCard(
+                  book: MangaBook(id: 'book', title: 'Book', filePaths: []),
+                  cropCover: fit == BoxFit.cover,
+                  onTap: () {},
+                  onLongPress: () {},
+                  onOpen: (s) {
+                    source = s;
+                  });
+          await tester.pumpWidget(MaterialApp(
+              navigatorKey: nav,
+              builder: (_, child) => MotionScope(
+                  settings: const MotionSettings(
+                      detail: DetailMotion.containerTransform),
+                  child: child!),
+              home: Builder(builder: (context) {
+                home = context;
+                builds++;
+                return Scaffold(
+                    body: Stack(children: [
+                  Positioned(
+                      left: position.dx,
+                      top: position.dy,
+                      width: 130,
+                      height: 230,
+                      child: card)
+                ]));
+              })));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byType(SpringPress));
+          await tester.pumpAndSettle();
+          final start = source!.resolveRect()!;
+          expect(start.topLeft, position);
+          // Cover-only boundary excludes title/progress labels.
+          expect(start.height, lessThan(230));
+          final snapshot = source!.captureImage();
+          expect(snapshot, isNotNull);
+          expect(snapshot!.width, lessThanOrEqualTo(512));
+          snapshot.dispose();
+          route = DetailRoute<void>(
+              context: home,
+              source: source,
+              page:
+                  const Scaffold(body: Center(child: Text('Detail content'))));
+          expect(route.hasCoverTransform, isTrue);
+          expect(route.transitionDuration, const Duration(milliseconds: 380));
+          expect(route.reverseTransitionDuration,
+              const Duration(milliseconds: 300));
+          nav.currentState!.push(route);
+          await tester.pump();
+          await tester.pump();
+          expect(frame(tester), start);
+          final detailElement =
+              tester.element(find.text('Detail content', skipOffstage: false));
+          await tester.pump(const Duration(milliseconds: 140));
+          final middle = frame(tester);
+          expect(middle.width, greaterThan(start.width));
+          expect(middle.height, greaterThan(start.height));
+          await tester.pumpAndSettle();
+          expect(frame(tester), const Rect.fromLTWH(0, 0, 800, 600));
+          expect(
+              tester.element(find.text('Detail content')), same(detailElement));
+          final oldBuilds = builds;
+          nav.currentState!.pop();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(frame(tester).width, lessThan(800));
+          expect(frame(tester).width, greaterThan(start.width));
+          await tester.pumpAndSettle();
+          expect(find.byType(CoverContainerTransition), findsNothing);
+          expect(builds, lessThanOrEqualTo(oldBuilds + 1));
+          expect(source!.resolveRect(), start);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  }
+
+  for (final columns in [3, 4, 5]) {
+    testWidgets('grid columns=$columns keeps scroll and uses the visible cover',
+        (tester) async {
+      final nav = GlobalKey<NavigatorState>();
+      final scroll = ScrollController();
+      late BuildContext home;
+      CoverOrigin? source;
+      await tester.pumpWidget(MaterialApp(
+          navigatorKey: nav,
+          builder: (_, child) => MotionScope(
+              settings:
+                  const MotionSettings(detail: DetailMotion.containerTransform),
+              child: child!),
+          home: Builder(builder: (c) {
+            home = c;
+            return GridView.builder(
+                controller: scroll,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns, childAspectRatio: .6),
+                itemCount: 100,
+                itemBuilder: (_, i) => BookCard(
+                    key: ValueKey(i),
+                    book: MangaBook(id: '$i', title: '$i', filePaths: []),
+                    onTap: () {},
+                    onLongPress: () {},
+                    onOpen: (s) => source = s));
+          })));
+      await tester.pumpAndSettle();
+      scroll.jumpTo(350);
+      await tester.pumpAndSettle();
+      final cards = find.byType(BookCard).hitTestable();
+      await tester.tap(cards.last);
+      await tester.pumpAndSettle();
+      final start = source!.resolveRect();
+      expect(start, isNotNull);
+      nav.currentState!.push(DetailRoute<void>(
+          context: home,
+          source: source,
+          page: const Scaffold(body: Text('detail'))));
+      await tester.pump();
+      await tester.pump();
+      expect(frame(tester), start);
+      await tester.pumpAndSettle();
+      nav.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(scroll.offset, 350);
+      await tester.pumpWidget(const SizedBox());
+      scroll.dispose();
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('two pending cover taps push only once with container mode',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    var pushes = 0;
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        builder: (_, child) => MotionScope(
+            settings:
+                const MotionSettings(detail: DetailMotion.containerTransform),
+            child: child!),
+        home: Builder(
+            builder: (context) => Row(children: [
+                  for (var i = 0; i < 2; i++)
+                    SizedBox(
+                        width: 140,
+                        height: 240,
+                        child: BookCard(
+                            book:
+                                MangaBook(id: '$i', title: '$i', filePaths: []),
+                            onTap: () {},
+                            onLongPress: () {},
+                            onOpen: (source) {
+                              pushes++;
+                              nav.currentState!.push(DetailRoute<void>(
+                                  context: context,
+                                  source: source,
+                                  page: const Scaffold(body: Text('detail'))));
+                            }))
+                ]))));
+    await tester.pumpAndSettle();
+    final first = await tester.startGesture(
+        tester.getCenter(find.byType(BookCard).first),
+        pointer: 1);
+    final second = await tester
+        .startGesture(tester.getCenter(find.byType(BookCard).last), pointer: 2);
+    await first.up();
+    await second.up();
+    await tester.pumpAndSettle();
+    expect(pushes, 1);
+    expect(find.byType(Hero), findsNothing); // Detail disables hero flights.
+    nav.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(
+        tester
+            .widgetList<Hero>(find.byType(Hero))
+            .map((h) => h.tag)
+            .toSet()
+            .length,
+        2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'terminal reverse rect/radius are exactly the source and bounds stay subtle',
+      (tester) async {
+    final controller = AnimationController(
+        vsync: tester, duration: const Duration(milliseconds: 380));
+    const target = Rect.fromLTWH(480, 280, 100, 180);
+    final origin = CoverOrigin(
+        resolveRect: () => target,
+        captureImage: () => null,
+        radius: 24,
+        color: Colors.blue);
+    final snapshot = CoverSnapshot(origin: origin, rect: target);
+    await tester.pumpWidget(MaterialApp(
+        home: CoverContainerTransition(
+            animation: controller,
+            snapshot: snapshot,
+            enabled: true,
+            gesture: false,
+            child: const Scaffold(body: Text('detail')))));
+    controller.forward();
+    await tester.pump();
+    for (var i = 0; i < 25; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(frame(tester).width, lessThanOrEqualTo(816));
+      expect(frame(tester).height, lessThanOrEqualTo(612));
+    }
+    expect(frame(tester), const Rect.fromLTWH(0, 0, 800, 600));
+    controller.reverse();
+    await tester.pumpAndSettle();
+    expect(frame(tester), target);
+    final clip = tester.widget<ClipRRect>(find
+        .descendant(
+            of: find.byType(CoverContainerTransition),
+            matching: find.byType(ClipRRect))
+        .first);
+    expect(clip.borderRadius, BorderRadius.circular(24));
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+    snapshot.dispose();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('interrupted pop preserves the displayed rectangle',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    final source = CoverOrigin(
+        resolveRect: () => const Rect.fromLTWH(30, 160, 100, 160),
+        captureImage: () => null,
+        radius: 20,
+        color: Colors.blue);
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        builder: (_, child) => MotionScope(
+            settings:
+                const MotionSettings(detail: DetailMotion.containerTransform),
+            child: child!),
+        home: Builder(builder: (c) {
+          home = c;
+          return const Text('home');
+        })));
+    for (var i = 0; i < 10; i++) {
+      nav.currentState!.push(DetailRoute<void>(
+          context: home, source: source, page: const Text('detail')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 90));
+      final before = frame(tester);
+      nav.currentState!.pop();
+      await tester.pump();
+      expect((frame(tester).topLeft - before.topLeft).distance, lessThan(.01));
+      expect(frame(tester).width, closeTo(before.width, .01));
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final lostDuringPop in [false, true]) {
+    testWidgets(
+        'missing return target fades without a jump during=$lostDuringPop',
+        (tester) async {
+      final nav = GlobalKey<NavigatorState>();
+      late BuildContext home;
+      Rect? target = const Rect.fromLTWH(30, 100, 100, 160);
+      final origin = CoverOrigin(
+          resolveRect: () => target,
+          captureImage: () => null,
+          radius: 20,
+          color: Colors.blue);
+      await tester.pumpWidget(MaterialApp(
+          navigatorKey: nav,
+          builder: (_, child) => MotionScope(
+              settings:
+                  const MotionSettings(detail: DetailMotion.containerTransform),
+              child: child!),
+          home: Builder(builder: (c) {
+            home = c;
+            return const Text('home');
+          })));
+      nav.currentState!.push(DetailRoute<void>(
+          context: home, source: origin, page: const Text('detail')));
+      await tester.pumpAndSettle();
+      if (!lostDuringPop) target = null;
+      nav.currentState!.pop();
+      await tester.pump();
+      if (lostDuringPop) {
+        await tester.pump(const Duration(milliseconds: 100));
+        final before = frame(tester);
+        target = null;
+        // Build at exactly the same animation value to test continuity.
+        tester.binding.scheduleFrame();
+        await tester.pump();
+        expect(frame(tester), before);
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.widget<Opacity>(flightOpacity()).opacity, lessThan(1));
+      await tester.pumpAndSettle();
+      expect(find.text('home'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'moved target resolves again; predictive back cancels and commits',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    Rect? target = const Rect.fromLTWH(25, 40, 120, 180);
+    final origin = CoverOrigin(
+        resolveRect: () => target,
+        captureImage: () => null,
+        radius: 20,
+        color: Colors.blue);
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        theme: ThemeData(platform: TargetPlatform.android),
+        builder: (_, child) => MotionScope(
+            settings:
+                const MotionSettings(detail: DetailMotion.containerTransform),
+            child: child!),
+        home: Builder(builder: (c) {
+          home = c;
+          return const Text('home');
+        })));
+    final route = DetailRoute<void>(
+        context: home, source: origin, page: const Text('detail'));
+    nav.currentState!.push(route);
+    await tester.pumpAndSettle();
+    Future<dynamic> event(String name, [double? progress]) async {
+      final result = Completer<dynamic>();
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          SystemChannels.backGesture.name,
+          SystemChannels.backGesture.codec.encodeMethodCall(MethodCall(
+              name,
+              progress == null
+                  ? null
+                  : {
+                      'progress': progress,
+                      'touchOffset': [8.0, 250.0],
+                      'swipeEdge': 0
+                    })),
+          (reply) => result.complete(
+              SystemChannels.backGesture.codec.decodeEnvelope(reply!)));
+      return result.future;
+    }
+
+    target = const Rect.fromLTWH(400, 220, 120, 180);
+    expect(await event('startBackGesture', 0), isTrue);
+    await tester.pump();
+    await event('updateBackGestureProgress', .5);
+    await tester.pump();
+    expect(frame(tester).left, closeTo(200, .01));
+    await event('cancelBackGesture');
+    await tester.pumpAndSettle();
+    expect(frame(tester), const Rect.fromLTWH(0, 0, 800, 600));
+    expect(await event('startBackGesture', 0), isTrue);
+    await tester.pump();
+    await event('updateBackGestureProgress', .75);
+    await tester.pump();
+    final before = frame(tester);
+    await event('commitBackGesture');
+    await tester.pump();
+    expect((frame(tester).topLeft - before.topLeft).distance, lessThan(.1));
+    await tester.pumpAndSettle();
+    expect(find.text('detail'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('capture painted container frames without manga decoding',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    final scene = GlobalKey();
+    final cover = GlobalKey<CoverHeroState>();
+    late BuildContext home;
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        builder: (_, child) => MotionScope(
+            settings:
+                const MotionSettings(detail: DetailMotion.containerTransform),
+            child: RepaintBoundary(key: scene, child: child!)),
+        home: Builder(builder: (c) {
+          home = c;
+          return Scaffold(
+              body: Stack(children: [
+            Positioned(
+                left: 48,
+                top: 160,
+                width: 130,
+                height: 190,
+                child: CoverHero(
+                    key: cover,
+                    tag: 'painted_cover',
+                    identity: 'painted',
+                    builder: (_) => const ColoredBox(
+                        color: Colors.indigo,
+                        child: Center(
+                            child: Icon(Icons.menu_book,
+                                color: Colors.amber, size: 60)))))
+          ]));
+        })));
+    await tester.pumpAndSettle();
+    nav.currentState!.push(DetailRoute<void>(
+        context: home,
+        source: cover.currentState!.origin,
+        page: Scaffold(
+            appBar: AppBar(title: const Text('Detail')),
+            body: GridView.count(
+                crossAxisCount: 4,
+                padding: const EdgeInsets.all(20),
+                children: [
+                  for (var i = 0; i < 12; i++)
+                    const Card(child: Center(child: Icon(Icons.photo_outlined)))
+                ]))));
+    await tester.pump();
+    await tester.pump();
+    Future<void> capture(String name) async {
+      await tester.runAsync(() async {
+        final boundary =
+            scene.currentContext!.findRenderObject() as RenderRepaintBoundary;
+        final image = await boundary.toImage(pixelRatio: 1);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        final directory = Directory('build/container_preview')
+          ..createSync(recursive: true);
+        File('${directory.path}/$name.png')
+            .writeAsBytesSync(bytes!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+
+    await capture('start');
+    await tester.pump(const Duration(milliseconds: 90));
+    await capture('expanding');
+    await tester.pumpAndSettle();
+    await capture('complete');
+    nav.currentState!.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+    await capture('closing');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'missing images and removed source do not resolve new files in flight',
+      (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    late BuildContext home;
+    CoverOrigin? source;
+    final shown = ValueNotifier(true);
+    await tester.pumpWidget(MaterialApp(
+        navigatorKey: nav,
+        builder: (_, child) => MotionScope(
+            settings:
+                const MotionSettings(detail: DetailMotion.containerTransform),
+            child: child!),
+        home: Builder(builder: (c) {
+          home = c;
+          return Scaffold(
+              body: ValueListenableBuilder<bool>(
+                  valueListenable: shown,
+                  builder: (_, visible, child) => visible
+                      ? SizedBox(
+                          width: 140,
+                          height: 230,
+                          child: BookCard(
+                              book: MangaBook(
+                                  id: 'missing',
+                                  title: 'Missing',
+                                  coverPath: 'does-not-exist.jpg',
+                                  filePaths: []),
+                              onTap: () {},
+                              onLongPress: () {},
+                              onOpen: (s) => source = s))
+                      : const SizedBox()));
+        })));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(SpringPress));
+    await tester.pumpAndSettle();
+    final route = DetailRoute<void>(
+        context: home, source: source, page: const Text('detail'));
+    nav.currentState!.push(route);
+    await tester.pumpAndSettle();
+    final raw = tester.widget<RawImage>(find.descendant(
+        of: find.byType(CoverContainerTransition),
+        matching: find.byType(RawImage)));
+    final frozen = raw.image;
+    expect(frozen, isNotNull);
+    shown.value = false;
+    await tester.pump();
+    expect(source!.resolveRect(), isNull);
+    nav.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    shown.dispose();
+  });
+
+  for (final reduced in [false, true]) {
+    testWidgets('opt in only and reduced motion=$reduced', (tester) async {
+      late BuildContext home;
+      var captures = 0;
+      final origin = CoverOrigin(
+          resolveRect: () => const Rect.fromLTWH(0, 0, 100, 100),
+          captureImage: () {
+            captures++;
+            return null;
+          },
+          radius: 20,
+          color: Colors.blue);
+      await tester.pumpWidget(MaterialApp(
+          home: MotionScope(
+              settings: MotionSettings(
+                  detail: reduced
+                      ? DetailMotion.containerTransform
+                      : DetailMotion.followPage),
+              child: MediaQuery(
+                  data: MediaQueryData(disableAnimations: reduced),
+                  child: Builder(builder: (c) {
+                    home = c;
+                    return const SizedBox();
+                  })))));
+      final route = DetailRoute<void>(
+          context: home, source: origin, page: const SizedBox());
+      expect(route.hasCoverTransform, isFalse);
+      expect(captures, 0);
+      if (reduced) expect(route.transitionDuration, Duration.zero);
+    });
+  }
+}

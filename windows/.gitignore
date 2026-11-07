@@ -1,0 +1,167 @@
+
+# ==========================================
+# 槍簿 Flutter 專案 .gitignore
+# Flutter + VS Code + Codex + GitHub
+# ==========================================
+
+
+# ------------------------------------------
+# Flutter / Dart 快取與產生檔案
+# ------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/doc/api/
+**/flutter/ephemeral/
+
+
+# ------------------------------------------
+# Android 編譯與本機設定
+# ------------------------------------------
+.gradle/
+**/.gradle/
+android/local.properties
+android/captures/
+android/.cxx/
+*.apk
+*.aab
+*.hprof
+
+
+# ------------------------------------------
+# iOS / macOS 編譯與本機設定
+# ------------------------------------------
+**/Pods/
+**/.symlinks/
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+*.ipa
+*.dSYM/
+
+
+# ------------------------------------------
+# Windows / Visual Studio 編譯暫存
+# ------------------------------------------
+**/flutter/ephemeral/
+x64/
+x86/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.[Cc]ache
+!*.[Cc]ache/
+
+
+# ------------------------------------------
+# VS Code / IntelliJ / Android Studio
+# ------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*.log
+
+# VS Code 個人工作區設定
+.vscode/settings.json
+.vscode/launch.json
+
+
+# ------------------------------------------
+# Codex 測試與暫存資料
+# ------------------------------------------
+*.log
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*.swo
+*.pid
+
+# Python 暫存檔
+__pycache__/
+*.pyc
+.pytest_cache/
+
+
+# ------------------------------------------
+# 系統暫存檔
+# ------------------------------------------
+Thumbs.db
+Desktop.ini
+.DS_Store
+*~
+
+
+# ------------------------------------------
+# 私密資訊與金鑰
+# ------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.p8
+*.key
+*.jks
+*.keystore
+*.mobileprovision
+android/key.properties
+
+# Google / Firebase 本機敏感設定
+# 如有使用 Firebase，應另外確認設定檔是否適合提交
+**/service-account*.json
+
+
+# ------------------------------------------
+# 漫畫閱讀器測試資料
+# ------------------------------------------
+# 漫畫來源檔案（避免意外上傳）
+*.cbz
+*.cbr
+*.cb7
+*.zip
+*.rar
+*.7z
+
+# 效能測試與分析報告
+# 預設保留，方便比較 Codex 優化前後的結果
+# /performance_results/
+
+
+# ------------------------------------------
+# 需要保留在 GitHub 的重要檔案
+# ------------------------------------------
+# lib/
+# test/
+# assets/
+# android/
+# ios/
+# windows/
+# linux/
+# macos/
+# web/
+# pubspec.yaml
+# pubspec.lock
+# analysis_options.yaml
+# README.md
+# AGENTS.md
+# docs/
+# Flutter 編譯快取
+/.dart_tool/
+/build/
+
+# Codex 建立的獨立 Git 備份
+/.baseline-git/
+
+# 其他巢狀測試專案產生的快取
+**/.dart_tool/
+**/build/

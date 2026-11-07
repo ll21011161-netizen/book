@@ -1,0 +1,144 @@
+// lib/widgets/smooth_input_dialog.dart
+import 'package:flutter/material.dart';
+import '../core/strings.dart';
+import '../core/motion.dart';
+import '../core/constants.dart'; // 🌟 引入動畫常數
+
+class SmoothInputDialog extends StatefulWidget {
+  final String title;
+  final String initialText;
+
+  const SmoothInputDialog({
+    super.key,
+    required this.title,
+    this.initialText = '',
+  });
+
+  static Future<String?> show(BuildContext context,
+      {required String title, String initialText = ''}) {
+    final duration =
+        AppConstants.motionDuration(context, AppConstants.dialogDuration);
+    return Navigator.of(context, rootNavigator: true).push<String>(
+      _InputDialogRoute(
+        settings: const RouteSettings(name: 'smooth_input'),
+        barrierDismissible: true,
+        barrierLabel:
+            MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        barrierColor: Colors.black54,
+        transitionDuration: duration,
+        pageBuilder: (ctx, anim1, anim2) =>
+            SmoothInputDialog(title: title, initialText: initialText),
+        transitionBuilder: (ctx, animation, secondary, child) {
+          if (MediaQuery.disableAnimationsOf(ctx)) return child;
+          return MotionTransition(
+              animation: animation,
+              settings: MotionScope.of(ctx).copyWith(page: PageMotion.zoomFade),
+              child: child);
+        },
+        reverseDuration: AppConstants.motionDuration(
+            context, AppConstants.dialogDismissDuration),
+      ),
+    );
+  }
+
+  @override
+  State<SmoothInputDialog> createState() => _SmoothInputDialogState();
+}
+
+class _SmoothInputDialogState extends State<SmoothInputDialog> {
+  late TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+  Animation<double>? _routeAnimation;
+  bool _focusRequested = false;
+
+  void _requestFocus(AnimationStatus status) {
+    if (status != AnimationStatus.completed ||
+        _focusRequested ||
+        !mounted ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _focusRequested = true;
+    _focusNode.requestFocus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final animation = ModalRoute.of(context)?.animation;
+    if (_routeAnimation != animation) {
+      _routeAnimation?.removeStatusListener(_requestFocus);
+      _routeAnimation = animation;
+      animation?.addStatusListener(_requestFocus);
+    }
+    // Also handles a zero-duration route, which may already be completed.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _requestFocus(animation?.status ?? AnimationStatus.completed);
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _routeAnimation?.removeStatusListener(_requestFocus);
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Text(widget.title,
+          style: const TextStyle(fontWeight: FontWeight.bold)),
+      content: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        decoration: const InputDecoration(
+          filled: true,
+          border: OutlineInputBorder(borderSide: BorderSide.none),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppStrings.get('cancel')),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _controller.text),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('確定', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    );
+  }
+}
+
+/// RawDialogRoute allows separate entrance/exit durations via this getter.
+class _InputDialogRoute extends RawDialogRoute<String> {
+  _InputDialogRoute(
+      {required super.pageBuilder,
+      required super.transitionBuilder,
+      required super.transitionDuration,
+      required this.reverseDuration,
+      required super.barrierDismissible,
+      required super.barrierLabel,
+      required super.barrierColor,
+      required super.settings});
+  final Duration reverseDuration;
+  @override
+  Duration get reverseTransitionDuration => reverseDuration;
+}

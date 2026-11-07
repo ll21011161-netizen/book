@@ -1,0 +1,762 @@
+// lib/data/database_helper.dart
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as p;
+import 'dart:io';
+import '../models/library_item.dart';
+import '../core/config.dart';
+import '../models/import_args.dart';
+import 'import_journal.dart';
+import 'reading_progress.dart';
+import 'page_path_cache.dart';
+import '../core/perf_log.dart';
+
+class DatabaseHelper {
+  static final DatabaseHelper instance = DatabaseHelper._init();
+  Database? _db;
+  Future<Database>? _opening;
+  Future<void>? _cleaning;
+  final _pagePaths = PagePathCache();
+  final String? _testBooksRoot;
+
+  // Uses an isolated database supplied by tests, never the user's database.
+  DatabaseHelper.forTesting(Database db, String booksRoot)
+      : _db = db,
+        _testBooksRoot = booksRoot;
+  final _dbChangeController = StreamController<void>.broadcast();
+  Stream<void> get onDatabaseChanged => _dbChangeController.stream;
+
+  DatabaseHelper._init() : _testBooksRoot = null;
+
+  Future<Database> get database async {
+    if (_db != null) return _db!;
+    try {
+      return await (_opening ??= _initDB());
+    } finally {
+      _opening = null;
+    }
+  }
+
+  Future<Directory> get booksRoot async => Directory(
+      _testBooksRoot ?? p.join(p.dirname(await getDatabasesPath()), 'books'));
+
+  Future<bool> containsBook(String id, {DatabaseExecutor? executor}) async {
+    final db = executor ?? await database;
+    return (await db.query('items',
+            columns: ['id'],
+            where: 'id = ? AND type = ?',
+            whereArgs: [id, 'book']))
+        .isNotEmpty;
+  }
+
+  Future<Database> _initDB() async {
+    final db = await openDatabase(
+        p.join(await getDatabasesPath(), 'gunbook.db'),
+        version: 10,
+        onCreate: _createDB,
+        onUpgrade: _onUpgrade, onConfigure: (db) async {
+      await db.rawQuery('PRAGMA journal_mode = WAL');
+      await db.execute('PRAGMA foreign_keys = ON');
+    });
+    try {
+      final active = Platform.isAndroid
+          ? (await const MethodChannel('com.gunbook.storage')
+                  .invokeListMethod<String>('activeImportSessions'))!
+              .toSet()
+          : <String>{};
+      await ImportJournal.recover(
+          await booksRoot, (id) => containsBook(id, executor: db),
+          skipSessions: active);
+      await _drainCleanup(db);
+    } catch (error) {
+      // Keep durable records for retry. A cleanup failure must not hide books.
+      stderr.writeln('Library recovery deferred: $error');
+    }
+    _db = db;
+    return db;
+  }
+
+  static Future<void> createCleanupTable(DatabaseExecutor db) =>
+      db.execute('CREATE TABLE IF NOT EXISTS file_cleanup '
+          '(path TEXT PRIMARY KEY, recursive INTEGER NOT NULL DEFAULT 0)');
+
+  @visibleForTesting
+  static Future<void> initializeSchemaForTesting(Database db,
+      {int? oldVersion}) async {
+    if (oldVersion == null) {
+      await instance._createDB(db, 10);
+    } else {
+      await instance._onUpgrade(db, oldVersion, 10);
+    }
+  }
+
+  Future _createDB(Database db, int ver) async {
+    await db.execute(
+        'CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT, type TEXT, cover_path TEXT, parent_id TEXT, folder_cover_ids TEXT, sort_order INTEGER DEFAULT 0, last_read_page INTEGER DEFAULT 0, read_count INTEGER DEFAULT 0, total_pages INTEGER DEFAULT 0)');
+
+    await db.execute('''
+      CREATE TABLE pages (
+        book_id TEXT, 
+        path TEXT, 
+        page_order INTEGER,
+        FOREIGN KEY(book_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+        'CREATE INDEX idx_items_parent ON items (parent_id, sort_order)');
+    await db
+        .execute('CREATE INDEX idx_pages_book ON pages (book_id, page_order)');
+    await db.execute('CREATE INDEX idx_items_type ON items (type)');
+    await createCleanupTable(db);
+  }
+
+  Future _onUpgrade(Database db, int oldV, int newV) async {
+    if (oldV < 2)
+      await db.execute('ALTER TABLE items ADD COLUMN folder_cover_ids TEXT');
+    if (oldV < 3)
+      await db
+          .execute('ALTER TABLE items ADD COLUMN sort_order INTEGER DEFAULT 0');
+    if (oldV < 4)
+      await db.execute(
+          'ALTER TABLE items ADD COLUMN last_read_page INTEGER DEFAULT 0');
+    if (oldV < 5)
+      await db
+          .execute('ALTER TABLE items ADD COLUMN read_count INTEGER DEFAULT 0');
+    if (oldV < 6) {
+      await db.execute(
+          'ALTER TABLE items ADD COLUMN total_pages INTEGER DEFAULT 0');
+      await db.execute(
+          'UPDATE items SET total_pages = (SELECT COUNT(*) FROM pages WHERE pages.book_id = items.id) WHERE type = "book"');
+    }
+    if (oldV < 7) {
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_items_parent ON items (parent_id, sort_order)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_pages_book ON pages (book_id, page_order)');
+    }
+    if (oldV < 8) {
+      await db
+          .execute('CREATE INDEX IF NOT EXISTS idx_items_type ON items (type)');
+    }
+    if (oldV < 9) {
+      await db.execute('''
+        CREATE TABLE pages_new (
+          book_id TEXT, 
+          path TEXT, 
+          page_order INTEGER,
+          FOREIGN KEY(book_id) REFERENCES items(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('INSERT INTO pages_new SELECT * FROM pages');
+      await db.execute('DROP TABLE pages');
+      await db.execute('ALTER TABLE pages_new RENAME TO pages');
+      await db.execute(
+          'CREATE INDEX idx_pages_book ON pages (book_id, page_order)');
+    }
+    if (oldV < 10) await createCleanupTable(db);
+  }
+
+  void _notify() {
+    // Conservative invalidation includes edits to folders/metadata. Progress
+    // writes do not notify or change the ordered page paths.
+    _pagePaths.clear();
+    _dbChangeController.add(null);
+  }
+
+  Future<List<LibraryItem>> fetchItems(
+      {String? parentId,
+      int limit = AppConfig.pageSize,
+      int offset = 0}) async {
+    final db = await database;
+    final String parentCondition =
+        parentId == null ? 'i.parent_id IS NULL' : 'i.parent_id = ?';
+    final List<dynamic> args = parentId == null ? [] : [parentId];
+    args.addAll([limit, offset]);
+
+    final String query = '''
+      SELECT 
+        i.*,
+        CASE 
+          WHEN i.type = 'folder' THEN (SELECT COUNT(*) FROM items c WHERE c.parent_id = i.id)
+          ELSE 0
+        END AS child_count,
+        CASE 
+          WHEN i.type = 'folder' THEN (
+            SELECT GROUP_CONCAT(cover_path, '|') 
+            FROM (
+              SELECT cover_path FROM items c2 
+              WHERE c2.parent_id = i.id AND c2.type = 'book' AND c2.cover_path IS NOT NULL 
+              ORDER BY c2.sort_order ASC 
+              LIMIT 4
+            )
+          )
+          ELSE NULL
+        END AS child_covers
+      FROM items i
+      WHERE $parentCondition
+      ORDER BY i.sort_order ASC
+      LIMIT ? OFFSET ?
+    ''';
+
+    final res = await db.rawQuery(query, args);
+    return _libraryItems(db, res);
+  }
+
+  static List<String> _coverIds(Object? value) {
+    if (value is! String) return [];
+    try {
+      return List<String>.from(jsonDecode(value));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Batch the existing per-folder SELECTs in a compound query. Each branch
+  // keeps the same IN semantics and result order as before; UNION ALL also
+  // preserves repeated cover paths from distinct selected books.
+  Future<List<LibraryItem>> _libraryItems(
+      DatabaseExecutor db, List<Map<String, Object?>> rows) async {
+    final selectedIds = {
+      for (final row in rows.where((r) => r['type'] != 'book'))
+        row['id'] as String: _coverIds(row['folder_cover_ids']),
+    };
+    final covers = <String, List<String>>{};
+    final groups = <String>[];
+    final statements = <String>[];
+    final args = <Object?>[];
+    Future<void> flush() async {
+      if (statements.isEmpty) return;
+      final results = await db.rawQuery(statements.join(' UNION ALL '), args);
+      for (final row in results) {
+        final id = groups[row['cover_group'] as int];
+        (covers[id] ??= []).add(row['cover_path'] as String);
+      }
+      statements.clear();
+      args.clear();
+    }
+
+    for (final entry in selectedIds.entries) {
+      if (entry.value.isEmpty) continue;
+      // Stay below SQLite's compound SELECT limit and Android's conservative
+      // bind limit for ordinary four-cover folders, even on a large refresh.
+      if (statements.length >= 80 || args.length + entry.value.length > 900) {
+        await flush();
+      }
+      final group = groups.length;
+      groups.add(entry.key);
+      statements.add('SELECT $group AS cover_group, cover_path FROM items '
+          'WHERE id IN (${List.filled(entry.value.length, '?').join(',')}) '
+          'AND cover_path IS NOT NULL');
+      args.addAll(entry.value);
+    }
+    await flush();
+
+    final items = <LibraryItem>[];
+    for (final row in rows) {
+      if (row['type'] == 'book') {
+        items.add(await _fetchBook(row, shallow: true));
+        continue;
+      }
+      final id = row['id'] as String;
+      final thumbnails = covers[id] ?? <String>[];
+      final automatic = row['child_covers'] as String?;
+      if (thumbnails.length < 4 && automatic != null && automatic.isNotEmpty) {
+        for (final path in automatic.split('|')) {
+          if (thumbnails.length >= 4) break;
+          if (!thumbnails.contains(path)) thumbnails.add(path);
+        }
+      }
+      items.add(MangaFolder(
+          id: id,
+          title: row['title'] as String,
+          itemCount: row['child_count'] as int? ?? 0,
+          thumbnails: thumbnails,
+          coverBookIds: selectedIds[id] ?? []));
+    }
+    return items;
+  }
+
+  Future<List<MangaBook>> fetchFolderBooks(
+      {required String folderId,
+      int limit = AppConfig.pageSize,
+      int offset = 0}) async {
+    final db = await database;
+    final res = await db.query('items',
+        where: 'parent_id = ? AND type = "book"',
+        whereArgs: [folderId],
+        orderBy: 'sort_order ASC',
+        limit: limit,
+        offset: offset);
+
+    List<MangaBook> list = [];
+    for (var row in res) {
+      list.add(await _fetchBook(row, shallow: true));
+    }
+    return list;
+  }
+
+  Future<MangaBook> _fetchBook(Map<String, dynamic> row,
+      {bool shallow = false}) async {
+    List<String> paths = [];
+    if (!shallow) {
+      paths = await getBookPages(row['id'] as String);
+    }
+    return MangaBook(
+      id: row['id'],
+      title: row['title'],
+      coverPath: row['cover_path'],
+      filePaths: paths,
+      lastReadPage: row['last_read_page'] ?? 0,
+      readCount: row['read_count'] ?? 0,
+      totalPageCount: row['total_pages'] ?? paths.length,
+    );
+  }
+
+  Future<List<String>> getBookPages(String bookId) =>
+      _pagePaths.get(bookId, () async {
+        final watch = Stopwatch()..start();
+        final db = await database;
+        final res = await db.query('pages',
+            columns: ['path'],
+            where: 'book_id = ?',
+            whereArgs: [bookId],
+            orderBy: 'page_order ASC');
+        PerfLog.event('database_pages_query',
+            {'elapsed_us': watch.elapsedMicroseconds, 'count': res.length});
+        return res.map((row) => row['path'] as String).toList();
+      });
+
+  /// Loads metadata only; page paths are fetched when opening the reader.
+  Future<MangaBook> getBookSummary(String bookId) async {
+    final db = await database;
+    final rows = await db.query('items',
+        where: 'id = ? AND type = ?', whereArgs: [bookId, 'book']);
+    if (rows.isEmpty) throw Exception('Book not found');
+    return _fetchBook(rows.first, shallow: true);
+  }
+
+  /// One metadata query even when many recent IDs refer to removed books.
+  Future<MangaBook?> getRecentBookSummary(List<String> ids) async {
+    final recent = ids.take(100).toList();
+    if (recent.isEmpty) return null;
+    final db = await database;
+    final rows = await db.query('items',
+        where:
+            "type = 'book' AND id IN (${List.filled(recent.length, '?').join(',')})",
+        whereArgs: recent);
+    final byId = {for (final row in rows) row['id'] as String: row};
+    for (final id in recent) {
+      final row = byId[id];
+      if (row != null) return _fetchBook(row, shallow: true);
+    }
+    return null;
+  }
+
+  Future<MangaBook> getBookFull(String bookId) async {
+    final db = await database;
+    final rows = await db.query('items', where: 'id = ?', whereArgs: [bookId]);
+    if (rows.isEmpty) throw Exception("Book not found");
+    return _fetchBook(rows.first, shallow: false);
+  }
+
+  Future<List<MangaBook>> fetchTopBooks({int limit = 5}) async {
+    final db = await database;
+    final res = await db.query(
+      'items',
+      where: 'type = ? AND read_count > 0',
+      whereArgs: ['book'],
+      orderBy: 'read_count DESC',
+      limit: limit,
+    );
+    List<MangaBook> list = [];
+    for (var row in res) list.add(await _fetchBook(row, shallow: true));
+    return list;
+  }
+
+  Future<void> incrementReadCount(String bookId) async {
+    final db = await database;
+    await db.rawUpdate(
+        'UPDATE items SET read_count = read_count + 1 WHERE id = ?', [bookId]);
+  }
+
+  Future<void> saveBook(MangaBook book, {String? parentId}) async {
+    final db = await database;
+    final count = Sqflite.firstIntValue(await db
+            .rawQuery('SELECT COUNT(*) FROM items WHERE id = ?', [book.id])) ??
+        0;
+    int totalPages = book.filePaths.length;
+
+    await db.transaction((txn) async {
+      if (count == 0) {
+        final max = Sqflite.firstIntValue(await txn.rawQuery(
+                'SELECT MAX(sort_order) FROM items WHERE parent_id ${parentId == null ? "IS NULL" : "= ?"}',
+                parentId == null ? [] : [parentId])) ??
+            -1;
+        await txn.insert('items', {
+          'id': book.id,
+          'title': book.title,
+          'type': 'book',
+          'cover_path': book.coverPath,
+          'parent_id': parentId,
+          'sort_order': max + 1,
+          'last_read_page': 0,
+          'read_count': 0,
+          'total_pages': totalPages
+        });
+      } else {
+        await txn.update(
+            'items',
+            {
+              'title': book.title,
+              'cover_path': book.coverPath,
+              'total_pages': totalPages,
+              'last_read_page': validPage(book.lastReadPage, totalPages),
+            },
+            where: 'id = ?',
+            whereArgs: [book.id]);
+      }
+
+      await txn.delete('pages', where: 'book_id = ?', whereArgs: [book.id]);
+      final batch = txn.batch();
+      for (int i = 0; i < book.filePaths.length; i++)
+        batch.insert('pages',
+            {'book_id': book.id, 'path': book.filePaths[i], 'page_order': i});
+      await batch.commit(noResult: true);
+    });
+    _notify();
+  }
+
+  Future<void> saveBooksBatch(List<MangaBook> books,
+      {CancelToken? cancelToken}) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      cancelToken?.throwIfCancelled();
+      var order = (Sqflite.firstIntValue(await txn.rawQuery(
+                  'SELECT MAX(sort_order) FROM items WHERE parent_id IS NULL')) ??
+              -1) +
+          1;
+      var batch = txn.batch();
+      var operations = 0;
+      for (final book in books) {
+        cancelToken?.throwIfCancelled();
+        batch.insert('items', {
+          'id': book.id,
+          'title': book.title,
+          'type': 'book',
+          'cover_path': book.coverPath,
+          'parent_id': null,
+          'sort_order': order++,
+          'last_read_page': 0,
+          'read_count': 0,
+          'total_pages': book.filePaths.length,
+        });
+        operations++;
+        for (var i = 0; i < book.filePaths.length; i++) {
+          batch.insert('pages',
+              {'book_id': book.id, 'path': book.filePaths[i], 'page_order': i});
+          if (++operations >= 256) {
+            await batch.commit(noResult: true);
+            cancelToken?.throwIfCancelled();
+            batch = txn.batch();
+            operations = 0;
+          }
+        }
+      }
+      await batch.commit(noResult: true);
+      cancelToken?.throwIfCancelled();
+    });
+    // Cancellation after commit is success; journal recovery preserves DB books.
+    _notify();
+  }
+
+  Future<void> updateProgress(String bookId, int page) async {
+    final db = await database;
+    await db.rawUpdate(
+        'UPDATE items SET last_read_page = '
+        'CASE WHEN total_pages <= 0 THEN 0 WHEN ? < 0 THEN 0 '
+        'WHEN ? >= total_pages THEN total_pages - 1 ELSE ? END WHERE id = ?',
+        [page, page, page, bookId]);
+  }
+
+  Future<void> createFolder(MangaFolder folder,
+      {List<String> itemIds = const []}) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final order = (Sqflite.firstIntValue(await txn.rawQuery(
+                  'SELECT MAX(sort_order) FROM items WHERE parent_id IS NULL')) ??
+              -1) +
+          1;
+      await txn.insert('items', {
+        'id': folder.id,
+        'title': folder.title,
+        'type': 'folder',
+        'folder_cover_ids': jsonEncode(folder.coverBookIds),
+        'sort_order': order
+      });
+      await _moveItems(txn, itemIds, folder.id);
+    });
+    _notify();
+  }
+
+  Future<void> _moveItems(
+      DatabaseExecutor txn, List<String> ids, String? folderId) async {
+    if (folderId != null) {
+      final target = await txn.query('items',
+          where: 'id = ? AND type = ? AND parent_id IS NULL',
+          whereArgs: [folderId, 'folder']);
+      if (target.isEmpty) throw StateError('目的地不是可用的資料夾');
+    }
+    // The UI supports one folder level. Enforce it in the data layer as well.
+    for (final id in ids.toSet()) {
+      final rows = await txn.query('items', where: 'id = ?', whereArgs: [id]);
+      if (rows.isEmpty) throw StateError('選取項目已不存在');
+      if (folderId != null &&
+          (id == folderId || rows.single['type'] != 'book')) {
+        throw StateError('資料夾不能移入自身或其他資料夾');
+      }
+    }
+    var order = (Sqflite.firstIntValue(await txn.rawQuery(
+                'SELECT MAX(sort_order) FROM items WHERE parent_id ${folderId == null ? "IS NULL" : "= ?"}',
+                folderId == null ? [] : [folderId])) ??
+            -1) +
+        1;
+    for (final id in ids.toSet()) {
+      await txn.update('items', {'parent_id': folderId, 'sort_order': order++},
+          where: 'id = ?', whereArgs: [id]);
+    }
+  }
+
+  Future<void> moveItems(List<String> ids, String? folderId,
+      {bool notify = true}) async {
+    final db = await database;
+    await db.transaction((txn) => _moveItems(txn, ids, folderId));
+    if (notify) _notify();
+  }
+
+  Future<void> _queueCleanup(DatabaseExecutor txn, String path,
+      {bool recursive = false}) async {
+    final root = p.normalize(p.absolute((await booksRoot).path));
+    final target = p.normalize(p.absolute(path));
+    if (!p.isWithin(root, target) ||
+        p
+            .relative(target, from: root)
+            .split(p.separator)
+            .first
+            .startsWith('.')) {
+      // Legacy external sources must never be deleted by library cleanup.
+      return;
+    }
+    await txn.insert(
+        'file_cleanup', {'path': target, 'recursive': recursive ? 1 : 0},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  Future<void> deleteItem(String id) => deleteItems([id]);
+
+  Future<void> deleteItems(List<String> ids) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final visited = <String>{};
+      final pending = [...ids];
+      while (pending.isNotEmpty) {
+        final current = pending.removeLast();
+        if (!visited.add(current)) continue;
+        final rows =
+            await txn.query('items', where: 'id = ?', whereArgs: [current]);
+        if (rows.isEmpty) continue;
+        final children = await txn.query('items',
+            columns: ['id'], where: 'parent_id = ?', whereArgs: [current]);
+        pending.addAll(children.map((r) => r['id'] as String));
+        if (rows.single['type'] == 'book') {
+          // Only the app-owned book directory, never an arbitrary page source.
+          if (p.basename(current) != current || current.startsWith('.')) {
+            throw StateError('Invalid book id');
+          }
+          await _queueCleanup(txn, p.join((await booksRoot).path, current),
+              recursive: true);
+        }
+      }
+      for (final current in visited) {
+        await txn.delete('items', where: 'id = ?', whereArgs: [current]);
+      }
+    });
+    _notify();
+    await _cleanupAfterCommit();
+  }
+
+  Future<MangaBook> deletePages(String bookId, Set<String> paths) async {
+    final db = await database;
+    late MangaBook result;
+    await db.transaction((txn) async {
+      final rows = await txn.query('items',
+          where: 'id = ? AND type = ?', whereArgs: [bookId, 'book']);
+      if (rows.isEmpty) throw StateError('書籍已不存在');
+      final row = rows.single;
+      final before = (await txn.query('pages',
+              where: 'book_id = ?',
+              whereArgs: [bookId],
+              orderBy: 'page_order ASC'))
+          .map((r) => r['path'] as String)
+          .toList();
+      final after = before.where((path) => !paths.contains(path)).toList();
+      for (final path in before.where(paths.contains)) {
+        await _queueCleanup(txn, path);
+        await _queueCleanup(
+            txn, p.join(p.dirname(path), '.thumbs', p.basename(path)));
+      }
+      final progress =
+          pageAfterRemoval(before, after, row['last_read_page'] as int? ?? 0);
+      final cover = after.contains(row['cover_path'])
+          ? row['cover_path'] as String?
+          : (after.isEmpty ? null : after.first);
+      await txn.delete('pages', where: 'book_id = ?', whereArgs: [bookId]);
+      final batch = txn.batch();
+      for (var i = 0; i < after.length; i++) {
+        batch.insert(
+            'pages', {'book_id': bookId, 'path': after[i], 'page_order': i});
+      }
+      await batch.commit(noResult: true);
+      await txn.update(
+          'items',
+          {
+            'total_pages': after.length,
+            'last_read_page': progress,
+            'cover_path': cover
+          },
+          where: 'id = ?',
+          whereArgs: [bookId]);
+      result = MangaBook(
+          id: bookId,
+          title: row['title'] as String,
+          filePaths: after,
+          coverPath: cover,
+          lastReadPage: progress,
+          readCount: row['read_count'] as int? ?? 0);
+    });
+    _notify();
+    await _cleanupAfterCommit();
+    return result;
+  }
+
+  Future<void> _cleanupAfterCommit() async {
+    try {
+      await retryFileCleanup();
+    } catch (error) {
+      // The library edit has committed. Do not report it as a rollback or lose
+      // the updated model just because a deferred cleanup query failed.
+      debugPrint('Cleanup deferred after successful edit: $error');
+    }
+  }
+
+  Future<void> retryFileCleanup() async {
+    if (_cleaning != null) return _cleaning!;
+    final db = await database;
+    // Share one drain, including concurrent callers that were waiting for open.
+    if (_cleaning != null) return _cleaning!;
+    final operation = _drainCleanup(db);
+    _cleaning = operation;
+    try {
+      await operation;
+    } finally {
+      _cleaning = null;
+    }
+  }
+
+  Future<void> _drainCleanup(Database db) async {
+    final root = await booksRoot;
+    for (final row in await db.query('file_cleanup')) {
+      final path = row['path'] as String;
+      try {
+        final target = p.normalize(p.absolute(path));
+        if (!p.isWithin(p.normalize(p.absolute(root.path)), target)) {
+          throw StateError('Cleanup path outside book storage');
+        }
+        // Reject symlinks in every existing path component.
+        var part = root.path;
+        for (final segment in p.split(p.relative(target, from: root.path))) {
+          part = p.join(part, segment);
+          if (await FileSystemEntity.type(part, followLinks: false) ==
+              FileSystemEntityType.link) {
+            throw StateError('Cleanup path contains symbolic link');
+          }
+        }
+        final type = await FileSystemEntity.type(target, followLinks: false);
+        if (type == FileSystemEntityType.directory && row['recursive'] == 1) {
+          await Directory(target).delete(recursive: true);
+        } else if (type == FileSystemEntityType.file) {
+          await File(target).delete();
+        } else if (type != FileSystemEntityType.notFound) {
+          throw StateError('Unexpected cleanup target');
+        }
+        await db.delete('file_cleanup', where: 'path = ?', whereArgs: [path]);
+      } catch (error) {
+        stderr.writeln('File cleanup pending ($path): $error');
+      }
+    }
+  }
+
+  Future<void> updateSortOrder(List<String> ids, {bool notify = true}) async {
+    final batch = (await database).batch();
+    for (int i = 0; i < ids.length; i++)
+      batch.update('items', {'sort_order': i},
+          where: 'id = ?', whereArgs: [ids[i]]);
+    await batch.commit(noResult: true);
+    if (notify) _notify();
+  }
+
+  Future<void> updateTitle(String id, String t) async {
+    await (await database)
+        .update('items', {'title': t}, where: 'id = ?', whereArgs: [id]);
+    _notify();
+  }
+
+  Future<void> updateCover(String id, String p) async {
+    await (await database)
+        .update('items', {'cover_path': p}, where: 'id = ?', whereArgs: [id]);
+    _notify();
+  }
+
+  Future<void> updateFolderCovers(String id, List<String> c) async {
+    await (await database).update('items', {'folder_cover_ids': jsonEncode(c)},
+        where: 'id = ?', whereArgs: [id]);
+    _notify();
+  }
+
+  Future<List<LibraryItem>> searchItems(String keyword) async {
+    if (keyword.trim().isEmpty) return [];
+
+    final db = await database;
+    final String queryStr = '''
+      SELECT 
+        i.*,
+        CASE 
+          WHEN i.type = 'folder' THEN (SELECT COUNT(*) FROM items c WHERE c.parent_id = i.id)
+          ELSE 0
+        END AS child_count,
+        CASE 
+          WHEN i.type = 'folder' THEN (
+            SELECT GROUP_CONCAT(cover_path, '|') 
+            FROM (
+              SELECT cover_path FROM items c2 
+              WHERE c2.parent_id = i.id AND c2.type = 'book' AND c2.cover_path IS NOT NULL 
+              ORDER BY c2.sort_order ASC 
+              LIMIT 4
+            )
+          )
+          ELSE NULL
+        END AS child_covers
+      FROM items i
+      WHERE i.title LIKE ?
+      ORDER BY i.sort_order ASC
+      LIMIT 100
+    ''';
+
+    // [重要修正] 把原本的 \$ 移除了，這樣才能正確組裝 LIKE 關鍵字哦！
+    final res = await db.rawQuery(queryStr, ['%$keyword%']);
+    return _libraryItems(db, res);
+  }
+}

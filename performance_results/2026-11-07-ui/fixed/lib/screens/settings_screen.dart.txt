@@ -1,0 +1,326 @@
+// lib/screens/settings_screen.dart
+// Material 3 Expressive 設定頁：集中閱讀、書架和外觀選項。
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../core/config.dart';
+import '../core/settings_provider.dart';
+import '../core/utils.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final settings = context.watch<SettingsProvider>();
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 116),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('設定',
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              )),
+                          const SizedBox(height: 5),
+                          Text(
+                            '把書架與閱讀方式調整成你喜歡的樣子',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: colors.primaryContainer,
+                      child: Icon(Icons.tune_rounded,
+                          color: colors.onPrimaryContainer),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                _SettingsSection(
+                  icon: Icons.grid_view_rounded,
+                  title: '書架與封面',
+                  description: '調整漫畫在書架上的排列方式',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('每列顯示', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        '選擇封面大小，3 欄最大、5 欄最精簡',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final columns in const [3, 4, 5])
+                            ChoiceChip(
+                              label: Text('$columns 欄'),
+                              selected: settings.bookshelfColumns == columns,
+                              onSelected: (_) =>
+                                  settings.setBookshelfColumns(columns),
+                            ),
+                        ],
+                      ),
+                      const Divider(height: 32),
+                      Text('漫畫封面顯示', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        '預設填滿：所有封面大小一致，可能裁切邊緣',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ChoiceChip(
+                            avatar: const Icon(Icons.crop_rounded, size: 18),
+                            label: const Text('填滿封面'),
+                            selected: settings.cropBookCovers,
+                            onSelected: (_) => settings.setCropBookCovers(true),
+                          ),
+                          ChoiceChip(
+                            avatar:
+                                const Icon(Icons.fit_screen_rounded, size: 18),
+                            label: const Text('完整顯示'),
+                            selected: !settings.cropBookCovers,
+                            onSelected: (_) =>
+                                settings.setCropBookCovers(false),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '「完整顯示」不裁切漫畫，但圖片四周可能留白。',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _SettingsSection(
+                  icon: Icons.palette_outlined,
+                  title: '外觀',
+                  description: '讓畫面在不同光線下都好閱讀',
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Icon(settings.darkMode
+                        ? Icons.dark_mode_rounded
+                        : Icons.light_mode_outlined),
+                    title: const Text('深色模式'),
+                    subtitle: const Text('適合在光線較暗的環境使用'),
+                    value: settings.darkMode,
+                    onChanged: settings.setDarkMode,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _SettingsSection(
+                  icon: Icons.menu_book_rounded,
+                  title: '閱讀器',
+                  description: '翻頁方向和雙擊放大習慣',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        secondary: const Icon(Icons.swap_horiz_rounded),
+                        title: const Text('右到左閱讀（RTL）'),
+                        subtitle: const Text('適合日系漫畫的翻頁方向'),
+                        value: settings.rtlMode,
+                        onChanged: settings.setRtlMode,
+                      ),
+                      const Divider(height: 28),
+                      const _ZoomSetting(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _SettingsSection(
+                  icon: Icons.library_add_outlined,
+                  title: '書庫管理',
+                  description: '使用原本的匯入和建立漫畫功能',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: () => LibraryActions.batchImport(context),
+                        icon: const Icon(Icons.library_add_check_rounded),
+                        label: const Text('批次匯入漫畫'),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            LibraryActions.createEmptyBook(context),
+                        icon: const Icon(Icons.create_new_folder_outlined),
+                        label: const Text('新增空漫畫'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.child,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: colors.primary, size: 22),
+            const SizedBox(width: 10),
+            Text(title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                )),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Padding(
+          padding: const EdgeInsets.only(left: 32),
+          child: Text(description,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              )),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+}
+
+class _ZoomSetting extends StatefulWidget {
+  const _ZoomSetting();
+  @override
+  State<_ZoomSetting> createState() => _ZoomSettingState();
+}
+
+class _ZoomSettingState extends State<_ZoomSetting> {
+  double? _zoomDraft;
+  @override
+  Widget build(BuildContext context) {
+    final savedZoom =
+        context.select<SettingsProvider, double>((s) => s.zoomLevel);
+    final settings = context.read<SettingsProvider>();
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final zoom = _zoomDraft ?? savedZoom;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(
+        children: [
+          const Icon(Icons.zoom_in_rounded),
+          const SizedBox(width: 12),
+          Expanded(child: Text('雙擊放大倍率', style: theme.textTheme.titleMedium)),
+          Text(
+            '${zoom.toStringAsFixed(1)}×',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colors.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '雙擊圖片時使用此倍率；雙指仍可自由縮放。',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colors.onSurfaceVariant,
+        ),
+      ),
+      Slider(
+        value: zoom.clamp(AppConfig.zoomMin, AppConfig.zoomMax).toDouble(),
+        min: AppConfig.zoomMin,
+        max: AppConfig.zoomMax,
+        divisions: AppConfig.zoomDivisions,
+        label: '${zoom.toStringAsFixed(1)}×',
+        onChanged: (value) => setState(() => _zoomDraft = value),
+        onChangeEnd: (value) {
+          settings.setZoomLevel(value);
+          setState(() => _zoomDraft = null);
+        },
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text('${AppConfig.zoomMin.toStringAsFixed(1)}×',
+              style: theme.textTheme.bodySmall),
+          TextButton.icon(
+            onPressed: () {
+              settings.setZoomLevel(2.5);
+              setState(() => _zoomDraft = null);
+            },
+            icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            label: const Text('恢復預設 2.5×'),
+          ),
+          Text('${AppConfig.zoomMax.toStringAsFixed(1)}×',
+              style: theme.textTheme.bodySmall),
+        ],
+      ),
+    ]);
+  }
+}

@@ -1,0 +1,243 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'support/test_image.dart';
+import 'dart:ui' as ui;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:gun_book/data/thumbnail_cache.dart';
+import 'package:path/path.dart' as p;
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+      'v2 thumbnail key rejects v1; 200px preserves aspect, alpha and small originals',
+      () async {
+    final root = await Directory.systemTemp.createTemp('gunbook-thumb-v2-');
+    final directory = Directory('${root.path}/cache');
+    final cache = ThumbnailCache(directory: () async => directory);
+    try {
+      final source = await writeTestImage('${root.path}/large.png',
+          width: 600, height: 900);
+      final original = await source.readAsBytes();
+      final stat = await source.stat();
+      final oldKey = sha256
+          .convert(utf8.encode(
+              '${source.path}\u0000${stat.size}\u0000${stat.modified.microsecondsSinceEpoch}'))
+          .toString();
+      await directory.create();
+      final old = await writeTestImage('${directory.path}/$oldKey.png',
+          width: 300, height: 450);
+      expect(await cache.getExisting(source.path), isNull);
+      final result = (await cache.get(source.path))!;
+      expect(result, isNot(old.path));
+      final codec =
+          await ui.instantiateImageCodec(await File(result).readAsBytes());
+      final image = (await codec.getNextFrame()).image;
+      expect(image.width, 200);
+      expect(image.height, 300);
+      image.dispose();
+      codec.dispose();
+      expect(await source.readAsBytes(), original);
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder)
+          .drawColor(const ui.Color(0x00000000), ui.BlendMode.src);
+      final picture = recorder.endRecording();
+      final small = await picture.toImage(80, 120);
+      final bytes = await small.toByteData(format: ui.ImageByteFormat.png);
+      final smallFile = await File('${root.path}/small.png')
+          .writeAsBytes(bytes!.buffer.asUint8List());
+      small.dispose();
+      picture.dispose();
+      final smallPath = (await cache.get(smallFile.path))!;
+      final smallCodec =
+          await ui.instantiateImageCodec(await File(smallPath).readAsBytes());
+      final decoded = (await smallCodec.getNextFrame()).image;
+      expect(decoded.width, 80);
+      expect(decoded.height, 120);
+      final rgba = await decoded.toByteData();
+      expect(rgba!.getUint8(3), 0);
+      decoded.dispose();
+      smallCodec.dispose();
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+
+  test('hit-only lookup never generates and still validates changed sources',
+      () async {
+    final root = await Directory.systemTemp.createTemp('gunbook-hit-only-');
+    final cache =
+        ThumbnailCache(directory: () async => Directory('${root.path}/cache'));
+    try {
+      final source = (await writeTestImage('${root.path}/source.png')).path;
+      expect(await cache.getExisting(source), isNull);
+      expect(await Directory('${root.path}/cache').exists(), isFalse);
+      final cached = await cache.get(source);
+      expect(await cache.getExisting(source), cached);
+      await writeTestImage(source, width: 300);
+      expect(await cache.getExisting(source), isNull);
+      expect(await cache.get(source), isNot(cached));
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+
+  test('recent unleased thumbnails cannot bypass the disk quota', () async {
+    final root = await Directory.systemTemp.createTemp('gunbook-quota-');
+    final cache = ThumbnailCache(
+        directory: () async => Directory('${root.path}/cache'), maxBytes: 1);
+    final sources = <String>[];
+    try {
+      for (var i = 0; i < 3; i++) {
+        final source = (await writeTestImage('${root.path}/$i.png')).path;
+        sources.add(source);
+        cache.retain(source);
+        expect(await cache.get(source), isNotNull);
+      }
+      await cache.trim();
+      expect(await Directory('${root.path}/cache').list().length, 3);
+      for (final source in sources) {
+        cache.release(source);
+      }
+      await cache.trim();
+      expect(await Directory('${root.path}/cache').list().length, 0);
+      for (final source in sources) {
+        expect(await File(source).exists(), isTrue);
+      }
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+  test('directory lookup is shared and retries a transient provider failure',
+      () async {
+    final root =
+        await Directory.systemTemp.createTemp('gunbook-directory-test-');
+    var calls = 0;
+    final cache = ThumbnailCache(directory: () async {
+      calls++;
+      if (calls == 1) throw const FileSystemException('temporary failure');
+      return Directory('${root.path}/cache');
+    });
+    try {
+      final one = (await writeTestImage('${root.path}/one.png')).path;
+      final two = (await writeTestImage('${root.path}/two.png')).path;
+      expect(await cache.get(one), isNull);
+      final results = await Future.wait([cache.get(one), cache.get(two)]);
+      expect(results.every((path) => path != null), isTrue);
+      await cache.get(one);
+      await cache.get(two);
+      await cache.trim();
+      expect(calls, 2); // one failed lookup plus one shared successful lookup
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+  test(
+      'thumbnail is reused, invalidated on source changes, and leaves originals untouched',
+      () async {
+    final root =
+        await Directory.systemTemp.createTemp('gunbook-thumbnails-test-');
+    try {
+      final original = File(p.join(root.path, 'page.png'));
+      Future<void> writeImage(int width) async {
+        final recorder = ui.PictureRecorder();
+        ui.Canvas(recorder)
+            .drawColor(const ui.Color(0xff123456), ui.BlendMode.src);
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(width, 400);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        await original.writeAsBytes(bytes!.buffer.asUint8List());
+        image.dispose();
+        picture.dispose();
+      }
+
+      await writeImage(600);
+      final before = await original.readAsBytes();
+      final cache = ThumbnailCache(
+          directory: () async => Directory(p.join(root.path, 'cache')));
+      final concurrent = await Future.wait(
+          [cache.get(original.path), cache.get(original.path)]);
+      expect(concurrent.first, isNotNull);
+      expect(concurrent.first, concurrent.last);
+      expect(await cache.get(original.path), concurrent.first);
+      expect(await original.readAsBytes(), before);
+      await writeImage(500);
+      final changed = await cache.get(original.path);
+      expect(changed, isNotNull);
+      expect(changed, isNot(concurrent.first));
+      expect(await Directory(p.join(root.path, 'cache')).list().length, 2);
+    } finally {
+      await root.delete(recursive: true);
+    }
+  });
+  test('missing originals and abandoned requests do not create cache files',
+      () async {
+    final root =
+        await Directory.systemTemp.createTemp('gunbook-thumbnails-test-');
+    try {
+      final cache = ThumbnailCache(
+          directory: () async => Directory(p.join(root.path, 'cache')));
+      expect(await cache.get(p.join(root.path, 'missing.jpg')), isNull);
+      final file = File(p.join(root.path, 'invalid.jpg'));
+      await file.writeAsBytes([1, 2, 3]);
+      expect(await cache.get(file.path, isNeeded: () => false), isNull);
+      expect(await Directory(p.join(root.path, 'cache')).exists(), isFalse);
+    } finally {
+      await root.delete(recursive: true);
+    }
+  });
+
+  test('truncated cache regenerates; corrupt original can be retried',
+      () async {
+    final root = await Directory.systemTemp.createTemp('gunbook-cache-retry-');
+    final cache =
+        ThumbnailCache(directory: () async => Directory('${root.path}/cache'));
+    final original = File('${root.path}/page.png');
+    try {
+      await original.writeAsBytes([1, 2, 3]);
+      expect(await cache.get(original.path), isNull);
+      await writeTestImage(original.path);
+      final cached = (await cache.get(original.path))!;
+      await File(cached).writeAsBytes([1]);
+      expect(await cache.get(original.path), cached);
+      expect(await File(cached).length(), greaterThan(45));
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+
+  test('LRU trim protects leased results, recent files and unrelated files',
+      () async {
+    final root = await Directory.systemTemp.createTemp('gunbook-cache-trim-');
+    final directory = Directory('${root.path}/cache');
+    final cache = ThumbnailCache(directory: () async => directory, maxBytes: 0);
+    final source = '${root.path}/page.png';
+    try {
+      await writeTestImage(source);
+      cache.retain(source);
+      final cached = File((await cache.get(source))!);
+      await cache
+          .trim(); // Wait for automatic maintenance before aging fixture.
+      final old = DateTime.now().subtract(const Duration(days: 31));
+      await cached.setLastModified(old);
+      final unrelated =
+          await File('${directory.path}/original.png').writeAsBytes([1]);
+      await unrelated.setLastModified(old);
+      await cache.trim();
+      expect(await cached.exists(), isTrue);
+      cache.release(source);
+      await cache.trim();
+      expect(await cached.exists(), isFalse);
+      expect(await unrelated.exists(), isTrue);
+      expect(await File(source).exists(), isTrue);
+    } finally {
+      await cache.trim();
+      await root.delete(recursive: true);
+    }
+  });
+}

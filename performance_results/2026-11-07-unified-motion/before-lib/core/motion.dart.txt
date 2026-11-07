@@ -1,0 +1,170 @@
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+
+enum MotionCurve { linear, easeInOut, easeOut, spring }
+
+enum PageMotion { none, fade, slide, scale, fadeSlide, zoomFade }
+
+enum DetailMotion { followPage, containerTransform }
+
+enum PressMotion { none, scale, spring }
+
+/// Immutable, version-tolerant preferences. Persist enum names, never indexes.
+@immutable
+class MotionSettings {
+  const MotionSettings(
+      {this.enabled = true,
+      this.curve = MotionCurve.easeInOut,
+      this.page = PageMotion.fadeSlide,
+      this.detail = DetailMotion.followPage,
+      this.press = PressMotion.scale,
+      this.bounce = false,
+      this.milliseconds = 250});
+  final bool enabled, bounce;
+  final MotionCurve curve;
+  final PageMotion page;
+  final DetailMotion detail;
+  final PressMotion press;
+  final int milliseconds;
+
+  Curve get timingCurve => switch (curve) {
+        MotionCurve.linear => Curves.linear,
+        MotionCurve.easeInOut => Curves.easeInOut,
+        MotionCurve.easeOut => Curves.easeOutCubic,
+        MotionCurve.spring => const GentleSpring(),
+      };
+  Duration duration([double ratio = 1]) => enabled
+      ? Duration(milliseconds: (milliseconds * ratio).round())
+      : Duration.zero;
+  ScrollPhysics get scrollPhysics => bounce
+      ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+      : const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+  MotionSettings copyWith(
+          {bool? enabled,
+          bool? bounce,
+          MotionCurve? curve,
+          PageMotion? page,
+          DetailMotion? detail,
+          PressMotion? press,
+          int? milliseconds}) =>
+      MotionSettings(
+          enabled: enabled ?? this.enabled,
+          bounce: bounce ?? this.bounce,
+          curve: curve ?? this.curve,
+          page: page ?? this.page,
+          detail: detail ?? this.detail,
+          press: press ?? this.press,
+          milliseconds: (milliseconds ?? this.milliseconds).clamp(100, 600));
+  @override
+  bool operator ==(Object other) =>
+      other is MotionSettings &&
+      enabled == other.enabled &&
+      bounce == other.bounce &&
+      curve == other.curve &&
+      page == other.page &&
+      detail == other.detail &&
+      press == other.press &&
+      milliseconds == other.milliseconds;
+  @override
+  int get hashCode =>
+      Object.hash(enabled, bounce, curve, page, detail, press, milliseconds);
+
+  Map<String, Object> toJson() => {
+        'enabled': enabled,
+        'bounce': bounce,
+        'curve': curve.name,
+        'page': page.name,
+        'detail': detail.name,
+        'press': press.name,
+        'milliseconds': milliseconds
+      };
+  factory MotionSettings.fromJson(Map<String, dynamic> data) {
+    T choice<T extends Enum>(List<T> values, Object? name, T fallback) =>
+        values.where((e) => e.name == name).firstOrNull ?? fallback;
+    final ms = data['milliseconds'];
+    return MotionSettings(
+        enabled: data['enabled'] is bool ? data['enabled'] as bool : true,
+        bounce: data['bounce'] is bool ? data['bounce'] as bool : false,
+        curve: choice(MotionCurve.values, data['curve'], MotionCurve.easeInOut),
+        page: choice(PageMotion.values, data['page'], PageMotion.fadeSlide),
+        detail: choice(
+            DetailMotion.values, data['detail'], DetailMotion.followPage),
+        press: choice(PressMotion.values, data['press'], PressMotion.scale),
+        milliseconds: ms is int && ms >= 100 && ms <= 600 ? ms : 250);
+  }
+}
+
+/// A single, strongly damped overshoot (< 0.5% page scale at 0.96 start).
+class GentleSpring extends Curve {
+  const GentleSpring();
+  @override
+  double transformInternal(double t) =>
+      1 - math.exp(-7 * t) * math.cos(8 * t) + t * math.exp(-7) * math.cos(8);
+}
+
+class MotionScope extends InheritedWidget {
+  const MotionScope({super.key, required this.settings, required super.child});
+  final MotionSettings settings;
+  static MotionSettings of(BuildContext context) {
+    final value =
+        context.dependOnInheritedWidgetOfExactType<MotionScope>()?.settings ??
+            const MotionSettings();
+    return MediaQuery.disableAnimationsOf(context)
+        ? value.copyWith(enabled: false)
+        : value;
+  }
+
+  @override
+  bool updateShouldNotify(MotionScope oldWidget) =>
+      oldWidget.settings != settings;
+}
+
+/// Shared by routes, the retained tab host and the lightweight preview.
+class MotionTransition extends StatelessWidget {
+  const MotionTransition(
+      {super.key,
+      required this.animation,
+      required this.settings,
+      required this.child,
+      this.gesture = false});
+  final Animation<double> animation;
+  final MotionSettings settings;
+  final Widget child;
+  final bool gesture;
+  @override
+  Widget build(BuildContext context) {
+    if (!settings.enabled || settings.page == PageMotion.none) return child;
+    final progress = gesture
+        ? animation
+        : animation.drive(CurveTween(curve: settings.timingCurve));
+    final opacity = progress.drive(CurveTween(curve: const _ClampCurve()));
+    Widget result = child;
+    if (settings.page == PageMotion.slide ||
+        settings.page == PageMotion.fadeSlide) {
+      result = SlideTransition(
+          position: progress.drive(Tween(
+              begin: Offset(settings.page == PageMotion.slide ? .12 : .04, 0),
+              end: Offset.zero)),
+          child: result);
+    }
+    if (settings.page == PageMotion.scale ||
+        settings.page == PageMotion.zoomFade) {
+      result = ScaleTransition(
+          scale: progress.drive(Tween(begin: .96, end: 1.0)), child: result);
+    }
+    if (settings.page == PageMotion.fade ||
+        settings.page == PageMotion.fadeSlide ||
+        settings.page == PageMotion.zoomFade) {
+      result = FadeTransition(opacity: opacity, child: result);
+    }
+    return result;
+  }
+}
+
+class _ClampCurve extends Curve {
+  const _ClampCurve();
+  @override
+  double transform(double t) => t.clamp(0.0, 1.0);
+  @override
+  double transformInternal(double t) => t;
+}

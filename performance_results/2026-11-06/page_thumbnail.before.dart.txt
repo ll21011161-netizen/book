@@ -1,0 +1,105 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import '../data/thumbnail_cache.dart';
+import 'app_image.dart';
+
+/// Resolve the disk thumbnail before displaying an image, avoiding a second
+/// decode of the original on cache hits and on successful generation.
+class PageThumbnail extends StatefulWidget {
+  const PageThumbnail(
+      {super.key, required this.path, this.onImageReady, this.cache});
+  final String path;
+  final VoidCallback? onImageReady;
+  final ThumbnailCache? cache;
+  @override
+  State<PageThumbnail> createState() => _PageThumbnailState();
+}
+
+class _PageThumbnailState extends State<PageThumbnail> {
+  ThumbnailCache get _cache => widget.cache ?? ThumbnailCache.instance;
+  String? _resolved;
+  int _generation = 0;
+  bool _reported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cache.retain(widget.path);
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant PageThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path || oldWidget.cache != widget.cache) {
+      (oldWidget.cache ?? ThumbnailCache.instance).release(oldWidget.path);
+      _cache.retain(widget.path);
+      _resolved = null;
+      _reported = false;
+      _load();
+    }
+  }
+
+  // Evaluate against the viewport at dequeue time. Sliver cache items stay
+  // lower priority; disposed requests are skipped entirely.
+  int _priority() {
+    if (!mounted) return 2;
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return 2;
+    final rect = box.localToGlobal(Offset.zero) & box.size;
+    final viewport = Offset.zero & MediaQuery.sizeOf(context);
+    if (rect.overlaps(viewport)) return 0;
+    return rect.overlaps(viewport.inflate(box.size.height)) ? 1 : 2;
+  }
+
+  Future<void> _load() async {
+    final generation = ++_generation;
+    final source = widget.path;
+    final result = await _cache.get(source,
+        isNeeded: () => mounted && generation == _generation,
+        priority: _priority);
+    if (mounted && generation == _generation) {
+      setState(() => _resolved = result ?? source);
+    }
+  }
+
+  Future<void> _fallback() async {
+    final cached = _resolved;
+    if (cached == null || cached == widget.path) return;
+    final source = widget.path;
+    final cache = _cache;
+    setState(() => _resolved = source);
+    try {
+      await cache.invalidate(source, cached);
+    } catch (_) {/* retry next visit */}
+  }
+
+  @override
+  void dispose() {
+    _generation++;
+    _cache.release(widget.path);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_resolved == null) {
+      return DecoratedBox(
+          decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12)));
+    }
+    return AppImage(
+      path: _resolved,
+      onImageReady: () {
+        if (_reported) return;
+        _reported = true;
+        widget.onImageReady?.call();
+      },
+      onImageError: () => unawaited(_fallback()),
+      fit: BoxFit.cover,
+      cacheWidth: 150,
+      borderRadius: BorderRadius.circular(12),
+    );
+  }
+}

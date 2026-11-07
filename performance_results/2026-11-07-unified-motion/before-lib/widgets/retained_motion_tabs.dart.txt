@@ -1,0 +1,66 @@
+import 'package:flutter/material.dart';
+import '../core/motion.dart';
+
+/// Both pages keep their Elements/scroll positions. Only the destination paints
+/// and ticks. A single controller restarts on the latest selection; no outgoing
+/// page queue, duplicate keys, or repeated image loading.
+class RetainedMotionTabs extends StatefulWidget {
+  const RetainedMotionTabs(
+      {super.key, required this.index, required this.children});
+  final int index;
+  final List<Widget> children;
+  @override
+  State<RetainedMotionTabs> createState() => _RetainedMotionTabsState();
+}
+
+class _RetainedMotionTabsState extends State<RetainedMotionTabs>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller =
+      AnimationController(vsync: this, value: 1);
+  @override
+  void didUpdateWidget(RetainedMotionTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.index != widget.index) {
+      final motion = MotionScope.of(context);
+      _controller.stop();
+      _controller.duration = motion.duration();
+      if (!motion.enabled || motion.page == PageMotion.none) {
+        _controller.value = 1;
+      } else {
+        _controller.forward(from: 0);
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final motion = MotionScope.of(context);
+    if (!motion.enabled || motion.page == PageMotion.none) {
+      _controller.stop();
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = MotionScope.of(context);
+    return Stack(fit: StackFit.expand, children: [
+      for (var i = 0; i < widget.children.length; i++)
+        Offstage(
+            offstage: i != widget.index,
+            child: TickerMode(
+                enabled: i == widget.index,
+                child: MotionTransition(
+                    animation: _controller,
+                    settings: motion,
+                    child: widget.children[i])))
+    ]);
+  }
+}

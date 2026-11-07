@@ -1,0 +1,158 @@
+{
+  "before": {
+    "detail_first_frame": {
+      "first": 22,
+      "second": 57,
+      "warm_median": 39,
+      "memory_cold_last": 30
+    },
+    "detail_first_thumbnail": {
+      "first": 132,
+      "second": 166,
+      "warm_median": 81,
+      "memory_cold_last": 109
+    },
+    "detail_first_row": {
+      "first": 342,
+      "second": 177,
+      "warm_median": 81,
+      "memory_cold_last": 120
+    },
+    "pointer_down_to_first_frame_ms": {
+      "0": 100,
+      "1": 132,
+      "2": 115,
+      "3": 115,
+      "4": 111,
+      "5": 102,
+      "6": 100,
+      "7": 108,
+      "8": 118,
+      "9": 104,
+      "10": 102
+    },
+    "enter": {
+      "frames": 244,
+      "build_ms": 3.817,
+      "raster_ms": 6.412,
+      "over8": 58,
+      "over16": 20
+    },
+    "return": {
+      "frames": 152,
+      "build_ms": 2.32,
+      "raster_ms": 6.112,
+      "over8": 16,
+      "over16": 2
+    },
+    "scroll": {
+      "frames": 224,
+      "build_ms": 2.997,
+      "raster_ms": 6.824,
+      "over8": 37,
+      "over16": 4
+    },
+    "generation": {
+      "count": 70,
+      "median_ms": 72.768
+    },
+    "last_memory": {
+      "event": "detail_bench_returned",
+      "revision": "before",
+      "run": 10,
+      "home_scroll": 0.0,
+      "rss_bytes": 306896896,
+      "image_cache_bytes": 9240000,
+      "live_images": 1,
+      "pending_images": 0,
+      "log_time": "11-07 11:50:48.983"
+    },
+    "errors": 0
+  },
+  "after": {
+    "detail_first_frame": {
+      "first": 16,
+      "second": 22,
+      "warm_median": 27,
+      "memory_cold_last": 29
+    },
+    "detail_first_thumbnail": {
+      "first": 121,
+      "second": 97,
+      "warm_median": 77,
+      "memory_cold_last": 114
+    },
+    "detail_first_row": {
+      "first": 209,
+      "second": 143,
+      "warm_median": 77,
+      "memory_cold_last": 131
+    },
+    "pointer_down_to_first_frame_ms": {
+      "0": 90,
+      "1": 88,
+      "2": 84,
+      "3": 95,
+      "4": 100,
+      "5": 101,
+      "6": 95,
+      "7": 96,
+      "8": 106,
+      "9": 106,
+      "10": 102
+    },
+    "enter": {
+      "frames": 367,
+      "build_ms": 3.478,
+      "raster_ms": 7.383,
+      "over8": 91,
+      "over16": 30
+    },
+    "return": {
+      "frames": 273,
+      "build_ms": 3.266,
+      "raster_ms": 7.5,
+      "over8": 61,
+      "over16": 10
+    },
+    "scroll": {
+      "frames": 221,
+      "build_ms": 3.257,
+      "raster_ms": 8.003,
+      "over8": 68,
+      "over16": 5
+    },
+    "generation": {
+      "count": 64,
+      "median_ms": 67.17699999999999
+    },
+    "last_memory": {
+      "event": "detail_bench_returned",
+      "revision": "after",
+      "run": 10,
+      "home_scroll": 0.0,
+      "rss_bytes": 312795136,
+      "image_cache_bytes": 6480000,
+      "live_images": 1,
+      "pending_images": 0,
+      "log_time": "11-07 12:03:13.555"
+    },
+    "errors": 0,
+    "stages_median": {
+      "decode_us": 39029.5,
+      "encode_us": 22002.0,
+      "write_validate_us": 3307.5,
+      "bytes": 5926.0
+    },
+    "hit_ratio_by_operation": {
+      "lookup": {
+        "hits": 78,
+        "misses": 32
+      },
+      "generate": {
+        "hits": 460,
+        "misses": 375
+      }
+    }
+  }
+}
